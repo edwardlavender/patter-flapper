@@ -74,9 +74,9 @@ calc_depth_error <- Vectorize(calc_depth_error)
 
 update_ac <- function(.particles, .bathy, .obs, .t, ...) {
   # Extract depth of seabed at particle positions
-  .particles$bathy <- terra::extract(.bathy, as.matrix(.particles[, c("x_now", "y_now")]))
+  bathy <- terra::extract(.bathy, .particles$cell_now)
   # Weight = 1 in locations where bathymetric depth is within possible limits, otherwise 0
-  (.particles$bathy  >= .obs$depth_shallow[.t] & .particles$bathy <= .obs$depth_deep[.t]) + 0
+  (bathy  >= .obs$depth_shallow[.t] & bathy <= .obs$depth_deep[.t]) + 0
 }
 
 
