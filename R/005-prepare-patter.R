@@ -35,39 +35,43 @@ overwrite <- FALSE
 ###########################
 #### Prepare AC* inputs
 
-#
-# TO DO
-# Scrap this approach and use a distances matrix?
-# This is too slow, especially for large grids. 
-#
-
-#### Detection containers 
-# Define containers (~50 mins)
+#### Detection overlaps (~0 s)
 tic()
-containers <- acs_setup_detection_containers(bathy, moorings)
-toc()
-# Write to file for reference (~7 min)
-if (overwrite) {
-  pbapply::pblapply(seq_len(length(containers)), function(i) {
-    container <- containers[[i]]
-    if (!is.null(container)) {
-      outfile <- paste0(names(containers)[i], ".tif")
-      terra::writeRaster(container, here_data("input", "containers", outfile))
-    }
-    NULL
-  }) |> invisible()
-}
-
-#### Detection overlaps
-tic()
-overlaps   <- acs_setup_detection_overlaps(containers, moorings)
+overlaps <- acs_setup_detection_overlaps(moorings)
 toc()
 
 #### Detection kernels
+# * We can use the default settings here. 
+# * Note that MEFS::moorings contains 48 receivers
+# * Whereas patter::dat_moorings only contains a subset of those receivers
+# Timings:
+# * receiver-specific inverse kernels: ~90 mins 
+# * area-wide kernels: ~24 min
+# * total: 115 mins
 tic()
-kernels    <- acs_setup_detection_kernels(moorings, 
-                                          calc_detection_pr = acs_setup_detection_pr)
+kernels <- acs_setup_detection_kernels(moorings, 
+                                       .calc_detection_pr = acs_setup_detection_pr, 
+                                       .bathy = bathy)
 toc()
+
+### Save outputs
+# ~20 mins (~7 mins per raster list)
+tic()
+saveRDS(overlaps, here_data("input", "overlaps.rds"))
+saveRDS(kernels$array_design, 
+        here_data("input", "kernels", "array_design.rds"))
+saveRDS(kernels$array_design_by_date, 
+        here_data("input", "kernels", "array_design_by_date.rds"))
+writeRasterLs(kernels$receiver_specific_kernels,
+              here_data("input", "kernels", "receiver-specific-kernels"))
+writeRasterLs(kernels$receiver_specific_inv_kernels,
+              here_data("input", "kernels", "receiver-specific-inv-kernels"))
+writeRasterLs(kernels$bkg_surface_by_design,
+              here_data("input", "kernels", "bkg-surface-by-design"))
+writeRasterLs(kernels$bkg_inv_surface_by_design,
+              here_data("input", "kernels", "bkg-inv-surface-by-design"))
+toc()
+
 
 #### End of code. 
 ###########################
