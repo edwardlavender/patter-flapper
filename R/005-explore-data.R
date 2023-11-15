@@ -70,12 +70,20 @@ acc <-
   filter(individual_id == 25) |> 
   filter(timestamp >= as.POSIXct("2016-07-01")) |> 
   filter(timestamp <= as.POSIXct("2016-08-01")) |> 
+  # arrange(timestamp) |> 
   as.data.table()
 arc <- 
   arc |> 
-  filter(individual_id == acc$individual_id[1])
+  filter(individual_id == acc$individual_id[1]) |> 
+  # arrange(timestamp) |> 
+  as.data.table()
+
+# Calculate gaps between sequential detections
+acc$gap <- Tools4ETS::serial_difference(acc$timestamp, units = "days")
+plot(acc$timestamp, acc$gap, type = "l")
 
 # (optional) Collate acoustic & archival time series 
+acc$gap <- NULL
 obs <- acs_setup_obs(acc, arc, 
                      .step = "2 mins", 
                      .mobility = 500, 
