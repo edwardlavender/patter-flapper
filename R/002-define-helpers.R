@@ -13,6 +13,54 @@
 ###########################
 #### Define functions
 
+#' @title Spatial helpers
+
+readRasterLs <- function(folder, ...) {
+  files <- list.files(folder, full.names = TRUE)
+  ids   <- tools::file_path_sans_ext(basename(files))
+  rasters <- pbapply::pblapply(files, function(file) {
+    terra::rast(file, ...)
+  })
+  names(rasters) <- ids
+  index <- as.character(seq_len(max(as.integer(ids))))
+  lapply(index, function(i) {
+    rasters[[i]]
+  })
+}
+
+writeRasterLs <- function(x, folder, ...) {
+  index <- seq_len(length(x))
+  outfiles <- file.path(folder, paste0(index, ".tif"))
+  pbapply::pblapply(index, function(i) {
+    if (!is.null(x[[i]])) {
+      terra::writeRaster(x[[i]], outfiles[i], ...)
+    }
+  })
+  invisible(NULL)
+}
+
+#' @title {patter} helpers
+
+acs_setup_detection_kernels_read <- function() {
+  kernels <- list()
+  kernels$array_design <- 
+    readRDS(here_data("input", "kernels", "array_design.rds"))
+  kernels$array_design_by_date <- 
+    readRDS(here_data("input", "kernels", "array_design_by_date.rds"))
+  kernels$receiver_specific_kernels <- 
+    readRasterLs(here_data("input", "kernels", "receiver-specific-kernels"))
+  kernels$receiver_specific_inv_kernels <- 
+    readRasterLs(here_data("input", "kernels", "receiver-specific-inv-kernels"))
+  kernels$bkg_surface_by_design <- 
+    readRasterLs(here_data("input", "kernels", "bkg-surface-by-design"))
+  kernels$bkg_inv_surface_by_design <- 
+    readRasterLs(here_data("input", "kernels", "bkg-inv-surface-by-design"))
+  kernels
+}
+
+# (optional) TO DO
+# * Add acs_setup_detection_kernels_write()
+
 #' @title Depth error function
 # https://github.com/edwardlavender/flapper_appl/blob/master/R/define_global_param.R
 
