@@ -55,6 +55,23 @@ rxy <-
 moorings$receiver_easting  <- rxy[, 1]
 moorings$receiver_northing <- rxy[, 2]
 
+#### Check validity on `bathy`
+# * On Howe et al. data, 7 receivers are invalid on `bathy` e.g., along lismore
+# * This has been resolved by merging Howe et al & Digimap data
+moorings$bathy <- terra::extract(bathy, moorings[, .(receiver_easting, receiver_northing)])$depth
+table(is.na(moorings$bathy))
+if (FALSE) {
+  # Plot receiver positions
+  terra::plot(bathy)
+  text(moorings$receiver_easting, moorings$receiver_northing, moorings$receiver_id, cex = 0.5)
+  # Examine bathymetry around selected receiver 
+  xy <- cbind(moorings$receiver_easting[1], moorings$receiver_northing[1])
+  bathy |> 
+    terra::crop(terra::ext(xy[1] - 1e3, xy[1] + 1e3, xy[2] - 1e3, xy[2] + 1e3)) |> 
+    terra::plot()
+  points(xy)
+}
+
 
 ###########################
 ###########################
