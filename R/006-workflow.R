@@ -32,6 +32,8 @@ bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
+overlaps  <- readRDS(here_data("input", "overlaps.rds"))
+kernels   <- acs_setup_detection_kernels_read()
 
 
 ###########################
