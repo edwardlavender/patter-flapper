@@ -16,6 +16,7 @@
 #### Wipe workspace
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
+dv::clear()
 
 #### Essential packages
 library(dv)
