@@ -24,14 +24,19 @@ library(sf)
 library(tictoc)
 
 #### Load data
+digi       <- terra::rast(here_data_raw("bathymetry", "digmap_bathym_merged_1arcsec_res", "digimap_bathy_merge_1arcsec_res.tif"))
 bathy      <- terra::rast(here_data_raw("bathymetry", "Full Data - Original", "EXTRACTED_DEPTH1.tif"))
 mpa_open   <- st_read(here_data_raw("mpa", "management_areas", "MPA_Open_area.shp"))
 mpa_closed <- st_read(here_data_raw("mpa", "management_areas", "LSSOJ_MPA_CLosed_areat.shp"))
+coast      <- st_read(here_data_raw("coast", "westminster_const_region.shp"))
 
 
 ###########################
 ###########################
 #### Process datasets
+
+#### Process coast
+coast <- st_transform(coast, terra::crs(bathy))
 
 #### Process bathy (~10 s)
 tic()
@@ -76,6 +81,32 @@ bathy   <- terra::crop(bathy, c(xmin, xmax, ymin, ymax)) # ~ 10
 # Crop MPA (~ 1 s)
 mpa_buf <- sf::st_crop(mpa_buf, c(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax))
 
+#### Merge bathymetry files
+# Here, we fill in NAs (e.g., around Lismore) on `bathy` using `digi`
+# This is necessary to handle receivers around Lismore
+# This introduces some errors:
+# * Some NAs will be inappropriately replaced (e.g., near to coastline) 
+# * The uncertainty in the bathymetry values varies over space
+# * But this enables us to include receivers beyond bathy and, e.g., 
+# * ... look at putative movements north of Lismore
+tic()
+# Mask values on land
+mask <- (digi >= 0) + 0
+digi <- terra::mask(digi, mask, maskvalues = 1)
+# terra::plot(digi)
+# terra::plot(is.na(digi))
+# - Use absolute values
+digi <- abs(digi)
+# terra::plot(digi)
+# - Align onto bathy geometry
+digi <- terra::project(digi, terra::crs(bathy))
+digi <- terra::resample(digi, bathy, method = "near")
+# Update NAs on bathy with values from digi
+mask <- is.na(bathy)
+bathy[mask] <- digi[mask]
+terra::plot(bathy)
+toc()
+
 
 ###########################
 ###########################
@@ -102,6 +133,7 @@ if (FALSE) {
               border = "dimgrey", 
               add = TRUE)
 }
+terra::lines(coast)
 dev.off()
 toc()
 
@@ -114,6 +146,7 @@ toc()
 
 tic()
 saveRDS(mpa, here_data("spatial", "mpa.rds"))
+saveRDS(coast, here_data("spatial", "coast.rds"))
 terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
 toc()
 
