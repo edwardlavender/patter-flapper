@@ -110,10 +110,12 @@ toc()
 
 ###########################
 ###########################
-#### Write datasets (~ 1s)
+#### Write datasets (~ 15 s)
 
+tic()
 saveRDS(mpa, here_data("spatial", "mpa.rds"))
-saveRDS(bathy, here_data("spatial", "bathy.tif"))
+terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
+toc()
 
 
 #### End of code. 
