@@ -36,9 +36,6 @@ coast      <- st_read(here_data_raw("coast", "westminster_const_region.shp"))
 ###########################
 #### Process datasets
 
-#### Process coast
-coast <- st_transform(coast, terra::crs(bathy))
-
 #### Process bathy (~10 s)
 tic()
 bathy <- abs(bathy)
@@ -108,6 +105,12 @@ mask <- is.na(bathy)
 bathy[mask] <- digi[mask]
 terra::plot(bathy)
 toc()
+
+#### Process coast
+coast <- 
+  coast |> 
+  st_transform(crs = terra::crs(bathy)) |> 
+  st_crop(c(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax))
 
 
 ###########################
