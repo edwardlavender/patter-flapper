@@ -6,6 +6,7 @@ data-raw/
 data/*
 !data/inst
 dev/03-private.R
+R/supporting/
 doc/
 fig/
 *.html
