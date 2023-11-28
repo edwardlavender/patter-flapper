@@ -11,7 +11,36 @@
 
 ###########################
 ###########################
-#### Define functions
+#### Utilities
+
+#' @title {Tools4ETS} imports
+
+difference <- function(x2, x1, f = NULL, ...) {
+  if (class(x2)[1] %in% c("numeric", "integer")) {
+    d <- x2 - x1
+  }
+  else if (class(x2)[1] %in% c("POSIXct", "POSIXlt", "Date")) {
+    d <- difftime(x2, x1, ...)
+  }
+  if (!is.null(f)) {
+    d <- as.numeric(d)
+  }
+  d
+}
+
+serial_difference <- function(x, na.rm = FALSE, ...) {
+  dur <- difference(dplyr::lead(x), x, ...)
+  if (na.rm) {
+    posNA <- which(is.na(dur))
+    dur <- dur[-c(posNA)]
+  }
+  dur
+}
+
+
+###########################
+###########################
+#### Spatial helpers
 
 #' @title Spatial helpers
 
@@ -38,6 +67,10 @@ writeRasterLs <- function(x, folder, ...) {
   })
   invisible(NULL)
 }
+
+###########################
+###########################
+#### {patter} helpers
 
 #' @title {patter} helpers
 
@@ -74,9 +107,11 @@ calc_depth_error <- Vectorize(calc_depth_error)
 
 update_ac <- function(.particles, .bathy, .obs, .t, ...) {
   # Extract depth of seabed at particle positions
-  bathy <- terra::extract(.bathy, .particles$cell_now)
+  if (!rlang::has_name(.particles, "bathy")) {
+    .particles[, bathy := terra::extract(.bathy, .particles$cell_now)]
+  }
   # Weight = 1 in locations where bathymetric depth is within possible limits, otherwise 0
-  (bathy  >= .obs$depth_shallow[.t] & bathy <= .obs$depth_deep[.t]) + 0
+  (.particles$bathy  >= .obs$depth_shallow[.t] & .particles$bathy <= .obs$depth_deep[.t]) + 0
 }
 
 

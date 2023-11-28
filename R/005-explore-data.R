@@ -27,6 +27,7 @@ library(ggplot2)
 library(patter)
 
 #### Load data
+source(here_r("002-define-helpers.R"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
@@ -80,7 +81,7 @@ arc <-
   as.data.table()
 
 # Calculate gaps between sequential detections
-acc$gap <- Tools4ETS::serial_difference(acc$timestamp, units = "days")
+acc$gap <- serial_difference(acc$timestamp, units = "days")
 plot(acc$timestamp, acc$gap, type = "l")
 
 # (optional) Collate acoustic & archival time series 
