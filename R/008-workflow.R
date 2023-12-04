@@ -18,7 +18,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-options(error = recover)
+op <- options(error = recover)
 
 #### Essential packages
 library(dv)
@@ -167,21 +167,25 @@ if (manual) {
 
 #### Define directories 
 pfbs_folder <- file.path(pfb_folder, "sampler", "output")
-log.txt     <- here_data("example", "acpf", "backward", "killer", "log.txt")
+log.txt     <- here_data("example", "acpf", "backward", "sampler", "log.txt")
 
 #### Prepare sampler
 # Identify distinct cells (~3.2 mins, 1 CPU)
-tic()
 pfbd_folder <- file.path(pfb_folder, "sampler", "distinct")
-pf_distinct(.history = file.path(pff_folder, "history"), 
-            .write_opts = list(sink = pfbd_folder))
-toc()
+if (run) {
+  tic()
+  pf_distinct(.history = file.path(pff_folder, "history"), 
+              .write_opts = list(sink = pfbd_folder))
+  toc()
+}
 
 #### Run sampler 
 if (run) {
   tic()
-  out_pfbs <- pf_backward_sampler(pf_setup_files(pff_folder), 
-                                  .step_dens = dstep, 
+  files <- pf_setup_files(pfbd_folder)
+  files <- files[(length(files) - 10L):length(files)]
+  out_pfbs <- pf_backward_sampler(files, 
+                                  .step_dens = dstep, lonlat = FALSE,
                                   .write_history = list(sink = pfbs_folder), 
                                   .txt = log.txt)
   toc()
