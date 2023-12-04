@@ -74,6 +74,14 @@ writeRasterLs <- function(x, folder, ...) {
 
 #' @title {patter} helpers
 
+as_glatos <- function(.acoustics) {
+  data.frame(detection_timestamp_utc = .acoustics$timestamp, 
+             transmitter_codespace = "000",
+             transmitter_id = as.character(.acoustics$individual_id), 
+             receiver_sn = as.character(.acoustics$receiver_id)
+  )
+}
+
 acs_setup_detection_kernels_read <- function() {
   kernels <- list()
   kernels$array_design <- 
