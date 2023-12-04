@@ -25,6 +25,7 @@ library(patter)
 library(tictoc)
 
 #### Load data
+coast    <- readRDS(here_data("spatial", "coast.rds"))
 bathy    <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings <- readRDS(here_data("mefs", "moorings.rds"))
 
@@ -71,6 +72,32 @@ writeRasterLs(kernels$bkg_surface_by_design,
               here_data("input", "kernels", "bkg-surface-by-design"))
 writeRasterLs(kernels$bkg_inv_surface_by_design,
               here_data("input", "kernels", "bkg-inv-surface-by-design"))
+toc()
+
+
+###########################
+###########################
+#### Prepare {spatstat} inputs
+
+#### Define image (~8 s)
+tic()
+im <- as.im.SpatRaster(bathy)
+toc()
+
+#### Define observation window (~2 s + 164 s)
+tic()
+win <- as.owin.sf(coast, .invert = TRUE)
+toc()
+tic()
+plot(win, col = "blue")
+toc()
+
+#### Save outputs (~6 s + 115 s)
+tic()
+qs::qsave(im, here_data("spatial", "im.qs"))
+toc()
+tic()
+qs::qsave(win, here_data("spatial", "win.qs"))
 toc()
 
 
