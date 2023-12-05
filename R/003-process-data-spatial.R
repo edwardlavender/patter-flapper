@@ -22,6 +22,7 @@ dv::clear()
 library(dv)
 library(dplyr)
 library(sf)
+library(patter)
 library(tictoc)
 
 #### Load data
@@ -209,13 +210,42 @@ toc()
 
 ###########################
 ###########################
+#### Prepare {spatstat} inputs
+
+#### Define image (~8 s)
+tic()
+im <- as.im.SpatRaster(bathy)
+toc()
+
+#### Define observation window (~2 s + 164 s)
+tic()
+win <- as.owin.sf(coast, .invert = TRUE)
+toc()
+if (FALSE) {
+  tic()
+  plot(win, col = "blue")
+  toc()
+}
+
+
+###########################
+###########################
 #### Write datasets (~ 15 s)
 
+# Spatial datasets
 tic()
 saveRDS(mpa, here_data("spatial", "mpa.rds"))
 saveRDS(coast, here_data("spatial", "coast.rds"))
 terra::writeRaster(howe, here_data("spatial", "howe.tif"), overwrite = TRUE)
 terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
+toc()
+
+# spatstat versions (~6 s + 115 s)
+tic()
+qs::qsave(im, here_data("spatial", "im.qs"))
+toc()
+tic()
+qs::qsave(win, here_data("spatial", "win.qs"))
 toc()
 
 

@@ -83,6 +83,7 @@ obs[, depth_deep := depth + depth_error[2, ]]
 #### TO DO
 # Write behavioural switching model
 # Downgrade movement jumps using shortest distances model
+# Exclude time points we know the individuals were beyond the MPA based on depth
 
 #### Define directories
 log.txt    <- here_data("example", "acpf", "forward", "log.txt")
