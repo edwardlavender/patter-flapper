@@ -41,7 +41,7 @@ overlaps  <- readRDS(here_data("input", "overlaps.rds"))
 kernels   <- acs_setup_detection_kernels_read()
 
 #### Local pars
-set.seed(1)
+seed <- 1L
 run    <- FALSE
 manual <- run
 
@@ -95,9 +95,10 @@ if (FALSE) {
 }
 
 #### Forward run 
-# ACPF: ~192 mins
+# ACPF: ~72 mins
 tic()
 if (run) {
+  set.seed(seed)
   out_pff <- pf_forward(obs,
                         .bathy = bathy,
                         .moorings = moorings,
@@ -181,10 +182,11 @@ if (run) {
 }
 
 #### Run sampler 
+files <- pf_setup_files(pfbd_folder)
+files <- files[(length(files) - 10L):length(files)]
 if (run) {
   tic()
-  files <- pf_setup_files(pfbd_folder)
-  files <- files[(length(files) - 10L):length(files)]
+  set.seed(seed)
   out_pfbs <- pf_backward_sampler(files, 
                                   .step_dens = dstep, lonlat = FALSE,
                                   .write_history = list(sink = pfbs_folder), 
