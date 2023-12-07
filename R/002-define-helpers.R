@@ -13,7 +13,7 @@
 ###########################
 #### Utilities
 
-#' @title {Tools4ETS} imports
+#' @title {Tools4ETS} imports & extensions
 
 difference <- function(x2, x1, f = NULL, ...) {
   if (class(x2)[1] %in% c("numeric", "integer")) {
@@ -35,6 +35,20 @@ serial_difference <- function(x, na.rm = FALSE, ...) {
     dur <- dur[-c(posNA)]
   }
   dur
+}
+
+mmyyrng <- function(mmyy) {
+  stopifnot(length(mmyy) == 1L)
+  start  <- lubridate::dmy(paste0("01-", mmyy))
+  end    <- lubridate::ceiling_date(start, "month") - lubridate::days(1)
+  period <- c(start, end)
+  period <- paste0(period, " 00:00:00")
+  as.POSIXct(period, tz = "UTC")
+}
+
+if (FALSE) {
+  lapply(paste0("0", 1:9, "-2016"), mmyyrng)
+  lapply(paste0(10:12, "-2016"), mmyyrng)
 }
 
 
