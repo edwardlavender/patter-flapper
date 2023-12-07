@@ -59,13 +59,16 @@ table(unique(archival$individual_id) %in% unique(acoustics$individual_id))
 ###########################
 #### Visualise time series
 
+# ~22 s
 tic()
 png(here_fig("all-time-series.png"), 
-    height = 10, width = 15, res = 600, units = "in")
+    height = 10, width = 20, res = 600, units = "in")
 ggplot() +
   geom_line(aes(timestamp, depth*-1), lwd = 0.25, data = archival) + 
   geom_point(aes(timestamp, 0), colour = "red", data = acoustics) + 
-  facet_wrap(~individual_id) |> 
+  scale_x_datetime(labels = scales::date_format("%m"), 
+                   breaks = "1 month") +
+  facet_wrap(~individual_id, scales = "free") |> 
   print()
 dev.off()
 toc()
