@@ -25,6 +25,7 @@ library(dtplyr)
 library(dplyr)
 library(ggplot2)
 library(patter)
+library(tictoc)
 
 #### Load data
 source(here_r("002-define-helpers.R"))
@@ -36,7 +37,43 @@ archival  <- readRDS(here_data("mefs", "archival.rds"))
 
 ###########################
 ###########################
-#### Examine data
+#### Summary statistics
+
+# 39 individuals with data 
+length(unique(c(acoustics$individual_id, archival$individual_id)))
+
+# 33 acoustic time series 
+length(unique(acoustics$individual_id))
+
+# 21 archival time series
+length(unique(archival$individual_id))
+
+# 15/33 acoustic time series are associated with depth time series
+table(unique(acoustics$individual_id) %in% unique(archival$individual_id))
+
+# 15/21 archival time series are associated with acoustic data
+table(unique(archival$individual_id) %in% unique(acoustics$individual_id))
+
+
+###########################
+###########################
+#### Visualise time series
+
+tic()
+png(here_fig("all-time-series.png"), 
+    height = 10, width = 15, res = 600, units = "in")
+ggplot() +
+  geom_line(aes(timestamp, depth*-1), lwd = 0.25, data = archival) + 
+  geom_point(aes(timestamp, 0), colour = "red", data = acoustics) + 
+  facet_wrap(~individual_id) |> 
+  print()
+dev.off()
+toc()
+
+
+###########################
+###########################
+#### Define example individual
 
 # Identify individuals with archival data
 acc <- 
