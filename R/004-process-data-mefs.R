@@ -27,10 +27,11 @@ library(dplyr, warn.conflicts = FALSE)
 library(sf)
 
 #### Load data
+skateids  <- as.data.table(skateids)
 acoustics <- as.data.table(acoustics)
 archival  <- as.data.table(archival)
 moorings  <- as.data.table(moorings)
-bathy <- terra::rast(here_data("spatial", "bathy.tif"))
+bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 
 
 ###########################
@@ -41,8 +42,10 @@ bathy <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings <- 
   moorings |> 
   select(receiver_id, 
-         receiver_lon = long_receiver, receiver_lat = lat_receiver, 
-         receiver_start = date_operation_start_receiver, receiver_end = date_operation_end_receiver) |> 
+         receiver_lon = long_receiver, 
+         receiver_lat = lat_receiver, 
+         receiver_start = date_operation_start_receiver, 
+         receiver_end = date_operation_end_receiver) |> 
   mutate(receiver_range = 750) |> 
   as.data.table()
 
@@ -57,18 +60,21 @@ moorings$receiver_easting  <- rxy[, 1]
 moorings$receiver_northing <- rxy[, 2]
 
 #### Check validity on `bathy`
-# * On Howe et al. data, 7 receivers are invalid on `bathy` e.g., along lismore
+# * On Howe et al. data, 7 receivers are invalid on `bathy` e.g., along Lismore
 # * This has been resolved by merging Howe et al & Digimap data
-moorings$bathy <- terra::extract(bathy, moorings[, .(receiver_easting, receiver_northing)])$depth
+moorings$bathy <- 
+  terra::extract(bathy, moorings[, .(receiver_easting, receiver_northing)])$depth
 table(is.na(moorings$bathy))
 if (FALSE) {
   # Plot receiver positions
   terra::plot(bathy)
-  text(moorings$receiver_easting, moorings$receiver_northing, moorings$receiver_id, cex = 0.5)
+  text(moorings$receiver_easting, moorings$receiver_northing,
+       moorings$receiver_id, cex = 0.5)
   # Examine bathymetry around selected receiver 
   xy <- cbind(moorings$receiver_easting[1], moorings$receiver_northing[1])
   bathy |> 
-    terra::crop(terra::ext(xy[1] - 1e3, xy[1] + 1e3, xy[2] - 1e3, xy[2] + 1e3)) |> 
+    terra::crop(terra::ext(xy[1] - 1e3, xy[1] + 1e3, 
+                           xy[2] - 1e3, xy[2] + 1e3)) |> 
     terra::plot()
   points(xy)
 }
@@ -78,6 +84,7 @@ if (FALSE) {
 ###########################
 #### Save datasets
 
+saveRDS(skateids, here_data("mefs", "skateids.rds"))
 saveRDS(acoustics, here_data("mefs", "acoustics.rds"))
 saveRDS(archival, here_data("mefs", "archival.rds"))
 saveRDS(moorings, here_data("mefs", "moorings.rds"))
