@@ -14,10 +14,6 @@
 # * Include the depth time series (?) 
 # * Add blocks delineating which months were selected for analysis
 
-####
-# * STILL NEED TO DECIDE HOW TO RUN THE ANALYSIS
-# * WHAT WOULD WE DO IN PERFECT WORLD
-# * WHAT TO DO IN THIS SITUATION
 
 ###########################
 ###########################
@@ -38,7 +34,8 @@ library(patter)
 library(tictoc)
 
 #### Load data 
-src()
+dv::src()
+pars      <- readRDS(here_data("input", "pars.rds"))
 skateids  <- readRDS(here_data("mefs", "skateids.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
@@ -47,7 +44,7 @@ bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 
 ###########################
 ###########################
-#### Global processing 
+#### Define parameters
 
 #### Define study period 
 start <- as.Date("2016-04-01")
@@ -64,34 +61,129 @@ skateids <-
          arc_end_date = date_removal_tag_dst
          )
 
-#### Globally process acoustics data 
+
+###########################
+###########################
+#### Process acoustics
+
+#### Inclusion criteria
+# In each month, we include individuals that:
+# * were at liberty for the entire month
+# * were detected in at least two different 7 day periods
+# The liberty criterion ensures comparability among individual maps
+# The detection criterion excludes individuals with the poorest time series
+# (e.g., individuals that were detected following tagging and then appeared to leave the array)
+
+#### Initial processing  
 acoustics <- 
   acoustics |> 
   lazy_dt() |>
   # Restrict observations within time frame 
-  filter(timestamp >= start & timestamp <= end) |>
+  mutate(date = as.Date(timestamp)) |>
+  filter(date >= start & date <= end) |>
   # Define time blocks 
   mutate(block = lubridate::floor_date(timestamp, "week"), 
-         mmyy = Tools4ETS::mmyy(timestamp)) |> 
+         mmyy = Tools4ETS::mmyy(timestamp)) |>
   # For each individual, focus on months entirely at liberty 
   left_join(skateids |> 
               select(individual_id, 
                      acc_start_date, 
                      acc_end_date) |> 
               mutate(acc_start_date = 
-                       lubridate::ceiling_date(acc_start_date, "month"),
+                       as.Date(lubridate::ceiling_date(acc_start_date, "month")),
                      acc_end_date = 
-                       lubridate::floor_date(acc_end_date, "month")) |> 
+                       as.Date((lubridate::floor_date(acc_end_date, "month") + lubridate::days(1)) - lubridate::days(2))) |> 
               as.data.table(),
             by = "individual_id") |>
   group_by(individual_id) |> 
-  filter(timestamp >= acc_start_date & timestamp <= acc_end_date) |>
+  filter(date >= acc_start_date & date <= acc_end_date) |>
+  ungroup() |>
+  as.data.table()
+
+#### Focus on individuals with a minimum number of detections
+# For each individual/month, count the number of blocks (e.g. weeks) with detections
+smr <- 
+  acoustics |> 
+  group_by(individual_id, mmyy) |>
+  summarise(blocks = n_distinct(block), 
+            days = difftime(max(timestamp), min(timestamp), units = "days")) |> 
+  ungroup() |>
+  as.data.table()
+# Identify individuals & months with 'sufficient' observations
+# E.g., observation(s) in at least one week, two weeks etc.
+pass <- 
+  smr |> 
+  filter(blocks >= 2L & days > 7L) |>
+  mutate(indicator = 1L) |>
+  as.data.table()
+# Count the number of individuals per mmyy category with sufficient observations
+pass |>
+  group_by(mmyy) |>
+  arrange(individual_id, .by_group = TRUE) |>
+  summarise(n = n(), 
+            id_list = list(individual_id), 
+            id_str = paste(individual_id, collapse = ", ")) |> 
+  as.data.table()
+# Filter acoustics accordingly 
+nrow(acoustics)
+acoustics <- 
+  acoustics |> 
+  left_join(pass |> 
+              select(individual_id, mmyy, indicator), 
+            by = c("individual_id", "mmyy")) |> 
+  filter(!is.na(indicator)) |> 
+  select(individual_id, mmyy, timestamp, receiver_id) |>
+  arrange(individual_id, mmyy, timestamp, receiver_id) |>
+  as.data.table()
+nrow(acoustics)
+
+
+###########################
+###########################
+#### Process archival data
+
+#### Inclusion criteria
+# In each month, we include individuals that:
+# * were at liberty for the entire month
+# * have complete depth time series for that month 
+# (for the reasons described above)
+
+#### Processing
+# Round time stamps
+archival[, timestamp := lubridate:::round_date(timestamp, pars$patter$step)]
+stopifnot(all(archival |>
+                lazy_dt() |>
+                group_by(individual_id, timestamp) |> 
+                summarise(n = n()) |> 
+                pull(n) == 1L))
+# Continue processing
+archival <- 
+  archival |> 
+  lazy_dt() |>
+  # Restrict observations within time frame 
+  mutate(date = as.Date(timestamp)) |>
+  filter(date >= start & date <= end) |>
+  # Define time blocks 
+  mutate(block = lubridate::floor_date(timestamp, "week"), 
+         mmyy = Tools4ETS::mmyy(timestamp)) |> 
+  # For each individual, focus on months entirely at liberty 
+  left_join(skateids |> 
+              select(individual_id, 
+                     arc_start_date, 
+                     arc_end_date) |> 
+              mutate(arc_start_date = 
+                       as.Date(lubridate::ceiling_date(arc_start_date, "month")),
+                     arc_end_date = 
+                       as.Date((lubridate::floor_date(arc_end_date, "month") + lubridate::days(1)) - lubridate::days(2))) |> 
+              as.data.table(),
+            by = "individual_id") |>
+  group_by(individual_id) |> 
+  filter(date >= arc_start_date & date <= arc_end_date) |>
   ungroup() |>
   as.data.table()
 
 #### (optional) Exclude individuals that moved beyond the study area
-# * We exclude individuals known to have moved beyond study area
-# * ... based on depth time series
+# * We exclude individuals known to have moved beyond study area based on depth time series
 # * Other individuals may have moved beyond the study area 
 # * We validate algorithm convergence using those individuals
 if (FALSE) {
@@ -103,51 +195,19 @@ if (FALSE) {
   toc()
 }
 
-#### Globally process archival data
-archival <-
-  archival |> 
-  mutate(mmyy = Tools4ETS::mmyy(timestamp)) |> 
-  as.data.table()
-
 
 ###########################
 ###########################
 #### Identify individuals/months for analysis 
 
-# For each individual/month, count the number of blocks (e.g. weeks) with detections
-smr <- 
-  acoustics |> 
-  group_by(individual_id, mmyy) |>
-  summarise(blocks = n_distinct(block)) |> 
-  ungroup() |>
-  as.data.table()
+combs <- 
+  CJ(
+    individual_id = unique(c(acoustics$individual_id, archival$individual_id)), 
+    mmyy = Tools4ETS::mmyy(mons)) |> 
+  arrange(individual_id)
 
-# Identify individuals & months with 'sufficient' observations
-# E.g., observation(s) in at least one week, two weeks etc.
-crit <- 2L
-smr |> 
-  filter(blocks >= crit) |>
-  as.data.table()
-
-# Count the number of individuals per mmyy category with sufficient observations
-smr |> 
-  filter(blocks >= crit) |>
-  group_by(mmyy) |>
-  arrange(individual_id, .by_group = TRUE) |>
-  summarise(n = n(), 
-            id_list = list(individual_id), 
-            id_str = paste(individual_id, collapse = ", ")) |> 
-  as.data.table()
-
-# Define selection criterial for acoustic time series
-sel <- 
-  smr |> 
-  filter(blocks >= crit) |>
-  as.data.table()
-
-# Collect acoustic and archival data
 data_ls <- 
-  lapply(split(sel, collapse::seq_row(sel)), function(d) {
+  pbapply::pblapply(split(combs, collapse::seq_row(combs)), function(d) {
     
     # Define acoustic data 
     acc <- 
@@ -155,33 +215,28 @@ data_ls <-
       filter(individual_id == d$individual_id[1]) |> 
       filter(mmyy %in% d$mmyy) |> 
       as.data.table()
+    if (nrow(acc) == 0L) {
+      acc <- NULL
+    }
     
     # Define archival data 
-    period <- 
     arc <- 
       archival |> 
       filter(individual_id == d$individual_id[1]) |> 
       filter(mmyy %in% d$mmyy) |> 
       as.data.table()
-    
     if (nrow(arc) == 0L) {
       arc <- NULL
-    } else {
-      # (optional) Only retain archival data that spans the whole period 
-      # > Trial with/without to compare number & quality of time series for analysis
-      period <- mmyyrng(d$mmyy)
-      if (min(arc$timestamp) > min(period)) {
-        arc <- NULL
-      }
-      if (max(arc$timestamp) < max(period)) {
-        arc <- NULL
-      }
     }
     
     # Collate data
-    list(acoustics = acc, archival = arc)
-  }) 
-
+    if (is.null(acc) && is.null(arc)) {
+      return(NULL)
+    }
+    list(acoustics = copy(acc), archival = copy(arc))
+    
+  }) |> 
+  plyr::compact()
 
 
 ###########################
@@ -189,35 +244,53 @@ data_ls <-
 #### Collate observations
 
 obs_ls <- 
-  lapply(data_ls, function(d) {
+  lapply(seq_len(length(data_ls)), function(i) {
     
-    # d <- data_ls[[1]]
+    print(i)
+    d <- data_ls[[i]]
     
     # Define period
-    period <- mmyyrng(d$acoustics$mmyy[1])
+    if (!is.null(d$acoustics)) {
+      period <- mmyyrng(d$acoustics$mmyy[1])
+    } else if (!is.null(d$archival)) {
+      period <- mmyyrng(d$archival$mmyy[1])
+    } 
+
+    # DCPF observations
+    dcpf <- NULL
+    if (!is.null(d$archival)) {
+      dcpf <- acs_setup_obs(.archival = d$archival, 
+                            .step = pars$patter$step,
+                            .period = period, 
+                            .mobility = pars$patter$mobility)
+      dcpf[, individual_id := d$archival$individual_id[1]]
+      dcpf[, block := d$archival$mmyy[1]]
+      dcpf[, algorithm := "dcpf"]
+    }
     
     # ACPF observations
-    # TO DO
-    # * Fix start time & end time to start/beginning of month
-    acpf <- acs_setup_obs(.acoustics = d$acoustics, 
-                          .step = "2 mins",
-                          .period = period,
-                          .mobility = 500, 
-                          .detection_range = 750)
-    acpf[, individual_id := d$acoustics$individual_id[1]]
-    acpf[, block := d$acoustics$mmyy[1]]
-    acpf[, algorithm := "acpf"]
+    acpf <- NULL
+    if (!is.null(d$acoustics)) {
+      acpf <- acs_setup_obs(.acoustics = d$acoustics, 
+                            .step = pars$patter$step,
+                            .period = period,
+                            .mobility = pars$patter$mobility, 
+                            .detection_range = pars$patter$detection_range)
+      acpf[, individual_id := d$acoustics$individual_id[1]]
+      acpf[, block := d$acoustics$mmyy[1]]
+      acpf[, algorithm := "acpf"]
+    }
 
     # ACDCPF observations
     acdcpf <- NULL
-    if (!is.null(d$archival)) {
+    if (!is.null(d$acoustics) && !is.null(d$archival)) {
       acdcpf <- acs_setup_obs(.acoustics = d$acoustics, 
                               .archival = d$archival, 
                               .trim = FALSE,
-                              .step = "2 mins", 
+                              .step = pars$patter$step, 
                               .period = period,
-                              .mobility = 500, 
-                              .detection_range = 750)
+                              .mobility = pars$patter$mobility, 
+                              .detection_range = pars$patter$detection_range)
       acdcpf[, individual_id := d$acoustics$individual_id[1]]
       acdcpf[, block := d$acoustics$mmyy[1]]
       acdcpf[, algorithm := "acdcpf"]
@@ -225,8 +298,9 @@ obs_ls <-
     
     # Collate observations
     list(acpf = acpf, 
+         dcpf = dcpf, 
          acdcpf = acdcpf)
-  })
+  }) 
 
 #### Visualise observations
 # ACPF
@@ -240,6 +314,17 @@ obs_ls |>
   ggplot() + 
   geom_point(aes(timestamp, factor(individual_id)), data = . %>% filter(detection == 1L)) + 
   facet_wrap(~block, scales = "free")
+dev.off()
+# DCPF
+png(here_fig("all-obs-dcpf.png"),
+    height = 10, width = 12, units = "in", res = 600)
+obs_ls |> 
+  purrr::list_flatten() |> 
+  rbindlist(fill = TRUE) |> 
+  filter(algorithm == "dcpf") |>
+  ggplot() + 
+  geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
+  facet_wrap(~individual_id + block, scales = "free")
 dev.off()
 # ACDCPF
 png(here_fig("all-obs-acdcpf.png"),
