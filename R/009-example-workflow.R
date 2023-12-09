@@ -30,7 +30,7 @@ library(patter)
 library(tictoc)
 
 #### Load data
-source(here_r("002-define-helpers.R"))
+src()
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 im        <- qs::qread(here_data("spatial", "im.qs"))
 win       <- qs::qread(here_data("spatial", "win.qs"))

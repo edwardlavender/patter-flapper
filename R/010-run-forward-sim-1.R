@@ -28,7 +28,7 @@ library(patter)
 library(tictoc)
 
 #### Load data 
-source(here_r("002-define-helpers.R"))
+src()
 skateids  <- readRDS(here_data("mefs", "skateids.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))

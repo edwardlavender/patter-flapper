@@ -11,7 +11,7 @@
 
 ###########################
 ###########################
-#### Project set up
+#### Dependencies 
 
 #### Use git
 # usethis::use_git()
@@ -22,6 +22,7 @@ usethis::git_vaccinate()
 renv::init()
 
 #### Install package(s)
+# Standard installs
 renv::install("edwardlavender/dv", prompt = FALSE)
 # commonmark/(r)markdown packages (for README documentation)
 if (!requireNamespace("commonmark", quietly = TRUE))
@@ -32,22 +33,34 @@ if (!requireNamespace("rmarkdown", quietly = TRUE))
   renv::install("rmarkdown", prompt = FALSE)
 if (!requireNamespace("yaml", quietly = TRUE))
   renv::install("yaml", prompt = FALSE)
+# Explicitly register relevant suggested {patter} dependencies with {renv}
+if (!requireNamespace("spatialEco", quietly = TRUE)) 
+  renv::install("spatialEco@2.0-1", prompt = FALSE)
+if (!requireNamespace("spatstat.geom", quietly = TRUE)) 
+  renv::install("spatstat.geom", prompt = FALSE)
+if (!requireNamespace("spatstat.explore", quietly = TRUE)) 
+  renv::install("spatstat.explore", prompt = FALSE)
+if (!requireNamespace("zoo", quietly = TRUE)) 
+  renv::install("zoo", prompt = FALSE)
 
+
+###########################
+###########################
 #### Use dv templates
 
-# Set up template project structure
+#### Set up template project structure
 dv::use_template_proj()
 
-# Update .gitignore
+#### Update .gitignore
 dv::use_template_gitignore()
 
-# Add a README and associated files
+#### Add a README and associated files
 usethis::use_code_of_conduct("edward.lavender@eawag.ch")
 dv::use_template_readme(title = "README",
                         author = "Edward Lavender",
                         email = "edward.lavender@eawag.ch")
 
-# Add template scripts
+#### Add template scripts
 if (!requireNamespace("pacman", quietly = TRUE))
   renv::install("pacman", prompt = FALSE)
 dv::use_template_script(here_r("insert_script_name_1.R"))

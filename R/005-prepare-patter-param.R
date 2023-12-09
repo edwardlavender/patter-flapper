@@ -29,7 +29,7 @@ library(collapse)
 library(patter)
 
 #### Load data
-source(here_r("002-define-helpers.R"))
+src()
 howe      <- terra::rast(here_data("spatial", "howe.tif"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
@@ -41,8 +41,9 @@ archival  <- readRDS(here_data("mefs", "archival.rds"))
 ###########################
 #### Define parameters
 
-mobility <- 500
-gamma    <- 750
+mobility         <- pars$flapper$mobility
+gamma            <- pars$flapper$detection_range
+calc_depth_error <- pars$flapper$calc_depth_error
 
 
 ###########################

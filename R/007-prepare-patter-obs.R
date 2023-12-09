@@ -14,6 +14,10 @@
 # * Include the depth time series (?) 
 # * Add blocks delineating which months were selected for analysis
 
+####
+# * STILL NEED TO DECIDE HOW TO RUN THE ANALYSIS
+# * WHAT WOULD WE DO IN PERFECT WORLD
+# * WHAT TO DO IN THIS SITUATION
 
 ###########################
 ###########################
@@ -34,7 +38,7 @@ library(patter)
 library(tictoc)
 
 #### Load data 
-source(here_r("002-define-helpers.R"))
+src()
 skateids  <- readRDS(here_data("mefs", "skateids.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))

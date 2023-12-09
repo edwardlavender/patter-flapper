@@ -27,6 +27,7 @@ library(dplyr, warn.conflicts = FALSE)
 library(sf)
 
 #### Load data
+pars      <- readRDS(here_data("input", "pars.rds"))
 skateids  <- as.data.table(skateids)
 acoustics <- as.data.table(acoustics)
 archival  <- as.data.table(archival)
@@ -46,7 +47,7 @@ moorings <-
          receiver_lat = lat_receiver, 
          receiver_start = date_operation_start_receiver, 
          receiver_end = date_operation_end_receiver) |> 
-  mutate(receiver_range = 750) |> 
+  mutate(receiver_range = pars$patter$detection_range) |> 
   as.data.table()
 
 #### Define UTM coordinates

@@ -107,6 +107,20 @@ bathy[mask] <- digi[mask]
 terra::plot(bathy)
 toc()
 
+#### Define bathymetry source map (bathymetry dataset)
+# Here we define a layer with 0 = Howe or 1 = Digi 
+# This is used in the depth error model to permit higher errors in Digimap regions
+bset <- digi
+bset <- digi > 0
+bset <- terra::classify(bset, cbind(1L, 0L))
+terra::plot(bset)
+bset[mask] <- 1L
+# bset <- terra::mask(bset, mask)
+# terra::plot(bset)
+
+#### Summary statistics
+terra::global(bathy, "mean", na.rm = TRUE)
+
 #### Process coast
 coast <- 
   coast |> 
@@ -236,6 +250,8 @@ if (FALSE) {
 tic()
 saveRDS(mpa, here_data("spatial", "mpa.rds"))
 saveRDS(coast, here_data("spatial", "coast.rds"))
+terra::writeRaster(bset, here_data("spatial", "bset.tif"), overwrite = TRUE)
+terra::writeRaster(digi, here_data("spatial", "digi.tif"), overwrite = TRUE)
 terra::writeRaster(howe, here_data("spatial", "howe.tif"), overwrite = TRUE)
 terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
 toc()

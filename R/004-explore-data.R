@@ -28,7 +28,8 @@ library(patter)
 library(tictoc)
 
 #### Load data
-source(here_r("002-define-helpers.R"))
+src()
+pars      <- readRDS(here_data("input", "pars.rds"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
@@ -128,8 +129,8 @@ plot(acc$timestamp, acc$gap, type = "l")
 acc$gap <- NULL
 obs <- acs_setup_obs(acc, arc, 
                      .step = "2 mins", 
-                     .mobility = 500, 
-                     .detection_range = 750)
+                     .mobility = pars$patter$mobility, 
+                     .detection_range = pars$patter$detection_range)
 
 # Visualise time series for selected individual
 obs |> 
