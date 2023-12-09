@@ -265,7 +265,7 @@ obs_ls <-
                             .period = period, 
                             .mobility = pars$patter$mobility)
       dcpf[, individual_id := d$archival$individual_id[1]]
-      dcpf[, block := d$archival$mmyy[1]]
+      dcpf[, block := as.character(d$archival$mmyy[1])]
       dcpf[, algorithm := "dcpf"]
     }
     
@@ -278,7 +278,7 @@ obs_ls <-
                             .mobility = pars$patter$mobility, 
                             .detection_range = pars$patter$detection_range)
       acpf[, individual_id := d$acoustics$individual_id[1]]
-      acpf[, block := d$acoustics$mmyy[1]]
+      acpf[, block := as.character(d$acoustics$mmyy[1])]
       acpf[, algorithm := "acpf"]
     }
 
@@ -293,7 +293,7 @@ obs_ls <-
                               .mobility = pars$patter$mobility, 
                               .detection_range = pars$patter$detection_range)
       acdcpf[, individual_id := d$acoustics$individual_id[1]]
-      acdcpf[, block := d$acoustics$mmyy[1]]
+      acdcpf[, block := as.character(d$acoustics$mmyy[1])]
       acdcpf[, algorithm := "acdcpf"]
     }
     
@@ -308,7 +308,9 @@ obs_data <-
   purrr::list_flatten() |> 
   rbindlist(fill = TRUE)
 # Define single-level list for algorithm implementations
-obs_ls <- split(obs_data, by = c("individual_id", "block", "algorithm"))
+obs_ls <- split(obs_data, by = c("individual_id", "block", "algorithm"), drop = TRUE)
+stopifnot(!any(sapply(obs_ls, nrow) == 0L))
+str(obs_ls[[1]])
 length(obs_ls)
 
 #### Validation
@@ -319,8 +321,10 @@ val <-
   summarise(first = timestamp[1], 
             last = timestamp[n()]) |> 
   ungroup()
-stopifnot(all(as.Date(val$first) == lubridate::floor_date(val$first, "month")))
-stopifnot(all(as.Date(val$last) == lubridate::ceiling_date(val$last, "month") - lubridate::days(1)))
+stopifnot(all(as.Date(val$first) == 
+                lubridate::floor_date(val$first, "month")))
+stopifnot(all(as.Date(val$last) == 
+                lubridate::ceiling_date(val$last, "month") - lubridate::days(1)))
 
 
 ###########################
@@ -341,8 +345,7 @@ dev.off()
 # DCPF
 png(here_fig("all-obs-dcpf.png"),
     height = 10, width = 12, units = "in", res = 600)
-obs_ls |> 
-  obs_data |> 
+obs_data |> 
   filter(algorithm == "dcpf") |>
   ggplot() + 
   geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
@@ -352,8 +355,7 @@ dev.off()
 # ACDCPF
 png(here_fig("all-obs-acdcpf.png"),
     height = 10, width = 12, units = "in", res = 600)
-obs_ls |> 
-  obs_data |> 
+obs_data |> 
   filter(algorithm == "acdcpf") |>
   ggplot() + 
   geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
