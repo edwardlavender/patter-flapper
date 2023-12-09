@@ -243,6 +243,7 @@ data_ls <-
 ###########################
 #### Collate observations
 
+#### Collate observations 
 obs_ls <- 
   lapply(seq_len(length(data_ls)), function(i) {
     
@@ -301,37 +302,58 @@ obs_ls <-
          dcpf = dcpf, 
          acdcpf = acdcpf)
   }) 
+# Define dataframe
+obs_data <-   
+  obs_ls |> 
+  purrr::list_flatten() |> 
+  rbindlist(fill = TRUE)
+# Define single-level list for algorithm implementations
+obs_ls <- split(obs_data, by = c("individual_id", "block", "algorithm"))
+length(obs_ls)
 
+#### Validation
+# Confirm that the first/last elements are the first/last day in each month 
+val <- 
+  obs_data |> 
+  group_by(individual_id, block, algorithm) |> 
+  summarise(first = timestamp[1], 
+            last = timestamp[n()]) |> 
+  ungroup()
+stopifnot(all(as.Date(val$first) == lubridate::floor_date(val$first, "month")))
+stopifnot(all(as.Date(val$last) == lubridate::ceiling_date(val$last, "month") - lubridate::days(1)))
+
+
+###########################
+###########################
 #### Visualise observations
+
 # ACPF
 tic()
 png(here_fig("all-obs-acpf.png"),
     height = 10, width = 12, units = "in", res = 600)
-obs_ls |> 
-  purrr::list_flatten() |> 
-  rbindlist(fill = TRUE) |> 
+obs_data |> 
   filter(algorithm == "acpf") |>
   ggplot() + 
   geom_point(aes(timestamp, factor(individual_id)), data = . %>% filter(detection == 1L)) + 
   facet_wrap(~block, scales = "free")
 dev.off()
+
 # DCPF
 png(here_fig("all-obs-dcpf.png"),
     height = 10, width = 12, units = "in", res = 600)
 obs_ls |> 
-  purrr::list_flatten() |> 
-  rbindlist(fill = TRUE) |> 
+  obs_data |> 
   filter(algorithm == "dcpf") |>
   ggplot() + 
   geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
   facet_wrap(~individual_id + block, scales = "free")
 dev.off()
+
 # ACDCPF
 png(here_fig("all-obs-acdcpf.png"),
     height = 10, width = 12, units = "in", res = 600)
 obs_ls |> 
-  purrr::list_flatten() |> 
-  rbindlist(fill = TRUE) |> 
+  obs_data |> 
   filter(algorithm == "acdcpf") |>
   ggplot() + 
   geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
