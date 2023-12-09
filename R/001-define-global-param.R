@@ -19,10 +19,16 @@ rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
+#### Essential packages
+library(dv)
+
 
 ###########################
 ###########################
 #### Define parameters
+
+# step duration
+step <- "2 mins"
 
 # Detection range
 detection_range <- 750
@@ -46,10 +52,12 @@ calc_depth_error_2 <- function(depth) {
 pars <- 
   list(
     flapper = list(
+      step = step,
       detection_range = detection_range, 
       mobility = mobility, 
       calc_depth_error = calc_depth_error_1), 
     patter = list(
+      step = step,
       detection_range = detection_range, 
       mobility = mobility, 
       calc_depth_error = calc_depth_error_2)
