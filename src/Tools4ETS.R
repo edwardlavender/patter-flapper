@@ -28,10 +28,10 @@ serial_difference <- function(x, na.rm = FALSE, ...) {
 mmyyrng <- function(mmyy) {
   stopifnot(length(mmyy) == 1L)
   start  <- lubridate::dmy(paste0("01-", mmyy))
-  end    <- lubridate::ceiling_date(start, "month") - lubridate::days(1)
-  period <- c(start, end)
-  period <- paste0(period, " 00:00:00")
-  as.POSIXct(period, tz = "UTC")
+  start  <- paste(start, "00:00:00")
+  start <- as.POSIXct(start, tz = "UTC")
+  end   <- start + lubridate::period(1, "month") - lubridate::period("2 mins")
+  c(start, end)
 }
 
 # Examples 
