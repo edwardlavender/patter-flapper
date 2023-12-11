@@ -17,6 +17,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
+Sys.time()
 
 #### Essential packages
 library(dv)
