@@ -83,7 +83,7 @@ acoustics <-
   filter(date >= start & date <= end) |>
   # Define time blocks 
   mutate(block = lubridate::floor_date(timestamp, "week"), 
-         mmyy = Tools4ETS::mmyy(timestamp)) |>
+         mmyy = mmyy(timestamp)) |>
   # For each individual, focus on months entirely at liberty 
   left_join(skateids |> 
               select(individual_id, 
@@ -165,7 +165,7 @@ archival <-
   filter(date >= start & date <= end) |>
   # Define time blocks 
   mutate(block = lubridate::floor_date(timestamp, "week"), 
-         mmyy = Tools4ETS::mmyy(timestamp)) |> 
+         mmyy = mmyy(timestamp)) |> 
   # For each individual, focus on months entirely at liberty 
   left_join(skateids |> 
               select(individual_id, 
@@ -203,7 +203,7 @@ if (FALSE) {
 combs <- 
   CJ(
     individual_id = unique(c(acoustics$individual_id, archival$individual_id)), 
-    mmyy = Tools4ETS::mmyy(mons)) |> 
+    mmyy = mmyy(mons)) |> 
   arrange(individual_id)
 
 data_ls <- 

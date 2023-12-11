@@ -65,7 +65,7 @@ acoustics |>
 acoustics |> 
   group_by(individual_id) |> 
   arrange(timestamp) |>
-  summarise(min_gap = min(min(Tools4ETS::serial_difference(timestamp), na.rm = TRUE))) |>
+  summarise(min_gap = min(min(serial_difference(timestamp), na.rm = TRUE))) |>
   arrange(min_gap) |>
   filter(min_gap != 0) |> 
   filter(min_gap < 30) |>

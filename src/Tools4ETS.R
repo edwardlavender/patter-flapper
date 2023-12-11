@@ -24,7 +24,23 @@ serial_difference <- function(x, na.rm = FALSE, ...) {
   dur
 }
 
-# Month/year category ranges
+# Month/year categories
+mmyy <- function(x, levels = TRUE) {
+  mm <- as.character(lubridate::month(x))
+  pos1 <- which(nchar(mm) == 1)
+  if (length(pos1) > 0) 
+    mm[pos1] <- paste0(0, mm[pos1])
+  yy <- lubridate::year(x)
+  mmyy <- paste0(mm, "-", yy)
+  if (levels) {
+    dl <- data.frame(mm = mm, yy = yy, mmyy = mmyy)
+    dl <- dl[order(dl$yy, dl$mm), ]
+    mmyy <- factor(mmyy, levels = unique(dl$mmyy))
+  }
+  mmyy
+}
+
+# (new) Month/year category ranges
 mmyyrng <- function(mmyy) {
   stopifnot(length(mmyy) == 1L)
   start  <- lubridate::dmy(paste0("01-", mmyy))
