@@ -56,7 +56,7 @@ toc()
 
 #### (optional) Test
 cl   <- 50L
-test <- TRUE
+test <- FALSE
 if (test) {
   sel <- c("6.04-2016.dcpf", 
            "8.04-2016.acpf", 
@@ -86,6 +86,10 @@ stopifnot(!any(is.null(sapply(obs_ls, \(elm) elm))))
 ###########################
 ###########################
 #### Run simulations
+
+#### Timings
+# ETA: 11 hours if 2 hours per run and minimal parallelisation overhead
+2 * length(obs_ls) / cl
 
 gc()
 tic()
