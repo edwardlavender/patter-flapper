@@ -512,13 +512,13 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "dv",
       "RemoteRef": "master",
-      "RemoteSha": "19db993c4a47b4ad7b9af2b5e34be9612c245065",
+      "RemoteSha": "24d2850b4f02db07b4b1bc51613e6125498310f7",
       "Requirements": [
         "R",
         "glue",
         "rlang"
       ],
-      "Hash": "03fcb36d256532e48b6e4add48839f3e"
+      "Hash": "60cbfc86573cc044cba204e20282339e"
     },
     "e1071": {
       "Package": "e1071",
