@@ -3,6 +3,15 @@
 
 calc_depth_error <- readRDS(dv::here_data("input", "pars.rds"))$patter$calc_depth_error
 
+#' @title Origin spatRaster for *DC models (DCPF, ACDCPF)
+
+dc_origin <- function(.bathy, .depth, .calc_depth_error) {
+  error   <- .calc_depth_error(.depth)
+  shallow <- .depth - (error + 12.5) 
+  deep    <- .depth + error
+  terra::clamp(.bathy, shallow, deep, values = FALSE)
+}
+
 #' @title Depth weighting function
 
 update_ac <- function(.particles, .bathy, .obs, .t, ...) {
