@@ -42,6 +42,8 @@ if (!requireNamespace("spatstat.explore", quietly = TRUE))
   renv::install("spatstat.explore", prompt = FALSE)
 if (!requireNamespace("zoo", quietly = TRUE)) 
   renv::install("zoo", prompt = FALSE)
+# RcppParallel must be installed from source for {renv}
+install.packages("RcppParallel", type = "source")
 
 
 ###########################
