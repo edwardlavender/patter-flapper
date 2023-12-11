@@ -14,25 +14,26 @@ dc_origin <- function(.bathy, .depth, .calc_depth_error) {
 
 #' @title Depth weighting function
 
-update_ac <- function(.particles, .bathy, .obs, .t, ...) {
+update_ac <- function(.particles, .bathy, .obs, .t, .bset, .calc_depth_error) {
   # Extract depth of seabed at particle positions
+  cell_now <- NULL
   if (!rlang::has_name(.particles, "bathy")) {
-    .particles[, bathy := terra::extract(.bathy, .particles$cell_now)]
+    .particles[, bathy := terra::extract(.bathy, cell_now)]
   }
   # Define bathymetry data source (digi versus howe) & define adjustment for depth-error model
   # > For some receivers in the Howe data, the individual is ~10-20 m shallower than previously assumed.
   # > For the Digimap data, the individual can be up to 40 m shallower. 
-  .particles[, digi := terra::extract(.bset, .particles$cell_now)]
+  .particles[, digi := terra::extract(.bset, cell_now)]
   .particles[, boost := 20L]
   bool_digi <- .particles$digi == 1L
   if (any(.particles$digi == 1L)) {
     .particles[which(bool_digi), boost := 40L]
   }
   # Define shallow and deep depth limits for each particle based on location
-  .particles[, error := calc_depth_error(depth)]
-  .particles[, deep := depth + error]
-  .particles[, shallow_1 := depth - (error + 5)]
-  .particles[, shallow_2 := depth - (error + boost)]
+  .particles[, error := .calc_depth_error(.obs$depth[.t])]
+  .particles[, deep := .obs$depth[.t] + error]
+  .particles[, shallow_1 := .obs$depth[.t] - (error + 5)]
+  .particles[, shallow_2 := .obs$depth[.t] - (error + boost)]
   # Define particle weights
   weight <- rep(0L, nrow(.particles))
   pos <- which(.particles$bathy <= .particles$deep & 
@@ -42,7 +43,6 @@ update_ac <- function(.particles, .bathy, .obs, .t, ...) {
                  .particles$bathy >= .particles$shallow_2)
   weight[pos] <- 0.01
   weight / sum(weight)
-  
 }
 
 #' @title Plot the depth-error model
