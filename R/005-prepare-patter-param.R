@@ -51,9 +51,10 @@ calc_depth_error <- pars$flapper$calc_depth_error
 #### False detections
 
 # There are no false detections flagged by glatos
-acoustics |> 
-  as_glatos() |> 
-  glatos::false_detections(tf = 30 * 60)
+# This code is commented to avoid {glatos} installation via {renv}
+# acoustics |> 
+#   as_glatos() |> 
+#   glatos::false_detections(tf = 30 * 60)
 
 
 ###########################
