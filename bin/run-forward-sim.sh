@@ -8,7 +8,7 @@
 cd /Users/lavended/Documents/work/packages/flapper/patter-flapper/patter-flapper/
 
 # 2. Run code 
-R CMD BATCH ./R/010-run-forward-sim-1.R ./data/output/forward/log.txt
+R CMD BATCH --no-save --no-restore ./R/010-run-forward-sim-1.R ./data/output/forward/log.txt
 
 # ---------- siam-linux20 ---------- 
 
@@ -33,4 +33,4 @@ q("no")
 
 # 3. Run the forward simulation
 
-R CMD BATCH ./R/010-run-forward-sim-1.R ./data/output/forward/log.txt
+R CMD BATCH --no-save --no-restore ./R/010-run-forward-sim-1.R ./data/output/forward/log.txt
