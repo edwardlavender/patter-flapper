@@ -264,9 +264,14 @@ obs_ls <-
                             .step = pars$patter$step,
                             .period = period, 
                             .mobility = pars$patter$mobility)
-      dcpf[, individual_id := d$archival$individual_id[1]]
-      dcpf[, block := as.character(d$archival$mmyy[1])]
-      dcpf[, algorithm := "dcpf"]
+      # Exclude individuals with gaps (due to recapture events)
+      if (any(is.na(dcpf$depth))) {
+        dcpf <- NULL
+      } else {
+        dcpf[, individual_id := d$archival$individual_id[1]]
+        dcpf[, block := as.character(d$archival$mmyy[1])]
+        dcpf[, algorithm := "dcpf"]
+      }
     }
     
     # ACPF observations
@@ -307,11 +312,6 @@ obs_data <-
   obs_ls |> 
   purrr::list_flatten() |> 
   rbindlist(fill = TRUE)
-# Define single-level list for algorithm implementations
-obs_ls <- split(obs_data, by = c("individual_id", "block", "algorithm"), drop = TRUE)
-stopifnot(!any(sapply(obs_ls, nrow) == 0L))
-str(obs_ls[[1]])
-length(obs_ls)
 
 #### Validation
 # Confirm that the first/last elements are the first/last day in each month 
@@ -329,42 +329,92 @@ stopifnot(all(as.Date(val$last) ==
 
 ###########################
 ###########################
+#### Include directories 
+
+#### Define directories
+# data/output/forward/{individual}/{block}/{algorithm}/output/
+# > log.txt
+# > history/
+# > diagnostics 
+
+#### Define folders
+folders <- 
+  obs_data |>
+  select(individual_id, block, algorithm) |>
+  group_by(individual_id, block, algorithm) |>
+  slice(1L) |>
+  mutate(folder = here_data("output", "forward", individual_id, block, algorithm, "output")) |>
+  as.data.table()
+
+#### Include in obs_data
+obs_data <- 
+  obs_data |>
+  left_join(folders, by = c("individual_id", "block", "algorithm")) |>
+  as.data.table()
+head(obs_data)
+
+#### Define single-level list for algorithm implementations
+obs_ls <- split(obs_data, by = c("individual_id", "block", "algorithm"), drop = TRUE)
+stopifnot(!any(sapply(obs_ls, nrow) == 0L))
+str(obs_ls[[1]])
+length(obs_ls)
+
+
+###########################
+###########################
 #### Visualise observations
 
-# ACPF
+# ~38 s
+
+if (FALSE) {
+  
+  # ACPF
+  tic()
+  png(here_fig("all-obs-acpf.png"),
+      height = 10, width = 12, units = "in", res = 600)
+  obs_data |> 
+    filter(algorithm == "acpf") |>
+    ggplot() + 
+    geom_point(aes(timestamp, factor(individual_id)), data = . %>% filter(detection == 1L)) + 
+    facet_wrap(~block, scales = "free")
+  dev.off()
+  
+  # DCPF
+  png(here_fig("all-obs-dcpf.png"),
+      height = 10, width = 12, units = "in", res = 600)
+  obs_data |> 
+    filter(algorithm == "dcpf") |>
+    ggplot() + 
+    geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
+    facet_wrap(~individual_id + block, scales = "free")
+  dev.off()
+  
+  # ACDCPF
+  png(here_fig("all-obs-acdcpf.png"),
+      height = 10, width = 12, units = "in", res = 600)
+  obs_data |> 
+    filter(algorithm == "acdcpf") |>
+    ggplot() + 
+    geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
+    geom_point(aes(timestamp, 0), 
+               data = . %>% filter(detection == 1L), 
+               colour = "red") + 
+    scale_x_datetime(labels = scales::date_format("%d")) +
+    facet_wrap(~block + individual_id, scales = "free")
+  dev.off()
+  toc()
+  
+}
+
+
+###########################
+###########################
+#### Save outputs
+
+# ~3 s
 tic()
-png(here_fig("all-obs-acpf.png"),
-    height = 10, width = 12, units = "in", res = 600)
-obs_data |> 
-  filter(algorithm == "acpf") |>
-  ggplot() + 
-  geom_point(aes(timestamp, factor(individual_id)), data = . %>% filter(detection == 1L)) + 
-  facet_wrap(~block, scales = "free")
-dev.off()
-
-# DCPF
-png(here_fig("all-obs-dcpf.png"),
-    height = 10, width = 12, units = "in", res = 600)
-obs_data |> 
-  filter(algorithm == "dcpf") |>
-  ggplot() + 
-  geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
-  facet_wrap(~individual_id + block, scales = "free")
-dev.off()
-
-# ACDCPF
-png(here_fig("all-obs-acdcpf.png"),
-    height = 10, width = 12, units = "in", res = 600)
-obs_data |> 
-  filter(algorithm == "acdcpf") |>
-  ggplot() + 
-  geom_line(aes(timestamp, depth * -1), lwd = 0.5) +
-  geom_point(aes(timestamp, 0), 
-             data = . %>% filter(detection == 1L), 
-             colour = "red") + 
-  scale_x_datetime(labels = scales::date_format("%d")) +
-  facet_wrap(~block + individual_id, scales = "free")
-dev.off()
+qs::qsave(obs_data, here_data("input", "obs_data.qs"))
+qs::qsave(obs_ls, here_data("input", "obs.qs"))
 toc()
 
 
