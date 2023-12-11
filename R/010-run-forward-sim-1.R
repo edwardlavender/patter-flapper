@@ -77,7 +77,7 @@ if (test) {
   })
   names(obs_ls) <- obs_ls
   stopifnot(length(sel) == length(obs_ls))
-  cl <- NULL
+  cl <- 2L
 }
 stopifnot(!any(is.null(sapply(obs_ls, \(elm) elm))))
 
@@ -88,10 +88,11 @@ stopifnot(!any(is.null(sapply(obs_ls, \(elm) elm))))
 
 gc()
 tic()
-pbapply::pblapply(obs_ls, cl = 2L, function(obs) {
+pbapply::pblapply(obs_ls, cl = cl, function(obs) {
 
   #### Define output files
   # obs <- obs_ls[[1]]
+  print(obs[1, ])
   alg        <- obs$algorithm[1]
   pff_folder <- obs$folder[1]
   log.txt    <- file.path(pff_folder, "log.txt")
@@ -138,8 +139,9 @@ pbapply::pblapply(obs_ls, cl = 2L, function(obs) {
   
   #### Save outputs
   qs::qsave(out_pff, file.path(pff_folder, "out_pff.qs"))
+  invisible(NULL)
   
-})
+}) |> invisible()
 toc()
 
 #### Check convergence
