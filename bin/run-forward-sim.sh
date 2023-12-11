@@ -12,16 +12,21 @@ R CMD BATCH --no-save --no-restore ./R/010-run-forward-sim-1.R ./data/output/for
 
 # ---------- siam-linux20 ---------- 
 
-# 1. Copy RStudio Project onto server into documents/projects/patter-flapper
-
-# 2. ssh into server
+# 1. ssh into server
 ssh lavended@siam-linux20 
 
-# 3. Update code
+# 2. (ONCE) Clone RStudio Project
+cd documents/projects
+git clone https://github.com/edwardlavender/patter-flapper.git
+
+# 3. Pull RStudio Project updates (if necessary)
 cd documents/projects
 git pull https://github.com/edwardlavender/patter-flapper.git
 
-# 3. Open RStudio Project interactively to create project library via {renv}
+# 4. Add data/ folder(s)
+# > manually copy relevant data/ folder items onto server 
+
+# 5. (ONCE) Open RStudio Project interactively to create project library via {renv}
 cd patter-flapper
 R
 Sys.setenv(GITHUB_PAT = "<insert-pat-here>")
@@ -32,5 +37,4 @@ difftime(t2, t1)
 q("no")
 
 # 3. Run the forward simulation
-
 R CMD BATCH --no-save --no-restore ./R/010-run-forward-sim-1.R ./data/output/forward/log.txt
