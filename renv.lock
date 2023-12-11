@@ -63,7 +63,7 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.6-3",
+      "Version": "1.6-4",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -76,7 +76,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "1d1b6901cf9b6b1b446bc56a7d47efa4"
+      "Hash": "d9c655b30a2edc6bb2244c1d1e8d549d"
     },
     "R6": {
       "Package": "R6",
@@ -190,6 +190,21 @@
       ],
       "Hash": "543776ae6848fde2f48ff3816d0628bc"
     },
+    "basicPlotteR": {
+      "Package": "basicPlotteR",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "basicPlotteR",
+      "RemoteUsername": "JosephCrispell",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "4628140c8eac2adac70d85632b9d0966a374e4bf",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "55889eaae302ee5b1a4294c66ee8c2be"
+    },
     "bit": {
       "Package": "bit",
       "Version": "4.0.5",
@@ -213,18 +228,6 @@
         "utils"
       ],
       "Hash": "9fe98599ca456d6552421db0d6772d8f"
-    },
-    "blob": {
-      "Package": "blob",
-      "Version": "1.2.4",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "methods",
-        "rlang",
-        "vctrs"
-      ],
-      "Hash": "40415719b5a479b87949f3aa0aee737c"
     },
     "boot": {
       "Package": "boot",
@@ -332,16 +335,6 @@
       ],
       "Hash": "3f038e5ac7f41d4ac41ce658c85e3042"
     },
-    "codetools": {
-      "Package": "codetools",
-      "Version": "0.2-19",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "c089a619a7fae175d149d89164f8c7d8"
-    },
     "collapse": {
       "Package": "collapse",
       "Version": "2.0.6",
@@ -373,16 +366,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d691c61bff84bd63c383874d2d0c3307"
-    },
-    "config": {
-      "Package": "config",
-      "Version": "0.3.2",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "yaml"
-      ],
-      "Hash": "8b7222e9d9eb5178eea545c0c4d33fc2"
     },
     "cpp11": {
       "Package": "cpp11",
@@ -440,34 +423,6 @@
         "methods"
       ],
       "Hash": "b4c06e554f33344e044ccd7fdca750a9"
-    },
-    "dbplyr": {
-      "Package": "dbplyr",
-      "Version": "2.4.0",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "DBI",
-        "R",
-        "R6",
-        "blob",
-        "cli",
-        "dplyr",
-        "glue",
-        "lifecycle",
-        "magrittr",
-        "methods",
-        "pillar",
-        "purrr",
-        "rlang",
-        "tibble",
-        "tidyr",
-        "tidyselect",
-        "utils",
-        "vctrs",
-        "withr"
-      ],
-      "Hash": "59351f28a81f0742720b85363c4fdd61"
     },
     "deldir": {
       "Package": "deldir",
@@ -603,17 +558,19 @@
       ],
       "Hash": "daf4a1246be12c1fa8c7705a0935c1a0"
     },
-    "evd": {
-      "Package": "evd",
-      "Version": "2.3-6.1",
+    "exactextractr": {
+      "Package": "exactextractr",
+      "Version": "0.10.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "grDevices",
-        "graphics",
-        "stats"
+        "R",
+        "Rcpp",
+        "methods",
+        "raster",
+        "sf"
       ],
-      "Hash": "14872523c118b47b6f4faae02dc23c02"
+      "Hash": "3db813596387e90573ad092d5e3fde37"
     },
     "fansi": {
       "Package": "fansi",
@@ -741,17 +698,6 @@
       ],
       "Hash": "ab08ac61f3e1be454ae21911eb8bc2fe"
     },
-    "globals": {
-      "Package": "globals",
-      "Version": "0.16.2",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "codetools"
-      ],
-      "Hash": "baa9585ab4ce47a9f4618e671778cc6f"
-    },
     "glue": {
       "Package": "glue",
       "Version": "1.6.2",
@@ -840,21 +786,6 @@
         "utils"
       ],
       "Hash": "2d7b3857980e0e0d0a1fd6f11928ab0f"
-    },
-    "httr": {
-      "Package": "httr",
-      "Version": "1.4.7",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "R6",
-        "curl",
-        "jsonlite",
-        "mime",
-        "openssl"
-      ],
-      "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
     },
     "httr2": {
       "Package": "httr2",
@@ -1078,7 +1009,7 @@
     },
     "nlme": {
       "Package": "nlme",
-      "Version": "3.1-163",
+      "Version": "3.1-164",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -1088,7 +1019,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "8d1938040a05566f4f7a14af4feadd6b"
+      "Hash": "a623a2239e642806158bc4dc3f51565d"
     },
     "openssl": {
       "Package": "openssl",
@@ -1123,7 +1054,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "patter",
       "RemoteRef": "main",
-      "RemoteSha": "5eaf27ffa4ed642a31f25ad10891826326a6644d",
+      "RemoteSha": "1aff4e50e58e26a1b158574a0da8d0d20b7daca7",
       "Requirements": [
         "R",
         "arrow",
@@ -1133,14 +1064,15 @@
         "dplyr",
         "dtplyr",
         "glue",
+        "lifecycle",
         "lubridate",
         "pbapply",
         "progress",
+        "purrr",
         "rlang",
-        "terra",
-        "truncdist"
+        "terra"
       ],
-      "Hash": "d97e1d92b7257492b59775fb2167f6b7"
+      "Hash": "14326683a3bb5630e48fcac42022e175"
     },
     "pbapply": {
       "Package": "pbapply",
@@ -1179,6 +1111,17 @@
         "utils"
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
+    },
+    "plyr": {
+      "Package": "plyr",
+      "Version": "1.8.9",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp"
+      ],
+      "Hash": "6b8177fd19982f0020743fadbfdbd933"
     },
     "polyclip": {
       "Package": "polyclip",
@@ -1262,6 +1205,20 @@
         "R"
       ],
       "Hash": "5e3c5dc0b071b21fa128676560dbe94d"
+    },
+    "raster": {
+      "Package": "raster",
+      "Version": "3.6-26",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "methods",
+        "sp",
+        "terra"
+      ],
+      "Hash": "7d6eda494f34a644420ac1bfd2a8023a"
     },
     "remotes": {
       "Package": "remotes",
@@ -1406,37 +1363,22 @@
       ],
       "Hash": "e2111252a76984ca50bf8d6314348681"
     },
-    "sparklyr": {
-      "Package": "sparklyr",
-      "Version": "1.8.4",
+    "sp": {
+      "Package": "sp",
+      "Version": "2.1-2",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "DBI",
         "R",
-        "config",
-        "dbplyr",
-        "dplyr",
-        "generics",
-        "globals",
-        "glue",
-        "httr",
-        "jsonlite",
+        "grDevices",
+        "graphics",
+        "grid",
+        "lattice",
         "methods",
-        "openssl",
-        "purrr",
-        "rappdirs",
-        "rlang",
-        "rstudioapi",
-        "tibble",
-        "tidyr",
-        "tidyselect",
-        "uuid",
-        "vctrs",
-        "withr",
-        "xml2"
+        "stats",
+        "utils"
       ],
-      "Hash": "714eabbacaa867420608c5c7ae4fa967"
+      "Hash": "40a9887191d33b2521a1d741f8c8aea2"
     },
     "spatialEco": {
       "Package": "spatialEco",
@@ -1725,18 +1667,6 @@
       ],
       "Hash": "8f96d229b7311beb32b94cf413b13f84"
     },
-    "truncdist": {
-      "Package": "truncdist",
-      "Version": "1.0-2",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "evd",
-        "stats4"
-      ],
-      "Hash": "ed3ed12875e0417a645baaecc07dd536"
-    },
     "units": {
       "Package": "units",
       "Version": "0.8-4",
@@ -1788,16 +1718,6 @@
         "R"
       ],
       "Hash": "62b65c52671e6665f803ff02954446e9"
-    },
-    "uuid": {
-      "Package": "uuid",
-      "Version": "1.1-1",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "3d78edfb977a69fc7a0341bee25e163f"
     },
     "vctrs": {
       "Package": "vctrs",
