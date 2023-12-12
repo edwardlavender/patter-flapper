@@ -29,7 +29,7 @@ library(collapse)
 library(patter)
 
 #### Load data
-src()
+dv::src()
 howe      <- terra::rast(here_data("spatial", "howe.tif"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))

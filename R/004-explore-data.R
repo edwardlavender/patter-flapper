@@ -28,7 +28,7 @@ library(patter)
 library(tictoc)
 
 #### Load data
-src()
+dv::src()
 pars      <- readRDS(here_data("input", "pars.rds"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
