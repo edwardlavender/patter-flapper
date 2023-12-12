@@ -1054,7 +1054,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "patter",
       "RemoteRef": "main",
-      "RemoteSha": "f590c8a253a81cf124b776fa54db976e13f930ad",
+      "RemoteSha": "1bc9fb75ea7f73f6b11cd95a50b8d19a7e59525d",
       "Requirements": [
         "R",
         "arrow",
@@ -1072,7 +1072,7 @@
         "rlang",
         "terra"
       ],
-      "Hash": "ba2cb464ff33709469217f4667c73f9a"
+      "Hash": "65a14d1e5bd4c5da67b0f0bdd7768483"
     },
     "pbapply": {
       "Package": "pbapply",
