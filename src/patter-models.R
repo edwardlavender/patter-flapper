@@ -26,7 +26,7 @@ update_ac <- function(.particles, .bathy, .obs, .t, .bset, .calc_depth_error) {
   .particles[, digi := terra::extract(.bset, cell_now)]
   .particles[, boost := 20L]
   bool_digi <- .particles$digi == 1L
-  if (any(.particles$digi == 1L)) {
+  if (any(.particles$digi == 1L, na.rm = TRUE)) {
     .particles[which(bool_digi), boost := 40L]
   }
   # Define shallow and deep depth limits for each particle based on location
