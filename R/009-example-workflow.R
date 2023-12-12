@@ -66,13 +66,21 @@ arc <-
   filter(individual_id == 25) |> 
   filter(timestamp >= xlim[1]) |> 
   filter(timestamp <= xlim[2]) |> 
+  arrange(timestamp) |>
+  # Define 'resting': 0L = resting; 1L = not resting;
+  mutate(va = abs(serial_difference(depth)), 
+         state = if_else(va <= 0.25, true = 0L, false = 1L)) |>
   as.data.table()
+arc$va <- NULL
+arc$state[nrow(arc)] <- 1L
 # Collate observations 
 obs <- acs_setup_obs(acc, arc, 
                      .trim = FALSE,
                      .step = "2 mins", 
                      .mobility = 500, 
                      .detection_range = 750)
+obs[, state := arc$state[match(timestamp, arc$timestamp)]]
+# Define behavioural state
 # Check obs
 obs
 range(obs$timestamp)
@@ -81,70 +89,106 @@ stopifnot(!any(is.na(obs$depth)))
 # Visualise obs
 plot(arc$timestamp, arc$depth*-1, 
      xlim = xlim, ylim = c(-225, 0),
-     type = "l")
+     type = "n")
+s <- seq(nrow(arc) - 1)
+arrows(arc$timestamp[s], arc$depth[s] * -1, 
+       arc$timestamp[s + 1L], arc$depth[s + 1] * -1, 
+       col = factor(arc$state), length = 0, lwd = 0.5)
 points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
+
+#### Define algorithm 
+algs <- c("acpf", "acdcpf", "dcpf")
+alg <- algs[1]
 
 
 ###########################
 ###########################
 #### Forward filter
 
-#### TO DO
-# Write behavioural switching model
-# Downgrade movement jumps using shortest distances model
+
+###########################
+#### Set up 
 
 #### Define directories
-log.txt    <- here_data("example", "forward", "acpf", "log.txt")
-pff_folder <- here_data("example", "forward", "acpf", "output")
+pff_folder <- here_data("example", "forward", alg, "output")
+log.txt    <- here_data("example", "forward", alg, "log.txt")
+# Optionally wipe old directories
 if (FALSE) {
   unlink(log.txt)
   unlink(pff_folder, recursive = TRUE)
+}
+# (Re)build
+if (!dir.exists(pff_folder)) {
   dir.create(pff_folder, recursive = TRUE)
 }
 
+#### Define baseline args
+args <- list(.obs = obs,
+             .bathy = terra::rast(here_data("spatial", "bathy.tif")),
+             .n = 1e3, 
+             .trial_kick = 1L, 
+             .trial_kick_crit = 25L, 
+             .trial_revert_crit = 10L, 
+             .trial_revert_steps = 100L, 
+             .trial_revert = 10L,
+             .record_opts = list(save = FALSE,
+                                 sink = pff_folder, 
+                                 cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now")),
+             .progress = FALSE,
+             .verbose = TRUE, 
+             .txt = log.txt) 
+
+#### Define algorithm-specific args 
+# DC-related args 
+if (alg %in% c("dcpf", "acdcpf")) {
+  # Define origin starting point 
+  args$.origin    <- dc_origin(.bathy = args$.bathy, 
+                               .depth = obs$depth[1], 
+                               .calc_depth_error = calc_depth_error)
+  # Define DC model
+  bset <- terra::rast(here_data("spatial", "bset.tif"))
+  args$.update_ac <- function(.particles, .bathy, .obs, .t, 
+                              .bset = bset, .calc_depth_error = calc_depth_error) {
+    update_ac(.particles = .particles, .bathy = .bathy, .obs = .obs, .t = .t, 
+              .bset = .bset, .calc_depth_error = .calc_depth_error)
+  }
+  # Define behaviourally dependent movement model (via .rpropose and .dpropose)
+  # * TO DO
+}
+# AC-related args
+if (alg %in% c("acpf", "acdcpf")) {
+  args$.moorings           <- moorings
+  args$.detection_overlaps <- overlaps
+  args$.detection_kernels  <- acs_setup_detection_kernels_read()
+}
+if (alg == "acpf") {
+  # Define .rpropose and .dpropose
+  # * Use default movement models
+}
+
+#### (optional) TO DO
+# Downgrade movement jumps using shortest distances model
+
+
+###########################
 #### Forward run 
-# ACPF: ~107 mins
+
+#### Timings
+# * ACPF: ~107 mins
+# * DCPF: 
+# * ACDCPF: 
+
 tic()
 if (TRUE) {
   set.seed(seed)
-  out_pff <- pf_forward(obs,
-                        .bathy = bathy,
-                        .moorings = moorings,
-                        .detection_overlaps = overlaps,
-                        .detection_kernels = kernels,
-                        .n = 1e3L,
-                        # .update_ac = update_ac,
-                        .trial_kick = 1L,
-                        # Use .trial_kick_crit to control directed sampling threshold 
-                        .trial_kick_crit = 25L, 
-                        .trial_revert_crit = 10L, 
-                        .trial_revert_steps = 100L, 
-                        .trial_revert = 10L,
-                        .record_opts = list(save = FALSE,
-                                            sink = pff_folder, 
-                                            cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now")), 
-                        .verbose = TRUE, .txt = log.txt)
+  out_pff <- do.call(patter::pf_forward, args)
   toc()
   # beepr::beep(10L)
 }
 
 
-#### Output validation
-# Count the number of particles at each time step (~2 s)
-pff_folder_h <- file.path(pff_folder, "history")
-tic()
-np <- 
-  pff_folder_h |> 
-  arrow::open_dataset() |> 
-  group_by(timestep) |> 
-  dplyr::count() |> 
-  arrange(timestep) |>
-  collect()
-which(np$n != 1000L)
-stopifnot(all(np$n == 1e3L))
-toc()
-# TO DO
-# 
+###########################
+#### Outputs
 
 #### Output file size (MB)
 hs <- file.size(list.files(file.path(pff_folder, "history"), full.names = TRUE))
@@ -160,15 +204,43 @@ if (manual) {
 
 
 ###########################
+#### Validation 
+
+#### Validate the number of particles at each time step (~2 s)
+pff_folder_h <- file.path(pff_folder, "history")
+tic()
+np <- 
+  pff_folder_h |> 
+  arrow::open_dataset() |> 
+  group_by(timestep) |> 
+  dplyr::count() |> 
+  arrange(timestep) |>
+  collect()
+which(np$n != 1000L)
+stopifnot(all(np$n == 1e3L))
+toc()
+
+#### TO DO
+# 
+
+
 ###########################
-#### Backward killer
+###########################
+#### Backward sampler
 
 #### Define directories
-pfb_folder  <- here_data("example", "backward", "acpf")
+pfb_folder  <- here_data("example", "backward", alg)
 pfbk_folder <- file.path(pfb_folder, "killer", "output")
-log.txt     <- here_data("example", "acpf", "backward", "killer", "log.txt")
+log.txt     <- file.path(pfb_folder, "killer", "log.txt")
+if (FALSE) {
+  unlink(pfbk_folder, recursive = TRUE)
+  unlink(log.txt)
+}
+if (!dir.exists(pfbk_folder)) {
+  dir.create(pfbk_folder, recursive = TRUE)
+}
 
-#### Implement pruning 
+#### Implement backward killer 
 # ACPF: ~140 s
 if (run) {
   tic()
@@ -197,7 +269,7 @@ if (manual) {
 
 #### Define directories 
 pfbs_folder <- file.path(pfb_folder, "sampler", "output")
-log.txt     <- here_data("example", "acpf", "backward", "sampler", "log.txt")
+log.txt     <- file.path(pfb_folder, "sampler", "log.txt")
 
 #### Run sampler 
 files <- pf_setup_files(pff_folder_h)
@@ -217,15 +289,15 @@ if (run) {
 ###########################
 #### Maps
 
-#### TO DO
-# * Update to handle multiple intputs
-# * pfbk_folder, pfbs_folder
+#### Define input folder
+folder <- pfbk_folder
+# folder <- pfbs_folder
 
 #### Collect coordinates (~5 s)
 # * We collect coordinates and use pf_map_dens()
 # * This is faster than pf_map_pou() plus pf_map_dens()
 tic()
-pxy <- pf_coords(pfbk_folder, .bathy = bathy)
+pxy <- pf_coords(folder, .bathy = bathy)
 toc()
 if (manual) {
   # Number of unique cells sampled
