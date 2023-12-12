@@ -98,7 +98,7 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
 #### Define algorithm 
 algs <- c("acpf", "acdcpf", "dcpf")
-alg <- algs[1]
+alg <- algs[2]
 
 
 ###########################
@@ -178,8 +178,8 @@ if (alg == "acpf") {
 # * DCPF: 
 # * ACDCPF: 
 
-tic()
 if (TRUE) {
+  tic()
   set.seed(seed)
   out_pff <- do.call(patter::pf_forward, args)
   toc()
