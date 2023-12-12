@@ -51,25 +51,38 @@ manual <- run
 #### Set up analysis
 
 #### Collate observations
+# Limits
+xlim <- as.POSIXct(c("2016-07-01 00:00:00", "2016-08-01 23:58:00"), tz = "UTC")
 # Acoustics
 acc <- 
   acoustics |>
   filter(individual_id == 25) |> 
-  filter(timestamp >= as.POSIXct("2016-07-01")) |> 
-  filter(timestamp <= as.POSIXct("2016-08-01")) |> 
+  filter(timestamp >= xlim[1]) |> 
+  filter(timestamp <= xlim[2]) |> 
   as.data.table()
 # Archival data (if applicable)
 arc <- 
   archival |>
   filter(individual_id == 25) |> 
-  filter(timestamp >= as.POSIXct("2016-07-01")) |> 
-  filter(timestamp <= as.POSIXct("2016-08-01")) |> 
+  filter(timestamp >= xlim[1]) |> 
+  filter(timestamp <= xlim[2]) |> 
   as.data.table()
 # Collate observations 
 obs <- acs_setup_obs(acc, arc, 
+                     .trim = FALSE,
                      .step = "2 mins", 
                      .mobility = 500, 
                      .detection_range = 750)
+# Check obs
+obs
+range(obs$timestamp)
+stopifnot(any(obs$detection == 1L))
+stopifnot(!any(is.na(obs$depth)))
+# Visualise obs
+plot(arc$timestamp, arc$depth*-1, 
+     xlim = xlim, ylim = c(-225, 0),
+     type = "l")
+points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
 
 ###########################
@@ -79,7 +92,6 @@ obs <- acs_setup_obs(acc, arc,
 #### TO DO
 # Write behavioural switching model
 # Downgrade movement jumps using shortest distances model
-# Exclude time points we know the individuals were beyond the MPA based on depth
 
 #### Define directories
 log.txt    <- here_data("example", "forward", "acpf", "log.txt")
