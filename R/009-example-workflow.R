@@ -18,7 +18,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-op <- options(error = recover)
+# op <- options(error = recover)
 
 #### Essential packages
 library(dv)
@@ -30,7 +30,7 @@ library(patter)
 library(tictoc)
 
 #### Load data
-src()
+dv::src()
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 im        <- qs::qread(here_data("spatial", "im.qs"))
 win       <- qs::qread(here_data("spatial", "win.qs"))
@@ -48,7 +48,7 @@ manual <- run
 
 ###########################
 ###########################
-#### Select time series for analysis 
+#### Set up analysis
 
 #### Collate observations
 # Acoustics
@@ -70,10 +70,6 @@ obs <- acs_setup_obs(acc, arc,
                      .step = "2 mins", 
                      .mobility = 500, 
                      .detection_range = 750)
-# Add depth errors (if applicable)
-depth_error <- calc_depth_error(obs$depth)
-obs[, depth_shallow := depth + depth_error[1, ]]
-obs[, depth_deep := depth + depth_error[2, ]]
 
 
 ###########################
@@ -86,8 +82,8 @@ obs[, depth_deep := depth + depth_error[2, ]]
 # Exclude time points we know the individuals were beyond the MPA based on depth
 
 #### Define directories
-log.txt    <- here_data("example", "acpf", "forward", "log.txt")
-pff_folder <- here_data("example", "acpf", "forward", "output")
+log.txt    <- here_data("example", "forward", "acpf", "log.txt")
+pff_folder <- here_data("example", "forward", "acpf", "output")
 if (FALSE) {
   unlink(log.txt)
   unlink(pff_folder, recursive = TRUE)
@@ -95,9 +91,9 @@ if (FALSE) {
 }
 
 #### Forward run 
-# ACPF: ~72 mins
+# ACPF: ~107 mins
 tic()
-if (run) {
+if (TRUE) {
   set.seed(seed)
   out_pff <- pf_forward(obs,
                         .bathy = bathy,
@@ -112,14 +108,39 @@ if (run) {
                         .trial_revert_crit = 10L, 
                         .trial_revert_steps = 100L, 
                         .trial_revert = 10L,
-                        .save_opts = TRUE,
-                        .write_opts = list(sink = pff_folder), 
+                        .record_opts = list(save = FALSE,
+                                            sink = pff_folder, 
+                                            cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now")), 
                         .verbose = TRUE, .txt = log.txt)
   toc()
   # beepr::beep(10L)
 }
 
-#### Diagnostics
+
+#### Output validation
+# Count the number of particles at each time step (~2 s)
+pff_folder_h <- file.path(pff_folder, "history")
+tic()
+np <- 
+  pff_folder_h |> 
+  arrow::open_dataset() |> 
+  group_by(timestep) |> 
+  dplyr::count() |> 
+  arrange(timestep) |>
+  collect()
+which(np$n != 1000L)
+stopifnot(all(np$n == 1e3L))
+toc()
+# TO DO
+# 
+
+#### Output file size (MB)
+hs <- file.size(list.files(file.path(pff_folder, "history"), full.names = TRUE))
+ds <- file.size(list.files(file.path(pff_folder, "diagnostics"), full.names = TRUE))
+size <- sum(c(hs, ds))
+size/1e6 # MB
+
+#### Output diagnostics 
 if (manual) {
   diag <- pf_forward_diagnostics(pff_folder)
   tail(diag, 100)
@@ -131,7 +152,7 @@ if (manual) {
 #### Backward killer
 
 #### Define directories
-pfb_folder  <- here_data("example", "acpf", "backward")
+pfb_folder  <- here_data("example", "backward", "acpf")
 pfbk_folder <- file.path(pfb_folder, "killer", "output")
 log.txt     <- here_data("example", "acpf", "backward", "killer", "log.txt")
 
@@ -139,7 +160,7 @@ log.txt     <- here_data("example", "acpf", "backward", "killer", "log.txt")
 # ACPF: ~140 s
 if (run) {
   tic()
-  out_pfbk <- pf_backward_killer(pf_setup_files(file.path(pff_folder, "history")), 
+  out_pfbk <- pf_backward_killer(pf_setup_files(pff_folder_h), 
                                  .write_history = list(sink = pfbk_folder), 
                                  .txt = log.txt)
   toc()
@@ -155,11 +176,6 @@ if (manual) {
   plot(pfbk_diag$timestep, pfbk_diag$n_u, type = "l")
   plot(pfbk_diag$timestep, pfbk_diag$n_u, ylim  = c(0, 100), type = "l")
   plot(pfbk_diag$timestep, pfbk_diag$ess, type = "l")
-  # TO DO
-  # * Resolve issue in pf_forward() (?)
-  # * How can we have more unique cells than particles?
-  pfbk_diag[n_u > 1000, ]
-  arrow::read_parquet(file.path(pfbk_folder, "3252.parquet"))
 }
 
 
@@ -171,18 +187,8 @@ if (manual) {
 pfbs_folder <- file.path(pfb_folder, "sampler", "output")
 log.txt     <- here_data("example", "acpf", "backward", "sampler", "log.txt")
 
-#### Prepare sampler
-# Identify distinct cells (~3.2 mins, 1 CPU)
-pfbd_folder <- file.path(pfb_folder, "sampler", "distinct")
-if (run) {
-  tic()
-  pf_distinct(.history = file.path(pff_folder, "history"), 
-              .write_opts = list(sink = pfbd_folder))
-  toc()
-}
-
 #### Run sampler 
-files <- pf_setup_files(pfbd_folder)
+files <- pf_setup_files(pff_folder_h)
 files <- files[(length(files) - 10L):length(files)]
 if (run) {
   tic()
@@ -239,7 +245,7 @@ toc()
 #### Write maps to file (~11 s)
 tic()
 terra::writeRaster(dens, 
-                   here_data("example", "acpf", "map", "dens.tif"), 
+                   here_data("example", "map", "acpf", "dens.tif"), 
                    overwrite = TRUE)
 toc()
 
