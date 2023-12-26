@@ -5,7 +5,7 @@ dist_2d <- function(x0, x1, y0, y1) {
 }
 
 #' @title Internal {patter} helpers
-cat_helper <- patter:::cat_helper
+cat_helper <- patter:::cat_init
 call_start <- patter:::call_start
 call_end   <- patter:::call_end
 pb_init    <- patter:::pb_init
@@ -29,10 +29,9 @@ pf_backward_sampler_2 <- function(.history,
   t_onset <- Sys.time()
   
   #### Set up messages
-  cat_to_cf <- cat_helper(.verbose = .verbose, .txt = .txt)
-  cat_to_cf(call_start(.fun = as.character(sys.call(0L)), .start = t_onset))
-  on.exit(cat_to_cf(call_end(.fun = as.character(sys.call(0L)),
-                             .start = t_onset, .end = Sys.time())), add = TRUE)
+  cat_log <- cat_init(.verbose = .verbose)
+  cat_log(call_start(.fun = "pf_forward", .start = t_onset))
+  on.exit(cat_log(call_end(.fun = "pf_forward", .start = t_onset, .end = Sys.time())), add = TRUE)
   
   #### Set up loop
   # Number of time steps 
