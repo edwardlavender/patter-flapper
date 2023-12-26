@@ -21,6 +21,7 @@ dv::clear()
 #### Essential packages
 library(dv)
 library(MEFS)
+library(patter)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
@@ -80,15 +81,24 @@ if (FALSE) {
   points(xy)
 }
 
+###########################
+###########################
+#### Validate data
+
+dlist <- pat_setup_data(.acoustics = acoustics, 
+                        .moorings = moorings, 
+                        .archival = archival, 
+                        .bathy = bathy, 
+                        .lonlat = FALSE)
 
 ###########################
 ###########################
 #### Save datasets
 
 saveRDS(skateids, here_data("mefs", "skateids.rds"))
-saveRDS(acoustics, here_data("mefs", "acoustics.rds"))
-saveRDS(archival, here_data("mefs", "archival.rds"))
-saveRDS(moorings, here_data("mefs", "moorings.rds"))
+saveRDS(dlist$data$acoustics, here_data("mefs", "acoustics.rds"))
+saveRDS(dlist$data$archival, here_data("mefs", "archival.rds"))
+saveRDS(dlist$data$moorings, here_data("mefs", "moorings.rds"))
 
 
 #### End of code. 
