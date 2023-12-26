@@ -18,7 +18,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-# op <- options(error = recover)
+op <- options(error = recover)
 
 #### Essential packages
 library(dv)
@@ -32,6 +32,7 @@ library(tictoc)
 #### Load data
 dv::src()
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
+bset      <- terra::rast(here_data("spatial", "bset.tif"))
 im        <- qs::qread(here_data("spatial", "im.qs"))
 win       <- qs::qread(here_data("spatial", "win.qs"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
@@ -52,7 +53,8 @@ manual <- run
 
 #### Collate observations
 # Limits
-xlim <- as.POSIXct(c("2016-07-01 00:00:00", "2016-08-01 23:58:00"), tz = "UTC")
+xlim <- as.POSIXct(c("2016-07-01 00:00:00", "2016-08-01 23:58:00"), 
+                   tz = "UTC")
 # Acoustics
 acc <- 
   acoustics |>
@@ -73,14 +75,27 @@ arc <-
   as.data.table()
 arc$va <- NULL
 arc$state[nrow(arc)] <- 1L
-# Collate observations 
-obs <- acs_setup_obs(acc, arc, 
-                     .trim = FALSE,
-                     .step = "2 mins", 
-                     .mobility = 500, 
-                     .detection_range = 750)
+# Build data list
+# * We add a .$spatial$origin element optionally below (for DCPF/ACDCPF algorithms)
+dlist <- pat_setup_data(.acoustics = acc, 
+                        .moorings = moorings, 
+                        .archival = arc, 
+                        .bathy = bathy, 
+                        .lonlat = FALSE)
+# Include AC likelihood terms (required for ACPF, ACDCPF)
+dlist$algorithm$detection_overlaps <- overlaps
+dlist$algorithm$detection_kernels  <- kernels
+# Include DC likelihood terms (required for DCPF, ACDCPF)
+dlist$algorithm$bset               <- bset
+dlist$algorithm$calc_depth_error   <- calc_depth_error
+
+# Define observations timeline
+obs <- pf_setup_obs(.dlist = dlist,
+                    .trim = FALSE,
+                    .step = "2 mins", 
+                    .mobility = 500, 
+                    .receiver_range = 750)
 obs[, state := arc$state[match(timestamp, arc$timestamp)]]
-# Define behavioural state
 # Check obs
 obs
 range(obs$timestamp)
@@ -95,6 +110,12 @@ arrows(arc$timestamp[s], arc$depth[s] * -1,
        arc$timestamp[s + 1L], arc$depth[s + 1] * -1, 
        col = factor(arc$state), length = 0, lwd = 0.5)
 points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
+
+#### Define origin
+# This is included in dlist below, if necessary
+origin <- dc_origin(.bathy = dlist$spatial$bathy, 
+                    .depth = obs$depth[1], 
+                    .calc_depth_error = calc_depth_error)
 
 #### Define algorithm 
 algs <- c("acpf", "acdcpf", "dcpf")
@@ -113,7 +134,7 @@ alg <- algs[2]
 pff_folder <- here_data("example", "forward", alg, "output")
 log.txt    <- here_data("example", "forward", alg, "log.txt")
 # Optionally wipe old directories
-if (FALSE) {
+if (TRUE) {
   unlink(log.txt)
   unlink(pff_folder, recursive = TRUE)
 }
@@ -122,48 +143,49 @@ if (!dir.exists(pff_folder)) {
   dir.create(pff_folder, recursive = TRUE)
 }
 
-#### Define baseline args
-args <- list(.obs = obs,
-             .bathy = terra::rast(here_data("spatial", "bathy.tif")),
-             .n = 1e3, 
-             .trial_kick = 1L, 
-             .trial_kick_crit = 25L, 
-             .trial_revert_crit = 10L, 
-             .trial_revert_steps = 100L, 
-             .trial_revert = 10L,
-             .record_opts = list(save = FALSE,
-                                 sink = pff_folder, 
-                                 cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now")),
-             .progress = FALSE,
-             .verbose = TRUE, 
-             .txt = log.txt) 
-
-#### Define algorithm-specific args 
-# DC-related args 
+#### Define data list
 if (alg %in% c("dcpf", "acdcpf")) {
-  # Define origin starting point 
-  args$.origin    <- dc_origin(.bathy = args$.bathy, 
-                               .depth = obs$depth[1], 
-                               .calc_depth_error = calc_depth_error)
-  # Define DC model
-  bset <- terra::rast(here_data("spatial", "bset.tif"))
-  args$.update_ac <- function(.particles, .bathy, .obs, .t, 
-                              .bset = bset, .calc_depth_error = calc_depth_error) {
-    update_ac(.particles = .particles, .bathy = .bathy, .obs = .obs, .t = .t, 
-              .bset = .bset, .calc_depth_error = .calc_depth_error)
-  }
-  # Define behaviourally dependent movement model (via .rpropose and .dpropose)
-  # * TO DO
+  dlist$spatial$.origin <- origin
+} else {
+  dlist$spatial$.origin <- NULL
 }
-# AC-related args
-if (alg %in% c("acpf", "acdcpf")) {
-  args$.moorings           <- moorings
-  args$.detection_overlaps <- overlaps
-  args$.detection_kernels  <- acs_setup_detection_kernels_read()
-}
+
+#### Define args
+# Baseline arguments
+# * TO DO
+# * Define behaviourally dependent movement model (via .rpropose and .dpropose)
+args <- list(.obs = obs,
+             .dlist = dlist,
+             .n = 1e3, 
+             .trial = 
+               pf_opt_trial(
+                 # Kick once 
+                 .trial_kick = 1L, 
+                 # Initiate directed sampling when there are < 25 cells
+                 .trial_sampler = 25L, 
+                 # Revert when there are < 5 grid cells, by 50 steps, 10 times
+                 .trial_revert_crit = 5L, 
+                 .trial_revert_steps = 50L, 
+                 .trial_revert = 10L
+               ),
+             .record = pf_opt_record(
+               .save = FALSE,
+               .sink = pff_folder, 
+               .cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
+             ),
+             .control = pf_opt_control(.sampler_batch_size = 1000L),
+             .verbose = log.txt) 
+# Define algorithm-specific likelihoods
 if (alg == "acpf") {
-  # Define .rpropose and .dpropose
-  # * Use default movement models
+  args$.likelihood <- list(pf_lik_ac = pf_lik_ac, 
+                           acs_filter_land = acs_filter_land, 
+                           acs_filter_container = acs_filter_container)
+} else if (alg == "dcpf") {
+  args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2)
+} else if (alg == "acdcpf") {
+  args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
+                           pf_lik_ac = pf_lik_ac, 
+                           acs_filter_container = acs_filter_container)
 }
 
 #### (optional) TO DO
@@ -180,7 +202,7 @@ if (alg == "acpf") {
 
 if (TRUE) {
   tic()
-  set.seed(seed)
+  ss()
   out_pff <- do.call(patter::pf_forward, args)
   toc()
   # beepr::beep(10L)
