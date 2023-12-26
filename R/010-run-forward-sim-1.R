@@ -7,6 +7,8 @@
 
 #### Prerequisites
 # 1) Prepare data and parameters
+# 2) Estimated storage requirements: 
+#    200 GB = 700 MB * 273 individuals
 
 
 ###########################
