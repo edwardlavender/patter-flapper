@@ -14,6 +14,27 @@ dc_origin <- function(.bathy, .depth, .calc_depth_error) {
 
 #' @title Depth likelihood term
 
+# Depth errors
+calc_depth_envelope <- function(.particles, 
+                                .depth, 
+                                .calc_depth_error) {
+  # Define adjustment for depth-error model
+  # > For some receivers in the Howe data, the individual is ~10-20 m shallower than previously assumed.
+  # > For the Digimap data, the individual can be up to 40 m shallower. 
+  .particles[, boost := 20L]
+  bool_digi <- .particles$digi == 1L
+  if (any(.particles$digi == 1L, na.rm = TRUE)) {
+    .particles[which(bool_digi), boost := 40L]
+  }
+  # Define shallow and deep depth limits for each particle based on location
+  .particles[, error := .calc_depth_error(.depth)]
+  .particles[, deep := .depth + error]
+  .particles[, shallow_1 := .depth - (error + 5)]
+  .particles[, shallow_2 := .depth - (error + boost)]
+  .particles
+}
+
+# Depth likelihood term
 pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # Checks (one off)
   if (.t == 1L) {
@@ -21,25 +42,17 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
                          .spatial = "bathy", 
                          .algorithm = c("bset", "calc_depth_error"))
   }
-  # Extract depth of seabed at particle positions
+  # Define bathymetric depth & data source (digi versus howe)
   cell_now <- NULL
   if (!rlang::has_name(.particles, "bathy")) {
     .particles[, bathy := terra::extract(.dlist$spatial$bathy, cell_now)]
   }
-  # Define bathymetry data source (digi versus howe) & define adjustment for depth-error model
-  # > For some receivers in the Howe data, the individual is ~10-20 m shallower than previously assumed.
-  # > For the Digimap data, the individual can be up to 40 m shallower. 
   .particles[, digi := terra::extract(.dlist$algorithm$bset, cell_now)]
-  .particles[, boost := 20L]
-  bool_digi <- .particles$digi == 1L
-  if (any(.particles$digi == 1L, na.rm = TRUE)) {
-    .particles[which(bool_digi), boost := 40L]
-  }
-  # Define shallow and deep depth limits for each particle based on location
-  .particles[, error := .dlist$algorithm$calc_depth_error(.obs$depth[.t])]
-  .particles[, deep := .obs$depth[.t] + error]
-  .particles[, shallow_1 := .obs$depth[.t] - (error + 5)]
-  .particles[, shallow_2 := .obs$depth[.t] - (error + boost)]
+  # Define depth envelope
+  .particles <- calc_depth_envelope(.particles = .particles, 
+                                    .depth = .obs[.t], 
+                                    .calc_depth_error = .dlist$algorithm$calc_depth_error)
+  
   # Define depth likelihoods
   lik_dc <- rep(0L, nrow(.particles))
   pos <- which(.particles$bathy <= .particles$deep & 
