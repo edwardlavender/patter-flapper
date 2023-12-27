@@ -36,6 +36,7 @@ library(patter)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(tictoc)
 
 #### Load data
 dv::src()
@@ -89,19 +90,30 @@ lapply(seq_len(length(containers)), function(i) {
 }) |> rbindlist()
 
 #### Identify detection container receiver/depth combinations 
-# Define combinations 
+# Define combinations (~30 s)
+tic()
 containers_rcd <- acs_setup_containers_rcd(.dlist = dlist)
-# Add index (FIX)
-containers_rcd[, index := as.integer(factor(containers_rcd$receiver_id_next_key, 
-                                            unique(containers_rcd$receiver_id_next_key)))]
+stopifnot(length(unique(containers_rcd$index)) == 
+            length(unique(containers_rcd$receiver_id_next_key))
+            )
+toc()
 head(containers_rcd)
 tail(containers_rcd)
 
 #### Identify detection container cells
+# There are 
 # We write valid cells to ./data/input/containers/{container}/{depth.parquet}
+tic()
 acs_setup_container_cells(.dlist = dlist, 
                           .containers = containers, 
-                          .rcd = containers_rcd)
+                          .rcd = containers_rcd, 
+                          .cl = 10L)
+toc()
+
+# In pf_forward(), we account for ACDC detection container dynamics
+# via acs_filter_container_acdc(). 
 
 
-
+#### End of code. 
+###########################
+###########################
