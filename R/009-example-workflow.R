@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### prepare-patter.R
+#### example-workflow.R
 
 #### Aims
 # 1) Prepare flapper algorithm inputs
@@ -134,7 +134,7 @@ alg <- algs[2]
 pff_folder <- here_data("example", "forward", alg, "output")
 log.txt    <- here_data("example", "forward", alg, "log.txt")
 # Optionally wipe old directories
-if (TRUE) {
+if (run) {
   unlink(log.txt)
   unlink(pff_folder, recursive = TRUE)
 }
@@ -151,7 +151,14 @@ if (alg %in% c("dcpf", "acdcpf")) {
 }
 
 #### Define args
-# Baseline arguments
+# Define baseline forward and backward arguments 
+record <- 
+  pf_opt_record(
+    .save = FALSE,
+    .sink = pff_folder, 
+    .cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
+  )
+# Define baseline forward arguments
 # * TO DO
 # * Define behaviourally dependent movement model (via .rpropose and .dpropose)
 args <- list(.obs = obs,
@@ -162,17 +169,13 @@ args <- list(.obs = obs,
                  # Kick once 
                  .trial_kick = 1L, 
                  # Initiate directed sampling when there are < 25 cells
-                 .trial_sampler = 25L, 
+                 .trial_sampler = 100L, 
                  # Revert when there are < 5 grid cells, by 50 steps, 10 times
                  .trial_revert_crit = 5L, 
                  .trial_revert_steps = 50L, 
                  .trial_revert = 10L
                ),
-             .record = pf_opt_record(
-               .save = FALSE,
-               .sink = pff_folder, 
-               .cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
-             ),
+             .record = record,
              .control = pf_opt_control(.sampler_batch_size = 1000L),
              .verbose = log.txt) 
 # Define algorithm-specific likelihoods
@@ -200,7 +203,7 @@ if (alg == "acpf") {
 # * DCPF: 
 # * ACDCPF: 
 
-if (TRUE) {
+if (run) {
   tic()
   ss()
   out_pff <- do.call(patter::pf_forward, args)
@@ -208,15 +211,15 @@ if (TRUE) {
   # beepr::beep(10L)
 }
 
+# To debug convergence issues, see ./R/supporting/convergence/.
 
 ###########################
 #### Outputs
 
 #### Output file size (MB)
-hs <- file.size(list.files(file.path(pff_folder, "history"), full.names = TRUE))
-ds <- file.size(list.files(file.path(pff_folder, "diagnostics"), full.names = TRUE))
-size <- sum(c(hs, ds))
-size/1e6 # MB
+hs <- pf_files_size(pff_folder, .folder = "history")
+ds <- pf_files_size(pff_folder, .folder = "diagnostics")
+sum(c(hs, ds))
 
 #### Output diagnostics 
 if (manual) {
@@ -261,14 +264,15 @@ if (FALSE) {
 if (!dir.exists(pfbk_folder)) {
   dir.create(pfbk_folder, recursive = TRUE)
 }
+record$.sink <- pfbk_folder
 
 #### Implement backward killer 
 # ACPF: ~140 s
 if (run) {
   tic()
-  out_pfbk <- pf_backward_killer(pf_setup_files(pff_folder_h), 
-                                 .write_history = list(sink = pfbk_folder), 
-                                 .txt = log.txt)
+  out_pfbk <- pf_backward_killer(.history = pf_files(pff_folder_h), 
+                                 .record = record,
+                                 .verbose = log.txt)
   toc()
 }
 
@@ -294,7 +298,7 @@ pfbs_folder <- file.path(pfb_folder, "sampler", "output")
 log.txt     <- file.path(pfb_folder, "sampler", "log.txt")
 
 #### Run sampler 
-files <- pf_setup_files(pff_folder_h)
+files <- pf_files(pff_folder_h)
 files <- files[(length(files) - 10L):length(files)]
 if (run) {
   tic()
