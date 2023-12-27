@@ -193,11 +193,21 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   bset  <- .dlist$spatial$bset
   
   # Loop over unique detection containers & build valid cell lists
-  # * We save lists to file in ./data/input/containers/{container}/{depth}.parquet
   pbapply::pblapply(split(.rcd, .rcd$receiver_id_next_key), function(d) {
     
-    # d <- split(.rcd, .rcd$receiver_id_next_key)[[1]]
+    # d <- split(.rcd, .rcd$receiver_id_next_key)[[4]]
     message(d$index[1])
+    
+    # Define outfiles
+    # * We save lists to file in ./data/input/containers/{container}/{depth}.parquet
+    d[, outfile := here_data("input", "containers", 
+                             receiver_id_next_key,
+                             paste0(depth, ".parquet"))]
+    d[, outexists := file.exists(outfile)]
+    d <- d[outexists == FALSE, ]
+    if (nrow(d) == 0L) {
+      return(NULL)
+    }
     
     # Identify cells within the container
     container <- .containers[[d$receiver_id_next_key[1]]]
@@ -218,16 +228,9 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
                 .cl = .cl, .use_chunks = TRUE, 
                 .fun = function(.d) {
         
-        # Define outfile
-        outfile <- here_data("input", "containers", 
-                             .d$receiver_id_next_key,
-                             paste0(.d$depth, ".parquet"))
-        if (file.exists(outfile)) {
-          return(NULL)
-        }
-        
         # Define valid cells
         # .d <- d[1, ]
+        print(.d)
         dt <-
           cells_in_container |> 
           copy() |>
