@@ -197,7 +197,7 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   pbapply::pblapply(split(.rcd, .rcd$receiver_id_next_key), function(d) {
     
     # d <- split(.rcd, .rcd$receiver_id_next_key)[[1]]
-    message(.rcd$index[1])
+    message(d$index[1])
     
     # Identify cells within the container
     container <- .containers[[d$receiver_id_next_key[1]]]
