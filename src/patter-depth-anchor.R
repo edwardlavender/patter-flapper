@@ -166,7 +166,7 @@ acs_setup_containers_rcd <- function(.dlist) {
     obs |> 
       select("receiver_id_next_key", "depth") |> 
       distinct() |> 
-      filter(!is.na(depth)) |>
+      filter(!is.na(receiver_id_next_key)) |>
       as.data.table()
     
   }) |> 
