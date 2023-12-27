@@ -1,7 +1,5 @@
-# TO DO
-# * Add step to dlist$pars$step & use here (replace "2 mins")
+#' @title Internal patter functions
 
-library(collapse)
 utils.add::load_internal_functions("patter")
 
 #' @title AC* set up: define receiver keys
@@ -71,7 +69,7 @@ acs_setup_detection_containers <- function(.dlist, .rc, .plot = FALSE) {
   crs <- terra::crs(.dlist$spatial$bathy)
   
   # Define a list of detection containers
-  containers <- pbapply::pblapply(split(.rc, seq_row(.rc)), function(d) {
+  containers <- pbapply::pblapply(split(.rc, collapse::seq_row(.rc)), function(d) {
     
     # Define receiver coordinates
     # d <- .rc[361, ]
@@ -84,7 +82,7 @@ acs_setup_detection_containers <- function(.dlist, .rc, .plot = FALSE) {
     
     # Define containers
     containers <- 
-      lapply(seq_row(d), function(i) {
+      lapply(collapse::seq_row(d), function(i) {
         cbind(d$receiver_x[i], d$receiver_y[i]) |> 
           terra::vect(crs = crs) |> 
           terra::buffer(width = gamma)
@@ -210,7 +208,7 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd) {
     
     # Loop over depth observations & identify valid cells for each depth 
     cells_in_container_by_depth <- 
-      pbapply::pblapply(split(d, seq_row(d)), function(.d) {
+      pbapply::pblapply(split(d, collapse::seq_row(d)), function(.d) {
         
         # Define valid cells
         # .d <- d[1, ]
