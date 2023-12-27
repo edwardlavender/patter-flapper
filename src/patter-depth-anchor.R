@@ -173,6 +173,9 @@ acs_setup_containers_rcd <- function(.dlist) {
     plyr::compact() |>
     rbindlist() |>
     distinct() |> 
+    arrange(receiver_id_next_key, depth) |> 
+    mutate(index = rleid(receiver_id_next_key)) |> 
+    select("index", "receiver_id_next_key", "depth") |> 
     as.data.table()
   
 }
