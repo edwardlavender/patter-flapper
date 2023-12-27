@@ -215,9 +215,16 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
     # * (which cannot be serialised over the connection without wrapping/unwrapping)
     cells_in_container_by_depth <- 
       cl_lapply(.x = split(d, collapse::seq_row(d)), 
-                .cl = .cl, 
-                .use_chunks = TRUE,
+                .cl = .cl, .use_chunks = TRUE, 
                 .fun = function(.d) {
+        
+        # Define outfile
+        outfile <- here_data("input", "containers", 
+                             .d$receiver_id_next_key,
+                             paste0(.d$depth, ".parquet"))
+        if (file.exists(outfile)) {
+          return(NULL)
+        }
         
         # Define valid cells
         # .d <- d[1, ]
@@ -234,10 +241,8 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
         
         # Write to file 
         stopifnot(nrow(dt) > 0L) 
-        arrow::write_parquet(dt, 
-                             here_data("input", "containers", 
-                                       .d$receiver_id_next_key,
-                                       paste0(.d$depth, ".parquet")))
+        arrow::write_parquet(dt, outfile)
+        NULL
         
       })
   })
