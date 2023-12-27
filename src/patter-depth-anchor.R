@@ -184,7 +184,7 @@ acs_setup_containers_rcd <- function(.dlist) {
 #' @description
 #' For each unique detection container (receiver(s)--depth combination), this function identifies the coordinates of valid cells. 
 
-acs_setup_container_cells <- function(.dlist, .containers, .rcd) {
+acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   
   # Check user inputs 
   check_dlist(.dlist = .dlist, 
@@ -210,8 +210,14 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd) {
       as.data.table()
     
     # Loop over depth observations & identify valid cells for each depth 
+    # * This code is implemented in parallel
+    # * We implement this inner loop in parallel b/c it does not require SpatRasters
+    # * (which cannot be serialised over the connection without wrapping/unwrapping)
     cells_in_container_by_depth <- 
-      pbapply::pblapply(split(d, collapse::seq_row(d)), function(.d) {
+      cl_lapply(.x = split(d, collapse::seq_row(d)), 
+                .cl = .cl, 
+                .use_chunks = TRUE,
+                .fun = function(.d) {
         
         # Define valid cells
         # .d <- d[1, ]
