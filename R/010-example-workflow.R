@@ -95,7 +95,10 @@ obs <- pf_setup_obs(.dlist = dlist,
                     .step = "2 mins", 
                     .mobility = 500, 
                     .receiver_range = 750)
+# Define behavioural states
 obs[, state := arc$state[match(timestamp, arc$timestamp)]]
+# Define obs columns & obs-related dlist elements (for acs_setup_container_acdc())
+dlist$algorithm$pos_detections <- which(!sapply(obs$receiver_id, is.null))
 # Check obs
 obs
 range(obs$timestamp)
