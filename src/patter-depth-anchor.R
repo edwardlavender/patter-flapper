@@ -243,3 +243,62 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   })
   invisible(NULL)
 }
+
+#' @title AC* helper: ACDC container likelihood
+#' @description This function filters particle proposals that are incompatible with container dynamics. When there is a long time before the next detection, we use acs_filter_container(). As we approach the next detection, we refine the representation of container dynamics with acs_filter_container_acdc(). This accounts for the observed depth at the time of the next acoustic detection. 
+
+acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
+  
+  # Check user inputs
+  if (.t == 1L) {
+    check_dlist(.dlist = .dlist, 
+                .algorithm = "pos_detections")
+    check_names(.obs, "container")
+    stopifnot(length(unique(.obs$mobility)) == 1L)
+  }
+  
+  # * Identify the time step of the next detection (if applicable)
+  # * Identify the number of time steps before the next detection
+  # * If there are more than N time steps before the next detection, 
+  # * ... we use the usual acs_filter_container() function only (for speed)
+  # * If there are less than N time steps before the next detection, 
+  # * ... we use this account for depth observations
+  # * This reduces the burden of this filter, while accounting for the placement
+  # * ... of valid locations by depth when it is most important 
+  # * (... when we approach receiver(s))
+  
+  if (.t > 1 && .t < max(.obs$timestep)) {
+    # Define the time step of the next detection 
+    pos_detection <- (pos_detections[pos_detections > .t])[1L]
+    timegap <- pos_detection - .t
+    
+    if (timegap > 25L) {
+      # Implement usual AC* filter
+      .particles <- acs_filter_container(.particles = .particles, 
+                                         .obs = .obs, 
+                                         .t = .t, 
+                                         .dlist = .dlist)
+      
+    } else {
+      # Read valid locations at the next time step
+      locs <- arrow::read_parquet(file.path("data", "input", "containers", 
+                                            .obs$container[pos_detection], 
+                                            paste0(.obs$depth[pos_detection], ".parquet")))
+                                  
+      # Calculate distances between particle samples & valid locations at the next detection
+      dist <- terra::distance(.particles |>
+                                select("x_now", "y_now") |>
+                                as.matrix(),
+                              locs |>
+                                as.matrix(),
+                              lonlat = .dlist$par$lonlat)                    
+
+      # Eliminates particles using distance threshold
+      # * We eliminate particles that are not within a 
+      # * ... reachable distance of at least one valid location
+      .particles <- .particles[Rfast::rowsums(dist <= (.obs$mobility[.t] * timegap)) > 0L, ]
+      
+    }
+  }
+  .particles
+}
