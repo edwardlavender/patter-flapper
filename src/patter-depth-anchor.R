@@ -157,6 +157,11 @@ acs_setup_containers_rcd <- function(.dlist) {
       return(NULL)
     }
     
+    # Focus on detections
+    # * This is essential to identify the correct combinations
+    # * ... of receiver_id_next_key & depths align 
+    obs <- obs[detection == 1L, ]
+    
     # Define receiver_id_next_key (used for matching)
     obs[, receiver_id_next_key := 
           lapply(obs$receiver_id_next, acs_setup_receiver_key) |> unlist()]
@@ -181,8 +186,7 @@ acs_setup_containers_rcd <- function(.dlist) {
 }
 
 #' @title AC* set up: detection container cells
-#' @description
-#' For each unique detection container (receiver(s)--depth combination), this function identifies the coordinates of valid cells. 
+#' @description For each unique detection container (receiver(s)--depth combination), this function identifies the coordinates of valid cells. 
 
 acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   
