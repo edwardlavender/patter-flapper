@@ -40,6 +40,7 @@ acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
 overlaps  <- readRDS(here_data("input", "overlaps.rds"))
 kernels   <- acs_setup_detection_kernels_read()
+ewin      <- readRasterLs(here_data("input", "depth-window"))
 
 #### Local pars
 seed <- 1L
@@ -86,9 +87,8 @@ dlist <- pat_setup_data(.acoustics = acc,
 dlist$algorithm$detection_overlaps <- overlaps
 dlist$algorithm$detection_kernels  <- kernels
 # Include DC likelihood terms (required for DCPF, ACDCPF)
-dlist$algorithm$bset               <- bset
-dlist$algorithm$calc_depth_error   <- calc_depth_error
-
+dlist$spatial$bset      <- bset
+dlist$algorithm$ewindow <- ewin
 # Define observations timeline
 obs <- pf_setup_obs(.dlist = dlist,
                     .trim = FALSE,
@@ -116,9 +116,7 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
 #### Define origin
 # This is included in dlist below, if necessary
-origin <- dc_origin(.bathy = dlist$spatial$bathy, 
-                    .depth = obs$depth[1], 
-                    .calc_depth_error = calc_depth_error)
+origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
 
 #### Define algorithm 
 algs <- c("acpf", "acdcpf", "dcpf")
