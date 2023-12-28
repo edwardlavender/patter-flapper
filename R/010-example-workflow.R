@@ -18,7 +18,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-op <- options(error = recover)
+# op <- options(error = recover)
 
 #### Essential packages
 library(dv)
@@ -40,7 +40,7 @@ acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
 overlaps  <- readRDS(here_data("input", "overlaps.rds"))
 kernels   <- acs_setup_detection_kernels_read()
-ewin      <- readRasterLs(here_data("input", "depth-window"))
+ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
@@ -114,9 +114,11 @@ arrows(arc$timestamp[s], arc$depth[s] * -1,
        col = factor(arc$state), length = 0, lwd = 0.5)
 points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
-#### Define origin
+#### Define origin (~33 s)
 # This is included in dlist below, if necessary
+tic()
 origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
+toc()
 
 #### Define algorithm 
 algs <- c("acpf", "acdcpf", "dcpf")
@@ -206,7 +208,7 @@ if (alg == "acpf") {
 
 if (run) {
   tic()
-  ss()
+  set.seed(seed)
   out_pff <- do.call(patter::pf_forward, args)
   toc()
   # beepr::beep(10L)
