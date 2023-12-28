@@ -137,7 +137,7 @@ acs_setup_containers_rcd <- function(.dlist) {
   pbapply::pblapply(ids, function(id) {
     
     # Isolate individual-specific acoustic & archival data 
-    # id <- ids[1]
+    # (id <- ids[2])
     acc   <- acoustics[individual_id == id, ]
     arc   <- archival[individual_id == id, ]
     dlist <- pat_setup_data(.acoustics = acc, 
@@ -161,6 +161,8 @@ acs_setup_containers_rcd <- function(.dlist) {
     # * This is essential to identify the correct combinations
     # * ... of receiver_id_next_key & depths align 
     obs <- obs[detection == 1L, ]
+    # Use next depths to align with receiver_id_next_key
+    obs[, depth := lead(depth)]
     
     # Define receiver_id_next_key (used for matching)
     obs[, receiver_id_next_key := 
@@ -168,19 +170,21 @@ acs_setup_containers_rcd <- function(.dlist) {
     obs$receiver_id_next_key[obs$receiver_id_next_key == ""] <- NA_character_
     
     # Identify distinct container/depth combinations for selected individual
+    # * Retain individual_id and timestamp to facilitate debugging 
+    obs[, individual_id := id]
     obs |> 
-      select("receiver_id_next_key", "depth") |> 
-      distinct() |> 
+      select("individual_id", "timestamp", "receiver_id_next_key", "depth") |> 
+      distinct(receiver_id_next_key, depth, .keep_all = TRUE) |> 
       filter(!is.na(receiver_id_next_key)) |>
       as.data.table()
     
   }) |> 
     plyr::compact() |>
     rbindlist() |>
-    distinct() |> 
+    distinct(receiver_id_next_key, depth, .keep_all = TRUE) |> 
     arrange(receiver_id_next_key, depth) |> 
     mutate(index = rleid(receiver_id_next_key)) |> 
-    select("index", "receiver_id_next_key", "depth") |> 
+    select("index", "individual_id", "timestamp", "receiver_id_next_key", "depth") |> 
     as.data.table()
   
 }
@@ -199,7 +203,7 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
   # Loop over unique detection containers & build valid cell lists
   pbapply::pblapply(split(.rcd, .rcd$receiver_id_next_key), function(d) {
     
-    # d <- split(.rcd, .rcd$receiver_id_next_key)[[4]]
+    # d <- split(.rcd, .rcd$receiver_id_next_key)[[19]]
     message(d$index[1])
     
     # Define outfiles
@@ -217,10 +221,23 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
     container <- .containers[[d$receiver_id_next_key[1]]]
     bathy_in_container <- terra::crop(bathy, container)
     bathy_in_container <- terra::mask(bathy_in_container, container)
+    if (FALSE) {
+      # Plot container 
+      terra::plot(container)
+      terra::plot(bathy_in_container, add = TRUE)
+      terra::lines(container)
+      # Add coordinates for a selected receiver
+      moorings |> 
+        filter(receiver_id == 27) |> 
+        select(receiver_easting, receiver_northing) |>
+        points()
+      # Check range in depths in container
+      terra::global(bathy_in_container, "range", na.rm = TRUE)
+    }
     cells_in_container <- 
       bathy_in_container |>
-      terra::as.data.frame(cell = TRUE, xy = TRUE) |> 
-      mutate(digi = terra::extract(bset, cell)) |> 
+      terra::as.data.frame(xy = TRUE) |> 
+      mutate(digi = terra::extract(bset, cbind(x, y))) |> 
       as.data.table()
     
     # Loop over depth observations & identify valid cells for each depth 
