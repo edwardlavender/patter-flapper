@@ -27,6 +27,7 @@ library(dtplyr)
 library(dplyr)
 library(ggplot2)
 library(patter)
+library(testthat)
 library(tictoc)
 
 #### Load data
@@ -44,7 +45,7 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- TRUE
+run    <- FALSE
 manual <- run
 
 
@@ -219,7 +220,7 @@ if (run) {
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
-
+# 9268
 
 ###########################
 #### Outputs
@@ -239,22 +240,58 @@ if (manual) {
 ###########################
 #### Validation 
 
-#### Validate the number of particles at each time step (~2 s)
-pff_folder_h <- file.path(pff_folder, "history")
-tic()
-np <- 
-  pff_folder_h |> 
-  arrow::open_dataset() |> 
-  group_by(timestep) |> 
-  dplyr::count() |> 
-  arrange(timestep) |>
-  collect()
-which(np$n != 1000L)
-stopifnot(all(np$n == 1e3L))
-toc()
+#### Collate particle samples
+h <- patter:::.pf_history_dt(file.path(pff_folder, "history"))
+head(h)
 
-#### TO DO
-# 
+#### Validate locations
+# Validate grid cells & coordinates align
+expect_equal(
+  as.matrix(h[, .(x_now, y_now)]) |> unname(),
+  terra::xyFromCell(bathy, h$cell_now) |> unname())
+
+#### Validate proposals (distances)
+# Validate distances are < mobility (accounting for grid resolution)
+xy0 <- as.matrix(h[, .(x_now, y_now)])
+xy1 <- terra::xyFromCell(bathy, h$cell_past)
+len <- terra::distance(xy0, xy1, lonlat = FALSE, pairwise = TRUE)
+expect_true(all(len < 500 + terra::res(bathy)[1]/2, na.rm = TRUE))
+
+#### Validate detection information 
+# At the moment of detection, particle samples should be within detection ranges
+hd <- h[timestep %in% obs$timestep[obs$detection == 1L]]
+hd <- 
+  hd |> 
+  left_join(
+    obs |> 
+      select(timestep, receiver_id),
+    by = "timestep") |> 
+  tidyr::unnest(cols = receiver_id) |> 
+  left_join(dlist$data$moorings |> 
+              select(receiver_id, receiver_x, receiver_y), 
+            by = c("receiver_id")) |> 
+  mutate(dist = terra::distance(cbind(x_now, y_now), 
+                                cbind(receiver_x, receiver_y), 
+                                lonlat = FALSE, 
+                                pairwise = TRUE)) |> 
+  as.data.table()
+expect_true(all(hd$dist < 750))
+# In detection gaps, particle samples should (generally) be beyond detection ranges
+# * TO DO
+
+#### Validate depth information 
+h$bathy <- terra::extract(bathy, h$cell_now)
+h$depth <- obs$depth[match(h$timestep, obs$timestep)]
+hist(h$bathy - h$depth)
+range(h$bathy - h$depth)
+
+#### Validate algorithm parameters
+# The number of particles at each time step
+np <- 
+  h |>
+  count(timestep) |>
+  pull(n)
+expect_true(all(np == 1000L))
 
 
 ###########################
