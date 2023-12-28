@@ -52,6 +52,21 @@ run <- TRUE
 
 ###########################
 ###########################
+#### Define depth-error window
+
+# ~6.5 mins
+if (FALSE) {
+  tic()
+  ewin <- dc_ewindow(.bathy = bathy, .bset = bset)
+  writeRasterLs(x = ewin, 
+                folder = here_data("input", "depth-window"), 
+                index = FALSE)
+  toc()
+}
+
+
+###########################
+###########################
 #### Identify valid cells @ detections
 
 #### Collate data for all multiple individuals
@@ -60,7 +75,8 @@ dlist <- pat_setup_data(.acoustics = acoustics,
                         .moorings = moorings, 
                         .bathy = bathy, 
                         .lonlat = FALSE)
-dlist$spatial$bset <- bset
+dlist$spatial$bset      <- bset
+dlist$algorithm$ewindow <- ewin
 
 #### Identify detection container receiver combinations 
 # Build containers
@@ -107,7 +123,7 @@ toc()
 # Examine data
 head(containers_rcd)
 tail(containers_rcd)
-# Checks 
+# Generic checks 
 stopifnot(length(unique(containers_rcd$index)) == 
             length(unique(containers_rcd$receiver_id_next_key))
             )
@@ -115,17 +131,35 @@ stopifnot(all(containers_rcd$receiver_id_next_key %in% containers_rc$receiver_ke
 # Note that containers_rcd does not contain all receiver_keys in containers_rc
 # (containers_rcd focuses on sections of overlapping time series only)
 containers_rc$receiver_key[!(containers_rc$receiver_key %in% containers_rcd$receiver_id_next_key)]
+# Spot checks
+# * For individual 24 @ 2016-03-21 16:48:00:
+# - the NEXT detection is at receiver 18
+# - the NEXT depth observation at the time of the next detection is 51.19 m
+acoustics[individual_id == 24, ] # |> View() 
+archival[individual_id == 24, ]  # |> View() 
+stopifnot(containers_rcd[timestamp == as.POSIXct("2016-03-21 16:48:00") & 
+                           receiver_id_next_key == 18]$depth == 51.19)
+# For individual 20 @ 2016-05-10 23:34:00
+# - the NEXT detection is at receiver 27 
+# - The NEXT depth observation at the time of the next detection is 17.09 m
+acoustics[individual_id == 20 & timestamp > as.POSIXct("2016-05-10 23:00:00"), ] # |> View()
+archival[individual_id == 20 & timestamp > as.POSIXct("2016-05-10 23:00:00")]    # |> View()
+stopifnot(containers_rcd[timestamp == as.POSIXct("2016-05-10 23:34:00") & 
+                           receiver_id_next_key == 27]$depth == 17.09)
 
 #### Identify detection container cells
-# There are 
 # We write valid cells to ./data/input/containers/{container}/{depth.parquet}
 gc()
 tic()
 if (run) {
+  # .dlist = dlist
+  # .containers = containers
+  # .rcd = containers_rcd
+  # .cl = NULL
   acs_setup_container_cells(.dlist = dlist, 
                             .containers = containers, 
                             .rcd = containers_rcd, 
-                            .cl = 10L)
+                            .cl = NULL)
 }
 toc()
 
