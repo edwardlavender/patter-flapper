@@ -176,8 +176,9 @@ args <- list(.obs = obs,
                pf_opt_trial(
                  # Kick once 
                  .trial_kick = 1L, 
-                 # Initiate directed sampling when there are < 25 cells
-                 .trial_sampler = 100L, 
+                 # Initiate directed sampling when there are < `.trial_sampler_crit` cells
+                 .trial_sampler = 1L,
+                 .trial_sampler_crit = 100L, 
                  # Revert when there are < 5 grid cells, by 50 steps, 10 times
                  .trial_revert_crit = 5L, 
                  .trial_revert_steps = 50L, 
