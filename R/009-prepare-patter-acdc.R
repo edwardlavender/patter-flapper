@@ -46,6 +46,9 @@ moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
 
+#### Define pars
+run <- TRUE
+
 
 ###########################
 ###########################
@@ -64,8 +67,13 @@ dlist$spatial$bset <- bset
 containers_rc <- acs_setup_containers_rc(.dlist = dlist, .split = "individual_id")
 head(containers_rc)
 # Build directories for each container
+if (run) {
+  unlink(here_data("input", "containers"), recursive = TRUE)
+  dir.create(here_data("input", "containers"))
+}
 folders <- here_data("input", "containers", containers_rc$receiver_key)
 sapply(folders, \(folder) dir.create(folder, showWarnings = FALSE))
+stopifnot(all(containers_rc$receiver_key %in% list.files(here_data("input", "containers"))))
 
 #### Build a list of detection containers
 containers <- acs_setup_detection_containers(.dlist = dlist, .rc = containers_rc)
@@ -95,36 +103,31 @@ lapply(seq_len(length(containers)), function(i) {
 # Define combinations (~30 s)
 tic()
 containers_rcd <- acs_setup_containers_rcd(.dlist = dlist)
+toc()
+# Examine data
+head(containers_rcd)
+tail(containers_rcd)
+# Checks 
 stopifnot(length(unique(containers_rcd$index)) == 
             length(unique(containers_rcd$receiver_id_next_key))
             )
-stopifnot(all(containers_rc$receiver_key %in% containers_rcd$receiver_id_next_key) & 
-            all(containers_rcd$receiver_id_next_key %in% containers_rc$receiver_key))
-toc()
-head(containers_rcd)
-tail(containers_rcd)
+stopifnot(all(containers_rcd$receiver_id_next_key %in% containers_rc$receiver_key))
+# Note that containers_rcd does not contain all receiver_keys in containers_rc
+# (containers_rcd focuses on sections of overlapping time series only)
+containers_rc$receiver_key[!(containers_rc$receiver_key %in% containers_rcd$receiver_id_next_key)]
 
 #### Identify detection container cells
 # There are 
 # We write valid cells to ./data/input/containers/{container}/{depth.parquet}
-if (TRUE) {
-  unlink(here_data("input", "containers"), recursive = TRUE)
-  dir.create(here_data("input", "containers"))
-}
 gc()
 tic()
-acs_setup_container_cells(.dlist = dlist, 
-                          .containers = containers, 
-                          .rcd = containers_rcd, 
-                          .cl = 10L)
+if (run) {
+  acs_setup_container_cells(.dlist = dlist, 
+                            .containers = containers, 
+                            .rcd = containers_rcd, 
+                            .cl = 10L)
+}
 toc()
-
-#
-#
-# TO DO
-# FIX ERROR HERE
-#
-#
 
 # In pf_forward(), we account for ACDC detection container dynamics
 # via acs_filter_container_acdc(). 
