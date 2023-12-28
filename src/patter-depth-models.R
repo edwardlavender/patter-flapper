@@ -127,9 +127,9 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # * Likelihood is zero in cells where the depth observation 
   # * ... is not contained within the error window for that location 
   lik_dc <- rep(0L, nrow(.particles))
-  pos <- which((depth >= shallow) & (depth <= deep))
+  pos <- which((depth >= .particles$shallow) & (depth <= .particles$deep))
   lik_dc[pos] <- 0.99
-  pos <- which((depth >= shallower) & (depth <= deep))
+  pos <- which((depth >= .particles$shallower) & (depth <= .particles$deep))
   lik_dc[pos] <- 0.01
   # Update likelihoods 
   lik <- NULL
