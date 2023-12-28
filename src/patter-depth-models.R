@@ -87,15 +87,16 @@ dc_origin <- function(.ewindow, .depth) {
 #' @title Depth error envelopes 
 
 # Depth errors
-calc_depth_envelope <- function(.particles) {
-  # Requirements:
-  # * bathy column
-  # * digi column
-  bathy <- digi <- NULL
-  .particles[, ebathyterm := edeep(.bathy = bathy)]
-  .particles[, deep := edeep(.bathy = bathy, .ebathy = ebathyterm)]
-  .particles[, shallow := eshallow(.bathy = bathy, .bathy = ebathyterm)]
-  .particles[, shallower := eshallower(.eshallow = shallow, .emove = emove(digi))]
+calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
+  if (.t == 1L) {
+    check_names(.obs, c("bathy", "digi"))
+    check_dlist(.dlist = .dlist, 
+                .algorithm = "ewindow")
+  }
+  cell_now <- NULL
+  particles[, deep := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
+  particles[, shallow := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
+  particles[, shallower := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
  .particles
 }
 
