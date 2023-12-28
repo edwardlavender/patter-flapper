@@ -1,8 +1,3 @@
-#' @title Depth error function
-# https://github.com/edwardlavender/flapper_appl/blob/master/R/define_global_param.R
-
-calc_depth_error <- readRDS(dv::here_data("input", "pars.rds"))$patter$calc_depth_error
-
 #' @title Depth-error model parameters
 
 # Tag error
@@ -23,7 +18,7 @@ ebathy <- function(.bathy) {
 emovehowe <- 20
 emovedigi <- 40
 emove <- function(.digi) {
-  e <- data.frame(digi = c(0, 1), 
+  e <- data.frame(digi = c(0L, 1L), 
                   error = c(emovehowe, emovedigi))
   e$error[match(.digi, e$digi)]
 }
@@ -35,13 +30,15 @@ eshallow <- function(.bathy,
                      .ebathy = ebathy(.bathy), 
                      .etag = etag, 
                      .etide = etide) {
-  (.bathy - .ebathy) - (.etag - .etide) - 5
+  .bathy - .ebathy - .etag - .etide - 5
 }
+
 eshallower <- function(.eshallow,
                        .emove) {
-  # (.bathy - .ebathy) - (.etag - .etide) - (.emove)
+  # .bathy - .ebathy - .etag - .etide - .emove
   .eshallow - .emove
 }
+
 edeep <- function(.bathy, 
                   .ebathy = ebathy(.bathy), 
                   .etag = etag, 
@@ -51,28 +48,40 @@ edeep <- function(.bathy,
 
 #' @title Origin spatRaster for *DC models (DCPF, ACDCPF)
 
-dc_origin <- function(.bathy, .bset, .depth) {
-  
-  # Define spatially explicit error terms
+# Define the min/max possible depth of the individual in each location
+# * This is independent of the depth observation
+# * We then assess the likelihood of the depth observation in each cell
+# * ... based on whether or not it overlaps with the required window
+dc_ewindow <- function(.bathy, .bset) {
+  # Define spatially explicit error terms 
+  # * (80 s + 12 s + 12 s)
   ebathyspat <- ebathy(.bathy)
   emovespat  <- terra::classify(.bset, cbind(0, emovehowe))
   emovespat  <- terra::classify(emovespat, cbind(1, emovedigi))
-  
-  # Define possible depth range for individual in each location
+  # Define possible depth range for individual in each location 
+  # * (65 s + 25 s + 45 s)
   shallow   <- eshallow(.bathy = .bathy, 
                         .ebathy = ebathyspat)
   shallower <- eshallower(.eshallow = shallow, 
                           .emove = emovespat)
   deep      <- edeep(.bathy = .bathy, 
                      .ebathy = ebathyspat)
+  # Return list
+  list(shallow = shallow, shallower = shallower, deep = deep)
+}
 
-  # Define regions on bathy 
-  # * Regions beyond the shallow and deep limits are NA
-  # * The likelihood of the depth observation in these cells is 0
-  .bathy <- terra::mask(.bathy, .bathy < shallower, maskvalues = TRUE)
-  .bathy <- terra::mask(.bathy, .bathy > deep, maskvalues = TRUE)
-  # terra::plot(.bathy)
-  .bathy
+# Define possible locations of the individual on a SpatRaster
+# * .ewindow is the depth window list
+# * .depth is the observed depth 
+dc_origin <- function(.ewindow, .depth) {
+  
+  # ~53 s
+  # * Likelihood = 1 in cells where the depth-error window contains the observed depth
+  # * Likelihood = 0 in cells where the depth-error window doesn't contain the observed depth 
+  origin <- (.depth >= .ewindow$shallower) & (.depth <= .ewindow$deep)
+  
+  # terra::plot(origin)
+  origin
 }
 
 #' @title Depth error envelopes 
@@ -96,25 +105,29 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # Checks (one off)
   if (.t == 1L) {
     patter:::check_dlist(.dlist = .dlist, 
-                         .spatial = "bathy", 
-                         .algorithm = c("bset", "calc_depth_error"))
+                         .spatial = c("bathy", "bset"),
+                         .algorithm = c("ewindow"))
+  }
+  # Handle NA observations
+  depth <- .obs$depth[.t]
+  if (is.na(depth)) {
+    return(.particles)
   }
   # Define bathymetric depth & data source (digi versus howe)
   cell_now <- NULL
   if (!rlang::has_name(.particles, "bathy")) {
     .particles[, bathy := terra::extract(.dlist$spatial$bathy, cell_now)]
   }
-  .particles[, digi := terra::extract(.dlist$algorithm$bset, cell_now)]
+  .particles[, digi := terra::extract(.dlist$spatial$bset, cell_now)]
   # Define depth envelope
   .particles <- calc_depth_envelope(.particles = .particles)
   # Define depth likelihoods
-  # * Likelihood is zero in cells whether bathymetric depth does not fall between required limits
+  # * Likelihood is zero in cells where the depth observation 
+  # * ... is not contained within the error window for that location 
   lik_dc <- rep(0L, nrow(.particles))
-  pos <- which(.particles$bathy <= .particles$deep & 
-                 .particles$bathy  >= .particles$shallow)
+  pos <- which((depth >= .dlist$algorithm$ewindow$shallow) & (depth <= .dlist$algorithm$ewindow$deep))
   lik_dc[pos] <- 0.99
-  pos <- which(.particles$bathy < .particles$shallow & 
-                 .particles$bathy >= .particles$shallower)
+  pos <- which((depth >= .dlist$algorithm$ewindow$shallower) & (depth <= .dlist$algorithm$ewindow$deep))
   lik_dc[pos] <- 0.01
   # Update likelihoods 
   lik <- NULL
