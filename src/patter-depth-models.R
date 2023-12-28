@@ -87,7 +87,6 @@ dc_origin <- function(.ewindow, .depth) {
 # Depth errors
 calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
   if (.t == 1L) {
-    check_names(.obs, c("bathy", "digi"))
     check_dlist(.dlist = .dlist, 
                 .algorithm = "ewindow")
   }
@@ -103,9 +102,10 @@ calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
 pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # Checks (one off)
   if (.t == 1L) {
+    check_names(.obs, "depth")
     patter:::check_dlist(.dlist = .dlist, 
                          .spatial = c("bathy", "bset"),
-                         .algorithm = c("ewindow"))
+                         .algorithm = "ewindow")
   }
   # Handle NA observations
   depth <- .obs$depth[.t]
@@ -119,7 +119,10 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   }
   .particles[, digi := terra::extract(.dlist$spatial$bset, cell_now)]
   # Define depth envelope
-  .particles <- calc_depth_envelope(.particles = .particles)
+  .particles <- calc_depth_envelope(.particles = .particles, 
+                                    .obs = NULL,
+                                    .t = .t, 
+                                    .dlist = .dlist)
   # Define depth likelihoods
   # * Likelihood is zero in cells where the depth observation 
   # * ... is not contained within the error window for that location 
@@ -142,10 +145,10 @@ add_depth_error_model <- function(bathy) {
   # Define window of possible depth observations given a bathymetric depth 
   deep           <- edeep(.bathy = bathy)
   shallow        <- eshallow(.bathy = bathy)
-  shallower_howe <- eshallower(.eshallow = bathy, .emove = 0L)
-  shallower_digi <- eshallower(.eshallow = bathy, .emove = 1L)
+  shallower_howe <- eshallower(.eshallow = shallow, .emove = emovehowe)
+  shallower_digi <- eshallower(.eshallow = shallow, .emove = emovedigi)
   # Scale depth limits
-  if (TRUE) {
+  if (FALSE) {
     deep           <- deep - bathy
     shallow        <- shallow - bathy 
     shallower_howe <- shallower_howe - bathy
