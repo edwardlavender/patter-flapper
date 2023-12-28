@@ -33,12 +33,12 @@ dv::src()
 # TO DO
 
 #### Plot observational model (depths) 
-plot(0, xlim = c(-50, 25), ylim = c(0, 1), 
+plot(0, xlim = c(0, 200), ylim = c(0, 1), 
      axes = FALSE, xlab = "", ylab = "",
      type = "n")
 add_depth_error_model(150)
-axis(side = 1, seq(-50, 25, by = 25), pos = 0)
-axis(side = 2, pos = -50, las = TRUE)
+axis(side = 1, seq(0, 200, by = 50), pos = 0)
+axis(side = 2, pos = 0, las = TRUE)
 mtext(side = 1, "Depth (m)", line = 2)
 mtext(side = 2, "Weight", line = 2)
 
