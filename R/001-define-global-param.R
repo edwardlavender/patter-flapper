@@ -37,16 +37,11 @@ detection_range <- 750
 mobility <- 500
 
 # (original) Depth-error function 
-calc_depth_error_1 <- function(depth) {
+calc_depth_error <- function(depth) {
   e <- 4.77 + 2.5 + sqrt(0.5^2 + (0.013 * depth)^2)
   matrix(c(-(e + 5), e), nrow = 2)
 }
-calc_depth_error_1 <- Vectorize(calc_depth_error_1)
-
-# (revised) Depth-error function 
-calc_depth_error_2 <- function(depth) {
-  4.77 + 2.5 + sqrt(0.5^2 + (0.013 * depth)^2)
-}
+calc_depth_error <- Vectorize(calc_depth_error)
 
 # Collate pars
 pars <- 
@@ -55,12 +50,11 @@ pars <-
       step = step,
       detection_range = detection_range, 
       mobility = mobility, 
-      calc_depth_error = calc_depth_error_1), 
+      calc_depth_error = calc_depth_error), 
     patter = list(
       step = step,
       detection_range = detection_range, 
-      mobility = mobility, 
-      calc_depth_error = calc_depth_error_2)
+      mobility = mobility)
   )
 
 # Save pars
