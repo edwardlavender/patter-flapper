@@ -70,6 +70,8 @@ sapply(folders, \(folder) dir.create(folder, showWarnings = FALSE))
 #### Build a list of detection containers
 containers <- acs_setup_detection_containers(.dlist = dlist, .rc = containers_rc)
 containers[1:2]
+stopifnot(all(containers_rc$receiver_key %in% names(containers)) & 
+            all(names(containers) %in% containers_rc$receiver_key))
 # Check which container(s) contain cells on the Digimap grid:
 lapply(seq_len(length(containers)), function(i) {
   # print(i)
@@ -96,6 +98,8 @@ containers_rcd <- acs_setup_containers_rcd(.dlist = dlist)
 stopifnot(length(unique(containers_rcd$index)) == 
             length(unique(containers_rcd$receiver_id_next_key))
             )
+stopifnot(all(containers_rc$receiver_key %in% containers_rcd$receiver_id_next_key) & 
+            all(containers_rcd$receiver_id_next_key %in% containers_rc$receiver_key))
 toc()
 head(containers_rcd)
 tail(containers_rcd)
@@ -103,12 +107,24 @@ tail(containers_rcd)
 #### Identify detection container cells
 # There are 
 # We write valid cells to ./data/input/containers/{container}/{depth.parquet}
+if (TRUE) {
+  unlink(here_data("input", "containers"), recursive = TRUE)
+  dir.create(here_data("input", "containers"))
+}
+gc()
 tic()
 acs_setup_container_cells(.dlist = dlist, 
                           .containers = containers, 
                           .rcd = containers_rcd, 
                           .cl = 10L)
 toc()
+
+#
+#
+# TO DO
+# FIX ERROR HERE
+#
+#
 
 # In pf_forward(), we account for ACDC detection container dynamics
 # via acs_filter_container_acdc(). 
