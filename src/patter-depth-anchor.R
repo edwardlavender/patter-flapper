@@ -256,8 +256,7 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
           cells_in_container |> 
           copy() |>
           # Define spatially explicit shallow and deep depth limits 
-          calc_depth_envelope(.depth = .d$depth, 
-                              .calc_depth_error = calc_depth_error) |>
+          calc_depth_envelope(.depth = .d$depth, .obs = NULL, .t = 1L, .dlist = dlist) |>
           # Identify valid cells within container
           filter(depth > shallow_2 & depth < deep) |>
           select("x", "y") |>
