@@ -10,6 +10,13 @@
 # 2) Estimated storage requirements: 
 #    200 GB = 700 MB * 273 individuals
 
+#
+#
+# TO DO
+# REVISE WORKFLOW FOR UPDATED ROUTINES
+# FOLLOWING EXAMPLE-WORKFLOW.R
+#
+#
 
 ###########################
 ###########################
