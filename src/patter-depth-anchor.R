@@ -95,7 +95,7 @@ acs_setup_detection_containers <- function(.dlist, .rc, .plot = FALSE) {
       containers <- do.call(rbind, containers)
       terra::plot(containers, 
                   border = cols, 
-                  main = paste0(sort(d$receiver_id), collapse = ", "))
+                  main = acs_setup_receiver_key(d$receiver_id))
       text(d$receiver_x, d$receiver_y, d$receiver_id, 
            font = 2, cex = 0.5, col = cols)
       terra::plot(container, add = TRUE, col = scales::alpha("lightgrey", 0.5))
@@ -281,10 +281,12 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   
   if (.t > 1 && .t < max(.obs$timestep)) {
     # Define the time step of the next detection 
-    pos_detection <- (pos_detections[pos_detections > .t])[1L]
+    pos_detections <- .dlist$algorithm$pos_detections
+    pos_detection  <- (pos_detections[pos_detections > .t])[1L]
     timegap <- pos_detection - .t
+    depth   <- .obs$depth[pos_detection]
     
-    if (timegap > 25L) {
+    if (timegap > 25L | is.na(depth)) {
       # Implement usual AC* filter
       .particles <- acs_filter_container(.particles = .particles, 
                                          .obs = .obs, 
@@ -295,7 +297,7 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
       # Read valid locations at the next time step
       locs <- arrow::read_parquet(file.path("data", "input", "containers", 
                                             .obs$container[pos_detection], 
-                                            paste0(.obs$depth[pos_detection], ".parquet")))
+                                            paste0(depth, ".parquet")))
                                   
       # Calculate distances between particle samples & valid locations at the next detection
       dist <- terra::distance(.particles |>
