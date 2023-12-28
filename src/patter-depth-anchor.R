@@ -248,7 +248,7 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
         
         # Write to file 
         stopifnot(nrow(dt) > 0L) 
-        arrow::write_parquet(dt, outfile)
+        arrow::write_parquet(dt, .d$outfile)
         NULL
         
       })
