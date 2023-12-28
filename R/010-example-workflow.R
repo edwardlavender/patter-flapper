@@ -117,8 +117,11 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 #### Define origin (~40 s)
 # This is included in dlist below, if necessary
 tic()
+obs$depth[1]
+stopifnot(!is.na(obs$depth[1]))
 origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
-terra::plot(origin)
+# terra::plot(origin)
+# terra::global(terra::mask(bathy, origin), "range", na.rm = TRUE)
 toc()
 
 #### Define algorithm 
@@ -149,9 +152,9 @@ if (!dir.exists(pff_folder)) {
 
 #### Define data list
 if (alg %in% c("dcpf", "acdcpf")) {
-  dlist$spatial$.origin <- origin
+  dlist$spatial$origin <- origin
 } else {
-  dlist$spatial$.origin <- NULL
+  dlist$spatial$origin <- NULL
 }
 
 #### Define args
@@ -216,6 +219,7 @@ if (run) {
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
+
 
 ###########################
 #### Outputs
