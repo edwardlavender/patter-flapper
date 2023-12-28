@@ -94,8 +94,8 @@ calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
   }
   cell_now <- NULL
   .particles[, deep := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
-  .particles[, shallow := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
-  .particles[, shallower := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
+  .particles[, shallow := terra::extract(.dlist$algorithm$ewindow$shallow, cell_now)]
+  .particles[, shallower := terra::extract(.dlist$algorithm$ewindow$shallower, cell_now)]
  .particles
 }
 
