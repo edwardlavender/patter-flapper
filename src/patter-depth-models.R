@@ -43,7 +43,7 @@ edeep <- function(.bathy,
                   .ebathy = ebathy(.bathy), 
                   .etag = etag, 
                   .etide = etide) {
-  (.bathy + .ebathy) + (.etag + .etide)
+  .bathy + .ebathy + .etag + .etide
 }
 
 #' @title Origin spatRaster for *DC models (DCPF, ACDCPF)
