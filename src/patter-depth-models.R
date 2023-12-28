@@ -74,12 +74,10 @@ dc_ewindow <- function(.bathy, .bset) {
 # * .ewindow is the depth window list
 # * .depth is the observed depth 
 dc_origin <- function(.ewindow, .depth) {
-  
   # ~53 s
   # * Likelihood = 1 in cells where the depth-error window contains the observed depth
   # * Likelihood = 0 in cells where the depth-error window doesn't contain the observed depth 
   origin <- (.depth >= .ewindow$shallower) & (.depth <= .ewindow$deep)
-  
   # terra::plot(origin)
   origin
 }
