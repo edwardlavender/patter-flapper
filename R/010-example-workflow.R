@@ -44,7 +44,7 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- FALSE
+run    <- TRUE
 manual <- run
 
 
@@ -114,10 +114,11 @@ arrows(arc$timestamp[s], arc$depth[s] * -1,
        col = factor(arc$state), length = 0, lwd = 0.5)
 points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
-#### Define origin (~33 s)
+#### Define origin (~40 s)
 # This is included in dlist below, if necessary
 tic()
 origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
+terra::plot(origin)
 toc()
 
 #### Define algorithm 
