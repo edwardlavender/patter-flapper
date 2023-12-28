@@ -3,7 +3,8 @@
 #### prepare-patter-acdc.R
 
 #### Aims
-# 1) Prepare ACDC containers
+# 1) Prepare ACDCPF algorithm components
+#    * ACDC containers
 
 #### Prerequisites
 # 1) Obtain raw data
@@ -45,24 +46,10 @@ bset      <- terra::rast(here_data("spatial", "bset.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
+ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Define pars
 run <- TRUE
-
-
-###########################
-###########################
-#### Define depth-error window
-
-# ~6.5 mins
-if (FALSE) {
-  tic()
-  ewin <- dc_ewindow(.bathy = bathy, .bset = bset)
-  writeRasterLs(x = ewin, 
-                folder = here_data("input", "depth-window"), 
-                index = FALSE)
-  toc()
-}
 
 
 ###########################

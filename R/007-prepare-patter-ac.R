@@ -1,9 +1,11 @@
 ###########################
 ###########################
-#### prepare-patter.R
+#### prepare-patter-ac.R
 
 #### Aims
-# 1) Prepare flapper algorithm inputs
+# 1) Prepare *ACPF algorithm components
+#    * Detection overlaps
+#    * Detection kernels
 
 #### Prerequisites
 # 1) Obtain raw data
@@ -52,7 +54,7 @@ toc()
 # * total: 115 mins
 tic()
 kernels <- acs_setup_detection_kernels(moorings, 
-                                       .calc_detection_pr = acs_setup_detection_pr, 
+                                       .calc_detection_pr = acs_setup_detection_kernel, 
                                        .bathy = bathy)
 toc()
 
