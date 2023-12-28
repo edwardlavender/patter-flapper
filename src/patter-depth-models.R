@@ -3,38 +3,95 @@
 
 calc_depth_error <- readRDS(dv::here_data("input", "pars.rds"))$patter$calc_depth_error
 
+#' @title Depth-error model parameters
+
+# Tag error
+etag   <- 4.77
+
+# Tidal range 
+etide  <- 2.50
+
+# Bathymetric error (depth-dependent)
+# * .bathy may be a SpatRaster or a numeric vector
+ebathy <- function(.bathy) {
+  sqrt(0.5002 + (0.013 * .bathy)^2)
+}
+
+# Movement error (into shallower waters)
+# * For some receivers in the Howe data, the individual is ~10-20 m shallower than previously assumed.
+# * For the Digimap data, the individual can be up to 40 m shallower. 
+emovehowe <- 20
+emovedigi <- 40
+emove <- function(.digi) {
+  e <- data.frame(digi = c(0, 1), 
+                  error = c(emovehowe, emovedigi))
+  e$error[match(.digi, e$digi)]
+}
+
+# Shallow and deep limits for observed depth in given location
+# * .bathy may be a SpatRaster or a vector of values
+# * other terms are single numbers
+eshallow <- function(.bathy, 
+                     .ebathy = ebathy(.bathy), 
+                     .etag = etag, 
+                     .etide = etide) {
+  (.bathy - .ebathy) - (.etag - .etide) - 5
+}
+eshallower <- function(.eshallow,
+                       .emove) {
+  # (.bathy - .ebathy) - (.etag - .etide) - (.emove)
+  .eshallow - .emove
+}
+edeep <- function(.bathy, 
+                  .ebathy = ebathy(.bathy), 
+                  .etag = etag, 
+                  .etide = etide) {
+  (.bathy + .ebathy) + (.etag + .etide)
+}
+
 #' @title Origin spatRaster for *DC models (DCPF, ACDCPF)
 
-dc_origin <- function(.bathy, .depth, .calc_depth_error) {
-  error   <- .calc_depth_error(.depth)
-  shallow <- .depth - (error + 12.5) 
-  deep    <- .depth + error
-  terra::clamp(.bathy, shallow, deep, values = FALSE)
+dc_origin <- function(.bathy, .bset, .depth) {
+  
+  # Define spatially explicit error terms
+  ebathyspat <- ebathy(.bathy)
+  emovespat  <- terra::classify(.bset, cbind(0, emovehowe))
+  emovespat  <- terra::classify(emovespat, cbind(1, emovedigi))
+  
+  # Define possible depth range for individual in each location
+  shallow   <- eshallow(.bathy = .bathy, 
+                        .ebathy = ebathyspat)
+  shallower <- eshallower(.eshallow = shallow, 
+                          .emove = emovespat)
+  deep      <- edeep(.bathy = .bathy, 
+                     .ebathy = ebathyspat)
+
+  # Define regions on bathy 
+  # * Regions beyond the shallow and deep limits are NA
+  # * The likelihood of the depth observation in these cells is 0
+  .bathy <- terra::mask(.bathy, .bathy < shallower, maskvalues = TRUE)
+  .bathy <- terra::mask(.bathy, .bathy > deep, maskvalues = TRUE)
+  # terra::plot(.bathy)
+  .bathy
+}
+
+#' @title Depth error envelopes 
+
+# Depth errors
+calc_depth_envelope <- function(.particles) {
+  # Requirements:
+  # * bathy column
+  # * digi column
+  bathy <- digi <- NULL
+  .particles[, ebathyterm := edeep(.bathy = bathy)]
+  .particles[, deep := edeep(.bathy = bathy, .ebathy = ebathyterm)]
+  .particles[, shallow := eshallow(.bathy = bathy, .bathy = ebathyterm)]
+  .particles[, shallower := eshallower(.eshallow = shallow, .emove = emove(digi))]
+ .particles
 }
 
 #' @title Depth likelihood term
 
-# Depth errors
-calc_depth_envelope <- function(.particles, 
-                                .depth, 
-                                .calc_depth_error) {
-  # Define adjustment for depth-error model
-  # > For some receivers in the Howe data, the individual is ~10-20 m shallower than previously assumed.
-  # > For the Digimap data, the individual can be up to 40 m shallower. 
-  .particles[, boost := 20L]
-  bool_digi <- .particles$digi == 1L
-  if (any(.particles$digi == 1L, na.rm = TRUE)) {
-    .particles[which(bool_digi), boost := 40L]
-  }
-  # Define shallow and deep depth limits for each particle based on location
-  .particles[, error := .calc_depth_error(.depth)]
-  .particles[, deep := .depth + error]
-  .particles[, shallow_1 := .depth - (error + 5)]
-  .particles[, shallow_2 := .depth - (error + boost)]
-  .particles
-}
-
-# Depth likelihood term
 pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # Checks (one off)
   if (.t == 1L) {
@@ -49,17 +106,15 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   }
   .particles[, digi := terra::extract(.dlist$algorithm$bset, cell_now)]
   # Define depth envelope
-  .particles <- calc_depth_envelope(.particles = .particles, 
-                                    .depth = .obs[.t], 
-                                    .calc_depth_error = .dlist$algorithm$calc_depth_error)
-  
+  .particles <- calc_depth_envelope(.particles = .particles)
   # Define depth likelihoods
+  # * Likelihood is zero in cells whether bathymetric depth does not fall between required limits
   lik_dc <- rep(0L, nrow(.particles))
   pos <- which(.particles$bathy <= .particles$deep & 
-                 .particles$bathy  >= .particles$shallow_1)
+                 .particles$bathy  >= .particles$shallow)
   lik_dc[pos] <- 0.99
-  pos <- which(.particles$bathy < .particles$shallow_1 & 
-                 .particles$bathy >= .particles$shallow_2)
+  pos <- which(.particles$bathy < .particles$shallow & 
+                 .particles$bathy >= .particles$shallower)
   lik_dc[pos] <- 0.01
   # Update likelihoods 
   lik <- NULL
@@ -69,28 +124,27 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
 
 #' @title Plot the depth-error model
 
-add_depth_error_model <- function(depth) {
-  # Define depth limits
-  error <- calc_depth_error(depth)
-  deep <- depth + error
-  boost_howe <- 20
-  boost_digi <- 40
-  shallow_1 <- depth - (error + 5)
-  shallow_2_howe <- depth - (error + boost_howe)
-  shallow_2_digi <- depth - (error + boost_digi)
+add_depth_error_model <- function(bathy) {
+  stopifnot(inherits(bathy, "numeric"))
+  stopifnot(length(bathy) == 1L)
+  # Define window of possible depth observations given a bathymetric depth 
+  deep           <- edeep(.bathy = bathy)
+  shallow        <- eshallow(.bathy = bathy)
+  shallower_howe <- eshallower(.eshallow = bathy, .emove = 0L)
+  shallower_digi <- eshallower(.eshallow = bathy, .emove = 1L)
   # Scale depth limits
   if (TRUE) {
-    deep <- deep - depth
-    shallow_1 <- shallow_1 - depth 
-    shallow_2_howe <- shallow_2_howe - depth
-    shallow_2_digi <- shallow_2_digi - depth
+    deep           <- deep - bathy
+    shallow        <- shallow - bathy 
+    shallower_howe <- shallower_howe - bathy
+    shallower_digi <- shallower_digi - bathy
   }
   # Add lines to a plot
-  lines(c(shallow_2_digi, shallow_2_digi), c(0, 0.01), col = "red")
-  lines(c(shallow_2_howe, shallow_2_howe), c(0, 0.01))
-  lines(c(shallow_2_digi, shallow_2_howe), c(0.01, 0.01), col = "red")
-  lines(c(shallow_2_howe, shallow_1), c(0.01, 0.01))
-  lines(c(shallow_1, shallow_1), c(0.01, 1))
-  lines(c(shallow_1, deep), c(1, 1))
+  lines(c(shallower_digi, shallower_digi), c(0, 0.01), col = "red")
+  lines(c(shallower_howe, shallower_howe), c(0, 0.01))
+  lines(c(shallower_digi, shallower_howe), c(0.01, 0.01), col = "red")
+  lines(c(shallower_howe, shallow), c(0.01, 0.01))
+  lines(c(shallow, shallow), c(0.01, 1))
+  lines(c(shallow, deep), c(1, 1))
   lines(c(deep, deep), c(1, 0))
 }
