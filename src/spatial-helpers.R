@@ -1,6 +1,6 @@
 #' @title Spatial helpers
 
-readRasterLs <- function(folder, ..., index = FALSE) {
+readRasterLs <- function(folder, ..., index = TRUE) {
   files <- list.files(folder, full.names = TRUE)
   ids   <- tools::file_path_sans_ext(basename(files))
   rasters <- lapply(files, function(file) {
@@ -16,7 +16,7 @@ readRasterLs <- function(folder, ..., index = FALSE) {
   rasters
 }
 
-writeRasterLs <- function(x, folder, ..., index) {
+writeRasterLs <- function(x, folder, ..., index = TRUE) {
   ind <- seq_len(length(x))
   if (index) {
     outfiles <- file.path(folder, paste0(ind, ".tif"))
