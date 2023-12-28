@@ -78,6 +78,8 @@ dc_origin <- function(.ewindow, .depth) {
   # * Likelihood = 1 in cells where the depth-error window contains the observed depth
   # * Likelihood = 0 in cells where the depth-error window doesn't contain the observed depth 
   origin <- (.depth >= .ewindow$shallower) & (.depth <= .ewindow$deep)
+  # NAs/non NAs distinguish valid locations
+  origin <- terra::classify(origin, cbind(FALSE, NA))
   # terra::plot(origin)
   origin
 }
