@@ -150,6 +150,9 @@ if (run) {
 }
 toc()
 
+# Check file size (~500 MB)
+pf_files_size(here_data("input", "containers"), recursive = TRUE)
+
 # In pf_forward(), we account for ACDC detection container dynamics
 # via acs_filter_container_acdc(). 
 
