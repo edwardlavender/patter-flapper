@@ -153,6 +153,29 @@ toc()
 # Check file size (~500 MB)
 pf_files_size(here_data("input", "containers"), recursive = TRUE)
 
+# Check the numbers of valid cells (~6 s)
+files <- list.files(here_data("input", "containers"), 
+                    full.names = TRUE, recursive = TRUE)
+n <- cl_lapply(files, .fun = \(f) nrow(arrow::read_parquet(f)), 
+               .cl = 10L, .use_chunks = TRUE) |> unlist()
+range(n)
+
+# Test terra::distance() at this scale as used by acs_filter_container_acdc() 
+# * 71009000 = 71009 x 1000 distance calculations is possible (~0.785 s)
+# * Directed sampling may pass larger numbers of cells to acs_filter_container_acdc()
+# * This is likely to cause memory issues
+# * We will only implement acs_filter_container_acdc() 
+# * ... if less than a threshold number of calculations is required.
+nc <- 80000 # max(n) 
+np <- 1000
+nc * np      
+xyc <- cbind(runif(nc), runif(nc))
+xyp <- cbind(runif(np), runif(np))
+tic()
+dist <- terra::distance(xyp, xyc, lonlat = FALSE)
+toc()
+str(dist)
+
 # In pf_forward(), we account for ACDC detection container dynamics
 # via acs_filter_container_acdc(). 
 
