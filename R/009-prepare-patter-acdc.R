@@ -134,7 +134,7 @@ archival[individual_id == 20 & timestamp > as.POSIXct("2016-05-10 23:00:00")]   
 stopifnot(containers_rcd[timestamp == as.POSIXct("2016-05-10 23:34:00") & 
                            receiver_id_next_key == 27]$depth == 17.09)
 
-#### Identify detection container cells
+#### Identify detection container cells (~8 mins on 12 forked cores)
 # We write valid cells to ./data/input/containers/{container}/{depth.parquet}
 gc()
 tic()
