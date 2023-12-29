@@ -307,7 +307,12 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
     # Get the ID of the next receiver(s) and the corresponding depth observation
     container <- .obs$receiver_id_next_key[.t]
     depth     <- .obs$depth[pos_detection]
-    nc        <- .dlist$algorithm$n * nrow(.particles)
+    # Calculate the number of location combinations
+    # * .dlist$algorithm$n  and nrow(.particles) are integers
+    # * so this may return NA due to integer overflow
+    # * (hence the conversion to Inf to activate the if() statement below)
+    nc <- .dlist$algorithm$n * nrow(.particles)
+    if (is.na(nc)) nc <- Inf
     
     if (timegap > 25L || is.na(depth) || nc > 80e6L) {
       # Implement usual AC* filter
