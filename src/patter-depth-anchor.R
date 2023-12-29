@@ -283,7 +283,7 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   # Check user inputs
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
-                .algorithm = c("pos_detections", "n"))
+                .algorithm = c("pos_detections"))
     stopifnot(length(unique(.obs$mobility)) == 1L)
   }
   
@@ -300,34 +300,58 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   # * (... when we approach receiver(s))
   
   if (.t > 1 && .t < max(.obs$timestep)) {
-    # Define the time step of the next detection 
+    
+    #### Define whether or not to implement the revised ACDC filter  
+    
+    # Start with do_acdc = TRUE
+    do_acdc <- TRUE
+    
+    # Only implement the filter if the time gap until the next detection is short
     pos_detections <- .dlist$algorithm$pos_detections
     pos_detection  <- (pos_detections[pos_detections > .t])[1L]
     timegap <- pos_detection - .t
-    # Get the ID of the next receiver(s) and the corresponding depth observation
-    container <- .obs$receiver_id_next_key[.t]
-    depth     <- .obs$depth[pos_detection]
-    # Calculate the number of location combinations
-    # * .dlist$algorithm$n  and nrow(.particles) are integers
-    # * so this may return NA due to integer overflow
-    # * (hence the conversion to Inf to activate the if() statement below)
-    nc <- .dlist$algorithm$n * nrow(.particles)
-    if (is.na(nc)) nc <- Inf
+    if (timegap > 25L) {
+      do_acdc <- FALSE
+    }
     
-    if (timegap > 25L || is.na(depth) || nc > 80e6L) {
-      # Implement usual AC* filter
-      .particles <- acs_filter_container(.particles = .particles, 
-                                         .obs = .obs, 
-                                         .t = .t, 
-                                         .dlist = .dlist)
-      
-    } else {
+    # Only implement the filter for valid depth observations
+    if (do_acdc) {
+      # Get the ID of the next receiver(s) and the corresponding depth observation
+      container <- .obs$receiver_id_next_key[.t]
+      depth     <- .obs$depth[pos_detection]
+      if (is.na(depth)) {
+        do_acdc <- FALSE
+      }
+    }
+    
+    # Only implement the filter if possible within vector memory
+    if (do_acdc) {
       # Read valid locations at the next time step
       locs <- arrow::read_parquet(
         file.path("data", "input", "containers", 
                   container, 
                   paste0(depth, ".parquet")))
-                                  
+      # Calculate the number of calculations required
+      nc <- nrow(.particles) * nrow(locs)
+      # Handle integer overflow
+      if (is.na(nc)) {
+        nc <- Inf
+      }
+      # Only implement the filter if we can implement the calculations in memory (relatively quickly)
+      if (nc > 80e6L) {
+        do_acdc <- FALSE
+      }
+    }
+
+    #### Implement the usual AC* filter
+    if (!do_acdc) {
+      .particles <- acs_filter_container(.particles = .particles, 
+                                         .obs = .obs, 
+                                         .t = .t, 
+                                         .dlist = .dlist)
+      
+    #### Implement the revised ACDC filter that accounts for depth observations
+    } else {
       # Calculate distances between particle samples & valid locations at the next detection
       # * Rows are particles
       # * Columns are future locations
@@ -337,13 +361,13 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
                               locs |>
                                 as.matrix(),
                               lonlat = .dlist$par$lonlat)                    
-
       # Eliminates particles using distance threshold
       # * We eliminate particles that are not within a 
       # * ... reachable distance of at least one valid location
       .particles <- .particles[Rfast::rowsums(dist <= (.obs$mobility[.t] * timegap)) > 0L, ]
-      
     }
   }
+  
+  #### Return outputs
   .particles
 }
