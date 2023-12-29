@@ -283,7 +283,7 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   # Check user inputs
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
-                .algorithm = "pos_detections")
+                .algorithm = c("pos_detections", "n"))
     check_names(.obs, "container")
     stopifnot(length(unique(.obs$mobility)) == 1L)
   }
@@ -291,7 +291,9 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   # * Identify the time step of the next detection (if applicable)
   # * Identify the number of time steps before the next detection
   # * If there are more than N time steps before the next detection, 
-  # * ... we use the usual acs_filter_container() function only (for speed)
+  # * ... or there are very large numbers of location combinations
+  # * ... we use the usual acs_filter_container() function only 
+  # * ... (for speed & to avoid memory issues)
   # * If there are less than N time steps before the next detection, 
   # * ... we use this account for depth observations
   # * This reduces the burden of this filter, while accounting for the placement
@@ -305,8 +307,9 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
     timegap <- pos_detection - .t
     container <- .obs$container[pos_detection]
     depth     <- .obs$depth[pos_detection]
+    nc        <- .dlist$algorithm$n * nrow(.particles)
     
-    if (timegap > 25L | is.na(depth)) {
+    if (timegap > 25L || is.na(depth) || nc > 80e6L) {
       # Implement usual AC* filter
       .particles <- acs_filter_container(.particles = .particles, 
                                          .obs = .obs, 
