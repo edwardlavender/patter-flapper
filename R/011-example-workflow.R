@@ -45,7 +45,7 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- FALSE
+run    <- TRUE
 manual <- run
 
 
@@ -53,7 +53,7 @@ manual <- run
 ###########################
 #### Set up analysis
 
-#### Collate observations
+#### Process movement datasets
 # Limits
 xlim <- as.POSIXct(c("2016-07-01 00:00:00", "2016-08-01 23:58:00"), 
                    tz = "UTC")
@@ -77,8 +77,8 @@ arc <-
   as.data.table()
 arc$va <- NULL
 arc$state[nrow(arc)] <- 1L
-# Build data list
-# * We add a .$spatial$origin element optionally below (for DCPF/ACDCPF algorithms)
+
+#### Build data list
 dlist <- pat_setup_data(.acoustics = acc, 
                         .moorings = moorings, 
                         .archival = arc, 
@@ -90,16 +90,27 @@ dlist$algorithm$detection_kernels  <- kernels
 # Include DC likelihood terms (required for DCPF, ACDCPF)
 dlist$spatial$bset      <- bset
 dlist$algorithm$ewindow <- ewin
-# Define observations timeline
+# Include additional elements below
+# * .$spatial$origin element 
+# * .$algorithm$pos_detections element (for acs_filter_container_acdc())
+
+#### Define observations timeline
 obs <- pf_setup_obs(.dlist = dlist,
                     .trim = FALSE,
                     .step = "2 mins", 
                     .mobility = 500, 
                     .receiver_range = 750)
-# Define behavioural states
+# Include behavioural states
 obs[, state := arc$state[match(timestamp, arc$timestamp)]]
-# Define obs columns & obs-related dlist elements (for acs_setup_container_acdc())
+# Include elements for acs_setup_container_acdc()
+# * Define receiver_id_next_key (container) as in acs_setup_containers_rcd()
+obs[, receiver_id_next_key := 
+      lapply(obs$receiver_id_next, acs_setup_receiver_key) |> unlist()]
+obs[, container := receiver_id_next_key]
+# * Define pos_detections
 dlist$algorithm$pos_detections <- which(!sapply(obs$receiver_id, is.null))
+
+#### Examine observations
 # Check obs
 obs
 range(obs$timestamp)
@@ -197,10 +208,11 @@ if (alg == "acpf") {
 } else if (alg == "acdcpf") {
   args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
                            pf_lik_ac = pf_lik_ac, 
-                           acs_filter_container = acs_filter_container)
+                           acs_filter_container = acs_filter_container_acdc)
 }
 
 #### (optional) TO DO
+# Include behavioural state in movement model 
 # Downgrade movement jumps using shortest distances model
 
 
@@ -221,7 +233,9 @@ if (run) {
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
-# 9268
+# * 4572 - resolved
+# * 9267
+
 
 ###########################
 #### Outputs
