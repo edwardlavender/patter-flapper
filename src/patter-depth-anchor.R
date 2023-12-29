@@ -303,7 +303,8 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
     pos_detections <- .dlist$algorithm$pos_detections
     pos_detection  <- (pos_detections[pos_detections > .t])[1L]
     timegap <- pos_detection - .t
-    depth   <- .obs$depth[pos_detection]
+    container <- .obs$container[pos_detection]
+    depth     <- .obs$depth[pos_detection]
     
     if (timegap > 25L | is.na(depth)) {
       # Implement usual AC* filter
@@ -314,11 +315,14 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
       
     } else {
       # Read valid locations at the next time step
-      locs <- arrow::read_parquet(file.path("data", "input", "containers", 
-                                            .obs$container[pos_detection], 
-                                            paste0(depth, ".parquet")))
+      locs <- arrow::read_parquet(
+        file.path("data", "input", "containers", 
+                  container, 
+                  paste0(depth, ".parquet")))
                                   
       # Calculate distances between particle samples & valid locations at the next detection
+      # * Rows are particles
+      # * Columns are future locations
       dist <- terra::distance(.particles |>
                                 select("x_now", "y_now") |>
                                 as.matrix(),
