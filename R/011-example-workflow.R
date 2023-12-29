@@ -45,7 +45,7 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- TRUE
+run    <- FALSE
 manual <- run
 
 
@@ -90,6 +90,7 @@ dlist$algorithm$detection_kernels  <- kernels
 # Include DC likelihood terms (required for DCPF, ACDCPF)
 dlist$spatial$bset      <- bset
 dlist$algorithm$ewindow <- ewin
+dlist$algorithm$n       <- 1000L
 # Include additional elements below
 # * .$spatial$origin element 
 # * .$algorithm$pos_detections element (for acs_filter_container_acdc())
@@ -128,13 +129,16 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 
 #### Define origin (~40 s)
 # This is included in dlist below, if necessary
-tic()
-obs$depth[1]
-stopifnot(!is.na(obs$depth[1]))
-origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
-# terra::plot(origin)
-# terra::global(terra::mask(bathy, origin), "range", na.rm = TRUE)
-toc()
+origin <- NULL
+if (run) {
+  tic()
+  obs$depth[1]
+  stopifnot(!is.na(obs$depth[1]))
+  origin <- dc_origin(.ewindow = dlist$algorithm$ewindow, .depth = obs$depth[1])
+  # terra::plot(origin)
+  # terra::global(terra::mask(bathy, origin), "range", na.rm = TRUE)
+  toc()
+}
 
 #### Define algorithm 
 algs <- c("acpf", "acdcpf", "dcpf")
@@ -182,7 +186,7 @@ record <-
 # * Define behaviourally dependent movement model (via .rpropose and .dpropose)
 args <- list(.obs = obs,
              .dlist = dlist,
-             .n = 1e3, 
+             .n = dlist$algorithm$n, 
              .trial = 
                pf_opt_trial(
                  # Kick once 
