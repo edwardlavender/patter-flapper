@@ -192,7 +192,8 @@ acs_setup_containers_rcd <- function(.dlist) {
 #' @title AC* set up: detection container cells
 #' @description For each unique detection container (receiver(s)--depth combination), this function identifies the coordinates of valid cells. 
 
-acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
+acs_setup_container_cells <- function(.dlist, .containers, .rcd, 
+                                      .cl = NULL) {
   
   # Check user inputs 
   check_dlist(.dlist = .dlist, 
@@ -252,13 +253,15 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd, .cl = NULL) {
         # Define valid cells
         # .d <- d[1, ]
         print(.d)
-        dt <-
+        dt <- 
           cells_in_container |> 
           copy() |>
           # Define spatially explicit shallow and deep depth limits 
-          calc_depth_envelope(.depth = .d$depth, .obs = NULL, .t = 1L, .dlist = dlist) |>
+          mutate(cell_now = terra::cellFromXY(.dlist$spatial$bathy, cbind(x, y))) |>
+          as.data.table() |>
+          calc_depth_envelope(.obs = NULL, .t = 1L, .dlist = .dlist) |>
           # Identify valid cells within container
-          filter(depth > shallow_2 & depth < deep) |>
+          filter(depth >= shallower & depth <= deep) |>
           select("x", "y") |>
           as.data.table()
         
