@@ -228,6 +228,7 @@ if (alg == "acpf") {
 # * DCPF: 
 # * ACDCPF: 
 
+#### Initial run 
 if (run) {
   tic()
   set.seed(seed)
@@ -236,9 +237,22 @@ if (run) {
   beepr::beep(10L)
 }
 
+#### (optional) Rerun
+rerun <- FALSE
+if (rerun) {
+  rerun_args <- args
+  rerun_args$.rerun      <- out_pff
+  rerun_args$.rerun_from <- plyr::round_any(length(pf_files(file.path(pff_folder, "history"))), 100, floor)
+  tic()
+  set.seed(seed)
+  out_pff_2 <- do.call(patter::pf_forward, args)
+  toc()
+  beepr::beep(10L)
+}
+
 # To debug convergence issues, see ./R/supporting/convergence/.
 # * 4572 - resolved
-# * 9267
+# * 9267/9270
 
 
 ###########################
