@@ -45,7 +45,7 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- FALSE
+run    <- TRUE
 manual <- run
 
 
@@ -107,7 +107,6 @@ obs[, state := arc$state[match(timestamp, arc$timestamp)]]
 # * Define receiver_id_next_key (container) as in acs_setup_containers_rcd()
 obs[, receiver_id_next_key := 
       lapply(obs$receiver_id_next, acs_setup_receiver_key) |> unlist()]
-obs[, container := receiver_id_next_key]
 # * Define pos_detections
 dlist$algorithm$pos_detections <- which(!sapply(obs$receiver_id, is.null))
 
@@ -233,7 +232,7 @@ if (run) {
   set.seed(seed)
   out_pff <- do.call(patter::pf_forward, args)
   toc()
-  # beepr::beep(10L)
+  beepr::beep(10L)
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
