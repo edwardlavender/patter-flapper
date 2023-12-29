@@ -284,7 +284,6 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
                 .algorithm = c("pos_detections", "n"))
-    check_names(.obs, "container")
     stopifnot(length(unique(.obs$mobility)) == 1L)
   }
   
@@ -305,7 +304,8 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
     pos_detections <- .dlist$algorithm$pos_detections
     pos_detection  <- (pos_detections[pos_detections > .t])[1L]
     timegap <- pos_detection - .t
-    container <- .obs$container[pos_detection]
+    # Get the ID of the next receiver(s) and the corresponding depth observation
+    container <- .obs$receiver_id_next_key[.t]
     depth     <- .obs$depth[pos_detection]
     nc        <- .dlist$algorithm$n * nrow(.particles)
     
