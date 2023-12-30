@@ -11,6 +11,9 @@ geocentroid <- function(.xy) {
 }
 
 #' @title Lookahead model
+#' @description
+#' This is a lookahead model. 
+#' @details .dlist$pars should permit stationary movements, if possible. For example, if the distance to the anchor point is 10000 m and the mobility is 100,000 m, all distances from zero to 100,000 should have positive weights.
 
 pf_lik_ac_lookahead <- function(.particles, .obs, .t, .dlist) {
 
@@ -18,7 +21,7 @@ pf_lik_ac_lookahead <- function(.particles, .obs, .t, .dlist) {
   check_dlist(.dlist = .dlist,
               .algorithm = "dlen",
               .par = c("lonlat", "shape", "scale", "mobility", "gamma"))
-
+  
   #### Define time gap before detection
   # Define time gap
   pos_detections <- .dlist$algorithm$pos_detections
@@ -67,5 +70,5 @@ pf_lik_ac_lookahead <- function(.particles, .obs, .t, .dlist) {
   # * It also upweights particles that are nearer the next receiver, facilitating convergence
   lik <- NULL
   .particles[, lik := normalise(lik * dens)]
-  .particles
+  .particles[lik > 0, ]
 }
