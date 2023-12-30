@@ -46,8 +46,10 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run    <- TRUE
-manual <- run
+run        <- FALSE
+run_origin <- TRUE
+rerun      <- TRUE
+manual     <- run
 
 
 ###########################
@@ -91,7 +93,15 @@ dlist$algorithm$detection_kernels  <- kernels
 # Include DC likelihood terms (required for DCPF, ACDCPF)
 dlist$spatial$bset      <- bset
 dlist$algorithm$ewindow <- ewin
-dlist$algorithm$n       <- 1000L
+dlist$algorithm$n       <- 1e3L
+# Include parameters
+# * TO DO
+# * Update this code to guarantee consistency with movement & detection models
+dlist$pars$shape     <- 15
+dlist$pars$scale     <- 15
+dlist$pars$mobility  <- 500
+dlist$pars$gamma     <- 750
+dlist$algorithm$dlen <- dtruncgamma
 # Include additional elements below
 # * .$spatial$origin element 
 # * .$algorithm$pos_detections element (for acs_filter_container_acdc())
@@ -130,7 +140,7 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 #### Define origin (~40 s)
 # This is included in dlist below, if necessary
 origin <- NULL
-if (run) {
+if (run_origin) {
   tic()
   obs$depth[1]
   stopifnot(!is.na(obs$depth[1]))
@@ -212,6 +222,7 @@ if (alg == "acpf") {
 } else if (alg == "acdcpf") {
   args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
                            pf_lik_ac = pf_lik_ac, 
+                           pf_lik_ac_lookahead = pf_lik_ac_lookahead,
                            acs_filter_container = acs_filter_container_acdc)
 }
 
@@ -235,24 +246,29 @@ if (run) {
   out_pff <- do.call(patter::pf_forward, args)
   toc()
   beepr::beep(10L)
+  saveRDS(out_pff, file.path(pff_folder, "out_pff.rds"))
+} else {
+  out_pff <- readRDS(file.path(pff_folder, "out_pff.rds"))
 }
 
 #### (optional) Rerun
-rerun <- FALSE
 if (rerun) {
   rerun_args <- args
   rerun_args$.rerun      <- out_pff
-  rerun_args$.rerun_from <- plyr::round_any(length(pf_files(file.path(pff_folder, "history"))), 100, floor)
+  rerun_args$.rerun_from <- 12000
+  # nt <- length(pf_files(file.path(pff_folder, "history")))
+  # rerun_args$.rerun_from <- plyr::round_any(nt - 500, 500, floor)
   tic()
   set.seed(seed)
-  out_pff_2 <- do.call(patter::pf_forward, args)
+  out_pff_2 <- do.call(patter::pf_forward, rerun_args)
   toc()
   beepr::beep(10L)
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
-# * 4572 - resolved
-# * 9267/9270
+# * 4572 - resolved by DC model fix
+# * 9267/9270 - resolved by initial lookahead model
+# * 12510
 
 
 ###########################
