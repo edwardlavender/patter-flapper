@@ -45,6 +45,7 @@ pf_lik_ac_lookahead <- function(.particles, .obs, .t, .dlist) {
     geocentroid()
 
   #### Calculate distance from particles to anchor point
+  x_now <- y_now <- NULL
   dist <- terra::distance(.particles[, list(x_now, y_now)] |>
                             as.matrix(),
                           axy,
