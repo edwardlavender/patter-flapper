@@ -21,29 +21,46 @@ dv::clear()
 
 #### Essential packages
 library(dv)
+library(plotly)
+library(patter)
 
 
 ###########################
 ###########################
 #### Define parameters
 
-# step duration
+#### Step duration
 step <- "2 mins"
 
-# Detection range
+#### Detection range
 detection_range <- 750
 
-# Mobility 
+#### Mobility 
 mobility <- 500
 
-# (original) Depth-error function 
+#### Movement model 
+sh <- 1
+sc <- 250
+hist(rtruncgamma(1e5, .shape = sh, .scale = sc, .mobility = mobility), 
+     probability = TRUE, breaks = 100)
+x <- seq(0, 500, by = 1)
+dtruncgamma(0, .shape = sh, .scale = sc, .mobility = mobility)
+dtruncgamma(1, .shape = sh, .scale = sc, .mobility = mobility)
+y <- dtruncgamma(x, .shape = sh, .scale = sc, .mobility = mobility)
+data <- data.frame(x = x, 
+                   y = y)
+plot_ly(data = data, x = ~x, y = ~y) |> 
+  add_lines() |>
+  layout(yaxis = list(range = c(0, 0.005)))
+
+### (original) Depth-error function 
 calc_depth_error <- function(depth) {
   e <- 4.77 + 2.5 + sqrt(0.5^2 + (0.013 * depth)^2)
   matrix(c(-(e + 5), e), nrow = 2)
 }
 calc_depth_error <- Vectorize(calc_depth_error)
 
-# Collate pars
+#### Collate pars
 pars <- 
   list(
     flapper = list(
@@ -54,10 +71,12 @@ pars <-
     patter = list(
       step = step,
       detection_range = detection_range, 
+      shape = sh, 
+      scale = sc, 
       mobility = mobility)
   )
 
-# Save pars
+#### Save pars
 saveRDS(pars, here_data("input", "pars.rds"))
 
 
