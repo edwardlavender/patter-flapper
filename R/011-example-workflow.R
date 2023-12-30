@@ -40,15 +40,16 @@ win       <- qs::qread(here_data("spatial", "win.qs"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
+pars      <- readRDS(here_data("input", "pars.rds"))
 overlaps  <- readRDS(here_data("input", "overlaps.rds"))
 kernels   <- acs_setup_detection_kernels_read()
 ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run        <- FALSE
+run        <- TRUE
 run_origin <- TRUE
-rerun      <- TRUE
+rerun      <- FALSE
 manual     <- run
 
 
@@ -97,10 +98,10 @@ dlist$algorithm$n       <- 1e3L
 # Include parameters
 # * TO DO
 # * Update this code to guarantee consistency with movement & detection models
-dlist$pars$shape     <- 15
-dlist$pars$scale     <- 15
-dlist$pars$mobility  <- 500
-dlist$pars$gamma     <- 750
+dlist$pars$shape     <- pars$patter$shape
+dlist$pars$scale     <- pars$patter$scale
+dlist$pars$mobility  <- pars$patter$mobility
+dlist$pars$gamma     <- pars$patter$detection_range
 dlist$algorithm$dlen <- dtruncgamma
 # Include additional elements below
 # * .$spatial$origin element 
@@ -189,13 +190,19 @@ record <-
   pf_opt_record(
     .save = FALSE,
     .sink = pff_folder, 
-    .cols = c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
+    .cols = NULL # c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
   )
+margs <- list(.shape = dlist$pars$shape, 
+              .scale = dlist$pars$scale, 
+              .mobility = dlist$pars$mobility)
 # Define baseline forward arguments
 # * TO DO
 # * Define behaviourally dependent movement model (via .rpropose and .dpropose)
 args <- list(.obs = obs,
              .dlist = dlist,
+             .rpropose = pf_rpropose_kick, 
+             .dpropose = pf_dpropose,
+             .rargs = margs, .dargs = margs,
              .n = dlist$algorithm$n, 
              .trial = 
                pf_opt_trial(
