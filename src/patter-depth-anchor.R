@@ -310,7 +310,7 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
     pos_detections <- .dlist$algorithm$pos_detections
     pos_detection  <- (pos_detections[pos_detections > .t])[1L]
     timegap <- pos_detection - .t
-    if (timegap > 25L) {
+    if (timegap > (6 * 30L)) {
       do_acdc <- FALSE
     }
     
