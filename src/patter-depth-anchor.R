@@ -284,7 +284,6 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
                 .algorithm = c("pos_detections"))
-    stopifnot(length(unique(.obs$mobility)) == 1L)
   }
   
   # * Identify the time step of the next detection (if applicable)
@@ -364,7 +363,8 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
       # Eliminates particles using distance threshold
       # * We eliminate particles that are not within a 
       # * ... reachable distance of at least one valid location
-      .particles <- .particles[Rfast::rowsums(dist <= (.obs$mobility[.t] * timegap)) > 0L, ]
+      mb <- sum(.obs$mobility[.t]:.obs$mobility[pos_detection])
+      .particles <- .particles[Rfast::rowsums(dist <= mb) > 0L, ]
     }
   }
   
