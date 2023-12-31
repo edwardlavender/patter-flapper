@@ -15,8 +15,8 @@ difference <- function(x2, x1, f = NULL, ...) {
 }
 
 # Serial differences 
-serial_difference <- function(x, na.rm = FALSE, ...) {
-  dur <- difference(dplyr::lead(x), x, ...)
+serial_difference <- function(x, shift = dplyr::lead, na.rm = FALSE, ...) {
+  dur <- difference(shift(x), x, ...)
   if (na.rm) {
     posNA <- which(is.na(dur))
     dur <- dur[-c(posNA)]
