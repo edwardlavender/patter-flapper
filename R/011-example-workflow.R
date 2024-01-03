@@ -47,8 +47,8 @@ ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
 
 #### Local pars
 seed <- 1L
-run        <- TRUE
-run_origin <- TRUE
+run        <- FALSE
+run_origin <- FALSE
 rerun      <- FALSE
 manual     <- run
 
@@ -96,8 +96,6 @@ dlist$spatial$bset      <- bset
 dlist$algorithm$ewindow <- ewin
 dlist$algorithm$n       <- 1e3L
 # Include parameters
-# * TO DO
-# * Update this code to guarantee consistency with movement & detection models
 dlist$pars$shape     <- pars$patter$shape
 dlist$pars$scale     <- pars$patter$scale
 dlist$pars$mobility  <- pars$patter$mobility
@@ -185,37 +183,52 @@ if (alg %in% c("dcpf", "acdcpf")) {
 }
 
 #### Define args
-# Define baseline forward and backward arguments 
+# Define movement args 
+# * TO DO
+# * Define behaviourally dependent movement model (via .rpropose and .dpropose)
+# * Downgrade movement jumps using shortest distances model
+if (pars$patter$model == "truncated gamma") {
+  margs <- list(.shape = dlist$pars$shape, 
+                .scale = dlist$pars$scale, 
+                .mobility = dlist$pars$mobility)
+  rargs <- margs
+  dargs <- margs
+} else if (pars$patter$model == "uniform") {
+  rargs <- list(.rlen = rlenuniform, .mobility = dlist$pars$mobility)
+  dargs <- list(.dlen = dlenuniform, .mobility = dlist$pars$mobility)
+} else {
+  stop("Input to `pars$patter$model` not supported.")
+}
+# Define trial arguments
+trial <- 
+  pf_opt_trial(
+    # Kick once 
+    .trial_kick = 1L, 
+    # Initiate directed sampling when there are < `.trial_sampler_crit` cells
+    .trial_sampler = 1L,
+    .trial_sampler_crit = 100L, 
+    # Revert when there are < 5 grid cells, by 180 steps (6 hours), 3 times
+    # * We currently implement this only a small number of times
+    # * ... since it appears to be relatively ineffective
+    .trial_revert_crit = 5L, 
+    .trial_revert_steps = 180L, 
+    .trial_revert = 3L
+  )
+# Define record options
 record <- 
   pf_opt_record(
     .save = FALSE,
     .sink = pff_folder, 
     .cols = NULL # c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
   )
-margs <- list(.shape = dlist$pars$shape, 
-              .scale = dlist$pars$scale, 
-              .mobility = dlist$pars$mobility)
-# Define baseline forward arguments
-# * TO DO
-# * Define behaviourally dependent movement model (via .rpropose and .dpropose)
+# Collate arguments
 args <- list(.obs = obs,
              .dlist = dlist,
              .rpropose = pf_rpropose_kick, 
              .dpropose = pf_dpropose,
-             .rargs = margs, .dargs = margs,
+             .rargs = rargs, .dargs = dargs,
              .n = dlist$algorithm$n, 
-             .trial = 
-               pf_opt_trial(
-                 # Kick once 
-                 .trial_kick = 1L, 
-                 # Initiate directed sampling when there are < `.trial_sampler_crit` cells
-                 .trial_sampler = 1L,
-                 .trial_sampler_crit = 100L, 
-                 # Revert when there are < 5 grid cells, by 50 steps, 10 times
-                 .trial_revert_crit = 5L, 
-                 .trial_revert_steps = 50L, 
-                 .trial_revert = 10L
-               ),
+             .trial = trial,
              .record = record,
              .control = pf_opt_control(.sampler_batch_size = 1000L),
              .verbose = log.txt) 
@@ -229,13 +242,9 @@ if (alg == "acpf") {
 } else if (alg == "acdcpf") {
   args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
                            pf_lik_ac = pf_lik_ac, 
-                           pf_lik_ac_lookahead = pf_lik_ac_lookahead,
+                           # pf_lik_ac_lookahead = pf_lik_ac_lookahead,
                            acs_filter_container = acs_filter_container_acdc)
 }
-
-#### (optional) TO DO
-# Include behavioural state in movement model 
-# Downgrade movement jumps using shortest distances model
 
 
 ###########################
@@ -273,9 +282,9 @@ if (rerun) {
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
-# * 4572 - resolved by DC model fix
+# * 4572      - resolved by DC model fix
 # * 9267/9270 - resolved by initial lookahead model
-# * 12510
+# * 12510     - can be resolved by forward/backward reversal
 
 
 ###########################
