@@ -38,7 +38,7 @@ detection_range <- 750
 #### Mobility 
 mobility <- 500
 
-#### Movement model 
+#### Truncated gamma movement model
 sh <- 1
 sc <- 250
 hist(rtruncgamma(1e5, .shape = sh, .scale = sc, .mobility = mobility), 
@@ -52,6 +52,9 @@ data <- data.frame(x = x,
 plot_ly(data = data, x = ~x, y = ~y) |> 
   add_lines() |>
   layout(yaxis = list(range = c(0, 0.005)))
+
+#### Uniform movement model 
+hist(runif(1e5, 0, 500))
 
 ### (original) Depth-error function 
 calc_depth_error <- function(depth) {
@@ -73,7 +76,13 @@ pars <-
       detection_range = detection_range, 
       shape = sh, 
       scale = sc, 
-      mobility = mobility)
+      mobility = mobility, 
+      # Define the model we will use
+      # * The "truncated gamma" or "uniform" model above
+      # * We include all parameters in this list either way
+      # * (to facilitate exploration of alternative choices)
+      model = "uniform"
+      )
   )
 
 #### Save pars
