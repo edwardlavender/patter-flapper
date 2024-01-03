@@ -22,6 +22,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
+dv::src()
 library(dv)
 library(patter)
 library(tictoc)
@@ -39,9 +40,12 @@ overwrite <- FALSE
 ###########################
 #### Prepare AC* inputs
 
+#### Data list
+dlist <- pat_setup_data(.moorings = moorings, .bathy = bathy, .lonlat = FALSE)
+
 #### Detection overlaps (~0 s)
 tic()
-overlaps <- acs_setup_detection_overlaps(moorings)
+overlaps <- acs_setup_detection_overlaps(dlist)
 toc()
 
 #### Detection kernels
@@ -49,16 +53,15 @@ toc()
 # * Note that MEFS::moorings contains 48 receivers
 # * Whereas patter::dat_moorings only contains a subset of those receivers
 # Timings:
-# * receiver-specific inverse kernels: ~90 mins 
-# * area-wide kernels: ~24 min
-# * total: 115 mins
+# * receiver-specific kernels: ~3 s
+# * area-wide kernels:  ~51 s
+# * processing (extension & masking): 
+# * total: ~42 mins
 tic()
-kernels <- acs_setup_detection_kernels(moorings, 
-                                       .calc_detection_pr = acs_setup_detection_kernel, 
-                                       .bathy = bathy)
+kernels <- acs_setup_detection_kernels(dlist)
 toc()
 
-### Save outputs
+#### Save outputs
 # ~20 mins (~7 mins per raster list)
 tic()
 saveRDS(overlaps, here_data("input", "overlaps.rds"))
@@ -75,6 +78,40 @@ writeRasterLs(kernels$bkg_surface_by_design,
 writeRasterLs(kernels$bkg_inv_surface_by_design,
               here_data("input", "kernels", "bkg-inv-surface-by-design"))
 toc()
+
+#### Validate revised acs_setup_detection_kernels() routine (revised on 2024-01-03) (~0 s)
+# kernels <- acs_setup_detection_kernels_read()
+old         <- here_data("input", "kernels", "2024-01-03")
+old_kernels <- acs_setup_detection_kernels_read(path = old)
+all.equal(kernels$array_design, old_kernels$array_design)
+all.equal(kernels$array_design_by_date, old_kernels$array_design_by_date)
+spatEqual <- function(x, y) {
+  # print(x)
+  if (!is.null(x)) {
+    terra::compareGeom(x, y, stopOnError = TRUE)
+    terra::ext(x) <- terra::ext(bathy)
+    terra::ext(y) <- terra::ext(bathy)
+    stopifnot(terra::all.equal(x, y, maxcell = 1e5L, tolerance = 1e-6))
+    # Too slow: 
+    # stopifnot(all(abs(x - y) < 1e-6))
+  }
+  invisible()
+}
+# The revised approach returns identical outputs, up to a tolerance of 1e-6
+# * The origin and spatExtent are not (quite) identical
+# * But very close
+pbapply::pbmapply(spatEqual,
+                  kernels$receiver_specific_kernels, 
+                  old_kernels$receiver_specific_kernels) |> invisible()
+pbapply::pbmapply(spatEqual, 
+                  kernels$receiver_specific_inv_kernels, 
+                  old_kernels$receiver_specific_inv_kernels) |> invisible()
+pbapply::pbmapply(spatEqual, 
+                  kernels$bkg_surface_by_design, 
+                  old_kernels$bkg_surface_by_design) |> invisible()
+pbapply::pbmapply(spatEqual, 
+                  kernels$bkg_inv_surface_by_design, 
+                  old_kernels$bkg_inv_surface_by_design) |> invisible()
 
 
 #### End of code. 
