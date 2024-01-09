@@ -165,3 +165,55 @@ add_depth_error_model <- function(bathy) {
   lines(c(shallow, deep), c(1, 1))
   lines(c(deep, deep), c(1, 0))
 }
+
+#' @title Depth likelihood model for coarse grid 
+#' (see R/supporting/trial-coarse-fine-2.R)
+
+pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist) {
+  
+  if (.t == 1L) {
+    check_dlist(.dlist = .dlist, 
+                .spatial = c("bathy", "original", "v"))
+  }
+  
+  #### Identify unique grid cells 
+  pu <- 
+    .particles |> 
+    select("cell_now", "x_now", "y_now") |>
+    distinct(.data$cell_now, .keep_all = TRUE) |>
+    as.data.table()
+  
+  #### Define 'buffers'
+  buffer <- 
+    .dlist$spatial$v[pu$cell_now] |> 
+    sf::st_as_sf()
+  
+  #### Define likelihoods
+  # Use data.table method
+  # For each coarse grid cell, extract all 'internal' cells
+  # & ... filter invalid ones & identify thus identify valid coarse cells
+  ff <- function(df, ...) {
+    # Evaluate likelihood of (internal) cells
+    pnow <- 
+      df |> 
+      select(cell_now = "cell", x_now = "x", y_now = "y", bathy = "value") |> 
+      mutate(lik = 1L) |>
+      as.data.table() |>
+      pf_lik_dc_2(.obs = .obs, .t = .t, .dlist = .dlist) 
+    # Define whether or not there are any valid (internal) cells
+    nrow(pnow) > 0
+  }
+  # Identify valid proposals
+  valid <- NULL
+  pu[, valid := exactextractr::exact_extract(.dlist$spatial$original, 
+                                             buffer, 
+                                             include_cell = TRUE, 
+                                             include_xy = TRUE,
+                                             summarize_df = TRUE, 
+                                             fun = ff, 
+                                             progress = TRUE) |> unlist()]
+  
+  #### Return valid proposals
+  cell_now <- NULL
+  .particles[cell_now %in% pu$cell_now[pu$valid], ]
+}
