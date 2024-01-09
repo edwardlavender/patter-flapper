@@ -114,6 +114,49 @@ table(acoustics$speed > (mobility / 2))
 ###########################
 #### Mobility: from archival 
 
+
+###########################
+#### Vertical movement
+
+#### Vertical distances
+# (ignore breaks in time series)
+tic()
+archival |> 
+  group_by(individual_id) |>
+  mutate(vdist = abs(serial_difference(depth))) |> 
+  ggplot(aes(vdist)) + 
+  geom_histogram() +
+  # geom_rug() + 
+  facet_wrap(~individual_id)
+toc()
+
+#### Autocorrelation
+# There is strong autocorrelation in depth time series.
+# This suggests strong autocorrelation in horizontal distances, 
+# (but there is not a strong relationship between vertical & horizontal distances, 
+# see below).
+
+# Example time series:
+arc <- archival[individual_id == 6, ]
+plot(arc$timestamp, arc$depth, type = "l")
+
+# Full ACF
+# * Note the periodic patterms
+rho <- acf(arc$depth, nrow(arc))
+rho$acf[2]
+# * ~1000 time steps for a reversal
+plot(rho, xlim = c(0, 3000))
+
+# Simulation ACF 
+# * ACF for simulated data is qualitatively similar (but distinct)
+ar1_ts <- arima.sim(n = nrow(arc), list(ar = rho$acf[2]))
+acf(ar1_ts, nrow(arc))
+acf(ar1_ts, 3000)
+
+
+###########################
+#### Vertical and horizontal movement
+
 # Approach:
 # Can we improve upon our estimates of mobility/movement parameters by using 
 # the relationship between bwtn vertical dists and horiz. dists
