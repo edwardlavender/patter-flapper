@@ -27,6 +27,7 @@ library(ggplot2)
 library(lubridate)
 library(collapse)
 library(patter)
+library(tictoc)
 
 #### Load data
 dv::src()
@@ -35,7 +36,7 @@ bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
 acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
 archival  <- readRDS(here_data("mefs", "archival.rds"))
-
+pars      <- readRDS(here_data("input", "pars.rds"))
 
 ###########################
 ###########################
@@ -79,7 +80,7 @@ acoustics |>
 
 ###########################
 ###########################
-#### Mobility 
+#### Mobility: from acoustics
 
 # We have previously estimated mobility as 500 m per 2 mins 
 # Here, we confirm that there are no transitions between receivers exceeding mobility 
@@ -107,6 +108,119 @@ acoustics <-
 
 # Validate there are no movements exceeding mobility 
 table(acoustics$speed > (mobility / 2))
+
+
+###########################
+###########################
+#### Mobility: from archival 
+
+# Approach:
+# Can we improve upon our estimates of mobility/movement parameters by using 
+# the relationship between bwtn vertical dists and horiz. dists
+# (such that we can use known vertical distances, from archival time series, 
+# to learn about horizontal travel distances in the study area, assuming
+# skate behave benthically.)
+
+# Method:
+# * Sample pairs of points in the study area;
+# * Compare vertical and horizontal distances;
+# * Expect shorter vertical distances are generally (but not exclusively)
+# * ... associated with shorter horizontal (travel) distances.
+
+# Summary results:
+# * This is not really what we find
+# * It is difficult to see a relationship between vertical and horizontal dists
+# * Small vertical distances may be associated with short/long horiz. dists
+# * Large vertical distances may be associated with short/long horiz. dists
+# * TLDL: we can't use archival time series as a good indication of mobility
+
+#### Simulate transects
+tic()
+n   <- 1e6L
+xy0 <- terra::spatSample(bathy, size = n, xy = TRUE, na.rm = TRUE)
+len <- runif(n, terra::res(bathy)[1], pars$patter$mobility)
+ang <- rwn(n)
+xy1 <- cstep(.xy0 = xy0[, c("x", "y")], 
+             .len = len, 
+             .ang = ang, 
+             .lonlat = FALSE) 
+tic()
+
+#### Collate transect depths and distances
+comp <- data.table(
+  x0 = xy0$x, y0 = xy0$y, z0 = xy0$depth, 
+  x1 = xy1[, 1], y1 = xy1[, 2], z1 = terra::extract(bathy, xy1)$depth, 
+  hdist = len)
+# Drop points on land 
+comp <- comp[!is.na(z1), ]
+# Calculate vertical distances (m)
+comp[, vdist := abs(z0 - z1)]
+# (optional) Define bins for plotting
+# * We visualise below how the relationship between vdist and hdist changes
+# * ... at different vdist values
+bw <- 50
+comp[, bin := cut(vdist, breaks = seq(min(vdist), max(vdist) + bw, by = bw), 
+                  right = FALSE)]
+nrow(comp)
+
+#### Visualise the relationships between vertical and horizontal distances
+# Scatter plot (~15 s)
+png(here_fig("vdist-vs-hdist-scatter.png"), 
+    height = 10, width = 10, units = "in", res = 600)
+tic()
+comp |>
+  ggplot(aes(vdist, hdist)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  xlim(range(comp$vdist)) + 
+  ylim(range(comp$hdist))
+toc()
+dev.off()
+# Scatter plot, for different distance bands (~15 s)
+png(here_fig("vdist-vs-hdist-scatter-facets.png"), 
+    height = 10, width = 10, units = "in", res = 600)
+tic()
+comp |>
+  ggplot(aes(vdist, hdist)) + 
+  geom_point() + 
+  facet_wrap(~bin)
+toc()
+dev.off()
+# 2d histogram (~1 s)
+png(here_fig("vdist-vs-hdist-hist.png"), 
+    height = 10, width = 10, units = "in", res = 600)
+tic()
+comp |>
+  ggplot(aes(vdist, hdist)) + 
+  geom_bin2d(binwidth = c(50, 50))
+toc()
+dev.off()
+# 2d histogram, for different distance bands (~1 s)
+# * Use lapply() so each panel has an independent colour scheme
+png(here_fig("vdist-vs-hdist-hist-facets.png"), 
+    height = 10, width = 10, units = "in", res = 600)
+tic()
+cowplot::plot_grid(
+  plotlist = 
+    lapply(split(comp, comp$bin), function(d) {
+      d |>
+        ggplot(aes(vdist, hdist)) + 
+        geom_bin2d(binwidth = c(5, 20)) + 
+        xlim(c(0, 350)) + 
+        ggtitle(d$bin[1])
+    }))
+toc()
+dev.off()
+
+#### Model
+# mod <- lm(hdist ~ 0 + vdist, data = comp)
+
+#### Results
+# * At small vertical distances (5 m), horizontal distances range from 0 - 500 m
+# * (But smaller horizontal distances are more common)
+# * At larger vertical distances, horizontal distances range from 0 - 500 m
+# * (But larger vertical distances are more common)
+# * But this relationship is highly variable.
 
 
 ###########################
