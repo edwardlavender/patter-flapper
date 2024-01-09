@@ -166,7 +166,7 @@ rho  <- acf(arc$vdist, nrow(arc))
 mrho <- data.frame(rho = rho$acf, 
                    vdist = arc$vdist)
 mrho |>
-  ggplot(aes(vdist,rho)) + 
+  ggplot(aes(vdist, rho)) + 
   geom_point()
 
 
