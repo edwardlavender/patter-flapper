@@ -121,9 +121,14 @@ table(acoustics$speed > (mobility / 2))
 #### Vertical distances
 # (ignore breaks in time series)
 tic()
-archival |> 
+archival <- 
+  archival |> 
   group_by(individual_id) |>
   mutate(vdist = abs(serial_difference(depth))) |> 
+  filter(!is.na(vdist)) |>
+  ungroup() |> 
+  as.data.table()
+archival |>
   ggplot(aes(vdist)) + 
   geom_histogram() +
   # geom_rug() + 
@@ -152,6 +157,17 @@ plot(rho, xlim = c(0, 3000))
 ar1_ts <- arima.sim(n = nrow(arc), list(ar = rho$acf[2]))
 acf(ar1_ts, nrow(arc))
 acf(ar1_ts, 3000)
+
+# Autocorrelation as a function of vertical movement
+# * Vertical movements are less autocorrelated than depth observations
+# * Small vertical distances are more autocorrelated than large vertical distances
+# * (on average)
+rho  <- acf(arc$vdist, nrow(arc))
+mrho <- data.frame(rho = rho$acf, 
+                   vdist = arc$vdist)
+mrho |>
+  ggplot(aes(vdist,rho)) + 
+  geom_point()
 
 
 ###########################
