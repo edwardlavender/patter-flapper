@@ -59,7 +59,7 @@ calc_depth_error <- pars$flapper$calc_depth_error
 
 ###########################
 ###########################
-#### Detection time stemps
+#### Detection time stamps
 
 #### Validate detection timing 
 # > The time between sequential detections should never be < 30 s
