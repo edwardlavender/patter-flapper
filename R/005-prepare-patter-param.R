@@ -239,7 +239,6 @@ if (FALSE) {
   toc()
 }
 
-
 #### Visualise the relationships between vertical and horizontal distances
 # Scatter plot (~15 s)
 png(here_fig("vdist-vs-hdist-scatter.png"), 
