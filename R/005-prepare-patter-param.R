@@ -222,6 +222,24 @@ comp[, bin := cut(vdist, breaks = seq(min(vdist), max(vdist) + bw, by = bw),
                   right = FALSE)]
 nrow(comp)
 
+#### Visualise transects (~1 min)
+# Sampled transects effectively cover the whole area
+if (FALSE) {
+  tic()
+  png(here_fig("vdist-vs-hdist-map.png"), 
+      height = 10, width = 10, units = "in", res = 600)
+  terra::plot(bathy)
+  pbapply::pblapply(seq_len(nrow(comp)), 
+                    function(i) {
+                      arrows(x0 = comp$x0[i], y0 = comp$y0[i], 
+                             x1 = comp$x1[i], y1 = comp$y1[i], 
+                             length = 0.01, lwd = 0.25)
+                    }) |> invisible()
+  dev.off()
+  toc()
+}
+
+
 #### Visualise the relationships between vertical and horizontal distances
 # Scatter plot (~15 s)
 png(here_fig("vdist-vs-hdist-scatter.png"), 
