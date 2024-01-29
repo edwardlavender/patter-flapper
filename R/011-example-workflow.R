@@ -413,6 +413,7 @@ files <- files[(length(files) - 10L):length(files)]
 if (run) {
   tic()
   set.seed(seed)
+  # TO DO: update!
   out_pfbs <- pf_backward_sampler(files, 
                                   .step_dens = dstep, lonlat = FALSE,
                                   .write_history = list(sink = pfbs_folder), 
