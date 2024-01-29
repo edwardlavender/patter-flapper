@@ -14,12 +14,12 @@ rkickuniform <- function(.xy0,
                          .obs, .t, .dlist) {
   # Simulate step lengths and turning angles
   n    <- nrow(.xy0)
-  rlen <- .rlen(n, .mobility = .obs$mobility[.t])
-  rang <- .rang(n)
+  len <- .rlen(n, .mobility = .obs$mobility[.t])
+  ang <- .rang(n)
   # Step into new locations
   cstep(.xy0 = .xy0,
-        .len = rlen,
-        .ang = rang,
+        .len = len,
+        .ang = ang,
         .lonlat = .dlist$pars$lonlat)
 }
 
@@ -27,9 +27,9 @@ dkickuniform <- function(.xy0, .xy1, .obs, .t, .dlist) {
   .xy0 <- as.matrix(.xy0)
   .xy1 <- as.matrix(.xy1)
   # Calculate step length between selected location and all previous locations
-  rlen <- clen(.xy0 = .xy0, .xy1 = .xy1, .lonlat = .dlist$pars$lonlat)
+  len <- clen(.xy0 = .xy0, .xy1 = .xy1, .lonlat = .dlist$pars$lonlat)
   # Calculate densities 
-  dlenuniform(rlen, .mobility = .obs$mobility[.t])
+  dlenuniform(len, .mobility = .obs$mobility[.t])
 }
 
 #' @title Truncated gamma movement models 
@@ -40,12 +40,12 @@ rkickgamma <- function(.xy0,
                          .obs, .t, .dlist) {
   # Simulate step lengths and turning angles
   n    <- nrow(.xy0)
-  rlen <- .rlen(n, .shape = .obs$shape[.t], .scale = .obs$scale[.t], .mobility = .obs$mobility[.t])
-  rang <- .rang(n)
+  len <- .rlen(n, .shape = .obs$shape[.t], .scale = .obs$scale[.t], .mobility = .obs$mobility[.t])
+  ang <- .rang(n)
   # Step into new locations
   cstep(.xy0 = .xy0,
-        .len = rlen,
-        .ang = rang,
+        .len = len,
+        .ang = ang,
         .lonlat = .dlist$pars$lonlat)
 }
 
@@ -53,7 +53,7 @@ dkickgamma <- function(.xy0, .xy1, .obs, .t, .dlist) {
   .xy0 <- as.matrix(.xy0)
   .xy1 <- as.matrix(.xy1)
   # Calculate step length between selected location and all previous locations
-  rlen <- clen(.xy0 = .xy0, .xy1 = .xy1, .lonlat = .dlist$pars$lonlat)
+  len <- clen(.xy0 = .xy0, .xy1 = .xy1, .lonlat = .dlist$pars$lonlat)
   # Calculate densities 
-  dtruncgamma(rlen, .shape = .obs$shape[.t], .scale = .obs$scale[.t], .mobility = .obs$mobility[.t])
+  dtruncgamma(len, .shape = .obs$shape[.t], .scale = .obs$scale[.t], .mobility = .obs$mobility[.t])
 }
