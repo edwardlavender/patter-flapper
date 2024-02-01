@@ -26,6 +26,7 @@ library(dv)
 library(data.table)
 library(dtplyr)
 library(dplyr)
+library(arrow)
 library(ggplot2)
 library(patter)
 library(testthat)
@@ -202,24 +203,16 @@ if (pars$patter$model == "truncated gamma") {
 # Define trial arguments
 trial <- 
   pf_opt_trial(
-    # Kick once 
-    .trial_kick = 1L, 
-    # Initiate directed sampling when there are < `.trial_sampler_crit` cells
-    .trial_sampler = 1L,
     .trial_sampler_crit = 100L, 
-    # Revert when there are < 5 grid cells, by 180 steps (6 hours), 3 times
-    # * We currently implement this only a small number of times
-    # * ... since it appears to be relatively ineffective
-    .trial_revert_crit = 5L, 
-    .trial_revert_steps = 180L, 
-    .trial_revert = 3L
+    .trial_revert = 0L
   )
 # Define record options
+# c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
 record <- 
   pf_opt_record(
     .save = FALSE,
     .sink = pff_folder, 
-    .cols = NULL # c("timestep", "cell_past", "cell_now", "x_now", "y_now", "lik")
+    .cols = NULL 
   )
 # Collate arguments
 args <- list(.obs = obs,
@@ -242,7 +235,6 @@ if (alg == "acpf") {
 } else if (alg == "acdcpf") {
   args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
                            pf_lik_ac = pf_lik_ac, 
-                           # pf_lik_ac_lookahead = pf_lik_ac_lookahead,
                            acs_filter_container = acs_filter_container_acdc)
 }
 
@@ -282,8 +274,8 @@ if (rerun) {
 }
 
 # To debug convergence issues, see ./R/supporting/convergence/.
-# * 4572      - resolved by DC model fix
-# * 9267/9270 - resolved by initial lookahead model
+# * 4572     
+# * 9267/9270
 # * 12510     - can be resolved by forward/backward reversal
 
 
@@ -297,7 +289,7 @@ sum(c(hs, ds))
 
 #### Output diagnostics 
 if (manual) {
-  diag <- pf_forward_diagnostics(pff_folder)
+  diag <- pf_diag_convergence(pff_folder)
   tail(diag, 100)
 }
 
@@ -306,7 +298,15 @@ if (manual) {
 #### Validation 
 
 #### Collate particle samples
-h <- patter:::.pf_history_dt(file.path(pff_folder, "history"))
+h <- patter:::.pf_history_dt(file.path(pff_folder, "history"), 
+                             schema = arrow::schema(timestep = int32(), 
+                                                    cell_past = int32(), 
+                                                    x_past = double(), 
+                                                    y_past = double(), 
+                                                    cell_now = int32(), 
+                                                    x_now = double(),
+                                                    y_now = double(), 
+                                                    lik = double()))
 head(h)
 
 #### Validate locations
@@ -320,6 +320,7 @@ expect_equal(
 xy0 <- as.matrix(h[, .(x_now, y_now)])
 xy1 <- terra::xyFromCell(bathy, h$cell_past)
 len <- terra::distance(xy0, xy1, lonlat = FALSE, pairwise = TRUE)
+range(len, na.rm = TRUE)
 expect_true(all(len < 500 + terra::res(bathy)[1]/2, na.rm = TRUE))
 
 #### Validate detection information 
@@ -340,6 +341,7 @@ hd <-
                                 lonlat = FALSE, 
                                 pairwise = TRUE)) |> 
   as.data.table()
+range(hd$dist)
 expect_true(all(hd$dist < 750))
 # In detection gaps, particle samples should (generally) be beyond detection ranges
 # * TO DO
@@ -374,13 +376,13 @@ if (FALSE) {
 if (!dir.exists(pfbk_folder)) {
   dir.create(pfbk_folder, recursive = TRUE)
 }
-record$.sink <- pfbk_folder
+record$sink <- pfbk_folder
 
 #### Implement backward killer 
 # ACPF: ~140 s
 if (run) {
   tic()
-  out_pfbk <- pf_backward_killer(.history = pf_files(pff_folder_h), 
+  out_pfbk <- pf_backward_killer(.history = file.path(pff_folder, "history"),
                                  .record = record,
                                  .verbose = log.txt)
   toc()
@@ -391,7 +393,10 @@ if (manual) {
   # Extract diagnostics 
   # * 1 CPU: ~38 s
   # * 10 CPU (fork): 7 s (with chunks)
-  pfbk_diag <- pf_backward_killer_diagnostics(pfbk_folder)
+  pfbk_diag <- pf_diag_summary(pfbk_folder, 
+                               schema = schema(timestep = int32(), 
+                                               cell_now = int32(), 
+                                               weight = double()))
   # Examine diagnostic traces
   plot(pfbk_diag$timestep, pfbk_diag$n_u, type = "l")
   plot(pfbk_diag$timestep, pfbk_diag$n_u, ylim  = c(0, 100), type = "l")
@@ -420,6 +425,39 @@ if (run) {
                                   .txt = log.txt)
   toc()
 }
+
+
+###########################
+###########################
+#### Particle histories
+
+#### Define plot region 
+# Define particle coordinates
+pxy <- pf_coord(file.path(pff_folder, "history"), 
+                .bathy = bathy)
+# Crop grid accordingly 
+dlist_cpy <- dlist
+# dlist_cpy$spatial$bathy <- terra::crop()
+
+#### Define particle samples from the forward and backward runs
+ff <- pf_files(pff_folder, "history")
+fb <- pf_files(pfbk_folder)
+
+#### Make plots 
+# * TO DO: add receivers via .add_additional argument
+png_sink <- here_fig("example", "animation", "frames")
+dir.create(png_sink, recursive = TRUE)
+pf_plot_history(.dlist = dlist, 
+                .forward = ff, .backward = fb, 
+                .steps = 1L, 
+                .add_forward = list(pch = "."), 
+                .png = list(filename = png_sink))
+
+#### Make gif
+# input  <- pf_files(png_sink)[1:5]
+input  <- pf_files(png_sink)
+output <- file.path(basename(png_sink), "ani.gif")
+gifski::gifski(input, output)
 
 
 ###########################
