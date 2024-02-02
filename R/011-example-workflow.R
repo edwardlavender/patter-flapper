@@ -29,6 +29,8 @@ library(dplyr)
 library(arrow)
 library(ggplot2)
 library(patter)
+library(prettyGraphics)
+library(sf)
 library(testthat)
 library(tictoc)
 
@@ -45,6 +47,7 @@ pars      <- readRDS(here_data("input", "pars.rds"))
 overlaps  <- readRDS(here_data("input", "overlaps.rds"))
 kernels   <- acs_setup_detection_kernels_read()
 ewin      <- readRasterLs(here_data("input", "depth-window"), index = FALSE)
+coast     <- readRDS(here_data("spatial", "coast.rds")) |> st_geometry()
 
 #### Local pars
 seed <- 1L
@@ -297,68 +300,72 @@ if (manual) {
 ###########################
 #### Validation 
 
-#### Collate particle samples
-h <- patter:::.pf_history_dt(file.path(pff_folder, "history"), 
-                             schema = arrow::schema(timestep = int32(), 
-                                                    cell_past = int32(), 
-                                                    x_past = double(), 
-                                                    y_past = double(), 
-                                                    cell_now = int32(), 
-                                                    x_now = double(),
-                                                    y_now = double(), 
-                                                    lik = double()))
-head(h)
-
-#### Validate locations
-# Validate grid cells & coordinates align
-expect_equal(
-  as.matrix(h[, .(x_now, y_now)]) |> unname(),
-  terra::xyFromCell(bathy, h$cell_now) |> unname())
-
-#### Validate proposals (distances)
-# Validate distances are < mobility (accounting for grid resolution)
-xy0 <- as.matrix(h[, .(x_now, y_now)])
-xy1 <- terra::xyFromCell(bathy, h$cell_past)
-len <- terra::distance(xy0, xy1, lonlat = FALSE, pairwise = TRUE)
-range(len, na.rm = TRUE)
-expect_true(all(len < 500 + terra::res(bathy)[1]/2, na.rm = TRUE))
-
-#### Validate detection information 
-# At the moment of detection, particle samples should be within detection ranges
-hd <- h[timestep %in% obs$timestep[obs$detection == 1L]]
-hd <- 
-  hd |> 
-  left_join(
-    obs |> 
-      select(timestep, receiver_id),
-    by = "timestep") |> 
-  tidyr::unnest(cols = receiver_id) |> 
-  left_join(dlist$data$moorings |> 
-              select(receiver_id, receiver_x, receiver_y), 
-            by = c("receiver_id")) |> 
-  mutate(dist = terra::distance(cbind(x_now, y_now), 
-                                cbind(receiver_x, receiver_y), 
-                                lonlat = FALSE, 
-                                pairwise = TRUE)) |> 
-  as.data.table()
-range(hd$dist)
-expect_true(all(hd$dist < 750))
-# In detection gaps, particle samples should (generally) be beyond detection ranges
-# * TO DO
-
-#### Validate depth information 
-h$bathy <- terra::extract(bathy, h$cell_now)
-h$depth <- obs$depth[match(h$timestep, obs$timestep)]
-hist(h$bathy - h$depth)
-range(h$bathy - h$depth)
-
-#### Validate algorithm parameters
-# The number of particles at each time step
-np <- 
-  h |>
-  count(timestep) |>
-  pull(n)
-expect_true(all(np == 1000L))
+if (manual) {
+  
+  #### Collate particle samples
+  h <- patter:::.pf_history_dt(file.path(pff_folder, "history"), 
+                               schema = arrow::schema(timestep = int32(), 
+                                                      cell_past = int32(), 
+                                                      x_past = double(), 
+                                                      y_past = double(), 
+                                                      cell_now = int32(), 
+                                                      x_now = double(),
+                                                      y_now = double(), 
+                                                      lik = double()))
+  head(h)
+  
+  #### Validate locations
+  # Validate grid cells & coordinates align
+  expect_equal(
+    as.matrix(h[, .(x_now, y_now)]) |> unname(),
+    terra::xyFromCell(bathy, h$cell_now) |> unname())
+  
+  #### Validate proposals (distances)
+  # Validate distances are < mobility (accounting for grid resolution)
+  xy0 <- as.matrix(h[, .(x_now, y_now)])
+  xy1 <- terra::xyFromCell(bathy, h$cell_past)
+  len <- terra::distance(xy0, xy1, lonlat = FALSE, pairwise = TRUE)
+  range(len, na.rm = TRUE)
+  expect_true(all(len < 500 + terra::res(bathy)[1]/2, na.rm = TRUE))
+  
+  #### Validate detection information 
+  # At the moment of detection, particle samples should be within detection ranges
+  hd <- h[timestep %in% obs$timestep[obs$detection == 1L]]
+  hd <- 
+    hd |> 
+    left_join(
+      obs |> 
+        select(timestep, receiver_id),
+      by = "timestep") |> 
+    tidyr::unnest(cols = receiver_id) |> 
+    left_join(dlist$data$moorings |> 
+                select(receiver_id, receiver_x, receiver_y), 
+              by = c("receiver_id")) |> 
+    mutate(dist = terra::distance(cbind(x_now, y_now), 
+                                  cbind(receiver_x, receiver_y), 
+                                  lonlat = FALSE, 
+                                  pairwise = TRUE)) |> 
+    as.data.table()
+  range(hd$dist)
+  expect_true(all(hd$dist < 750))
+  # In detection gaps, particle samples should (generally) be beyond detection ranges
+  # * TO DO
+  
+  #### Validate depth information 
+  h$bathy <- terra::extract(bathy, h$cell_now)
+  h$depth <- obs$depth[match(h$timestep, obs$timestep)]
+  hist(h$bathy - h$depth)
+  range(h$bathy - h$depth)
+  
+  #### Validate algorithm parameters
+  # The number of particles at each time step
+  np <- 
+    h |>
+    count(timestep) |>
+    pull(n)
+  expect_true(all(np == 1000L))
+  
+}
 
 
 ###########################
@@ -413,7 +420,7 @@ pfbs_folder <- file.path(pfb_folder, "sampler", "output")
 log.txt     <- file.path(pfb_folder, "sampler", "log.txt")
 
 #### Run sampler 
-files <- pf_files(pff_folder_h)
+files <- pf_files(file.path(pff_folder, "history"))
 files <- files[(length(files) - 10L):length(files)]
 if (run) {
   tic()
@@ -431,32 +438,161 @@ if (run) {
 ###########################
 #### Particle histories
 
-#### Define plot region 
-# Define particle coordinates
-pxy <- pf_coord(file.path(pff_folder, "history"), 
-                .bathy = bathy)
+#### Define plot region (~8 s)
+# pxy <- pf_coord(file.path(pff_folder, "history"), .bathy = bathy)
+tic()
+ext <- 
+  pff_folder |> 
+  file.path("history") |> 
+  arrow::open_dataset() |> 
+  summarise(xmin = min(x_now), xmax = max(x_now), ymin = min(y_now), ymax = max(y_now)) |> 
+  as.data.table() |> 
+  summarise(xmin = min(xmin), xmax = max(xmax), ymin = min(ymin), ymax = max(ymax)) |>
+  as.data.table()
+ext <- terra::ext(ext$xmin, ext$xmax, ext$ymin, ext$ymax)
+# Inflat ext
+ext <- ext + 1e3
+toc()
+
 # Crop grid accordingly 
 dlist_cpy <- dlist
-# dlist_cpy$spatial$bathy <- terra::crop()
+dlist_cpy$spatial$bathy <- terra::crop(dlist_cpy$spatial$bathy, ext)
+terra::plot(dlist_cpy$spatial$bathy)
+points(moorings$receiver_easting, moorings$receiver_northing)
 
 #### Define particle samples from the forward and backward runs
 ff <- pf_files(pff_folder, "history")
 fb <- pf_files(pfbk_folder)
 
-#### Make plots 
-# * TO DO: add receivers via .add_additional argument
-png_sink <- here_fig("example", "animation", "frames")
-dir.create(png_sink, recursive = TRUE)
-pf_plot_history(.dlist = dlist, 
-                .forward = ff, .backward = fb, 
-                .steps = 1L, 
-                .add_forward = list(pch = "."), 
-                .png = list(filename = png_sink))
+#### Plot parameters
+# Number of time steps
+nt        <- length(ff)
+# Observations 
+obsp      <- obs[seq_len(nt), ]
+obsp[, depth_neg := depth * -1]
+# Receivers that recorded detections
+receivers <- unique(unlist(obsp$receiver_id))
+# Corresponding detection containers
+v <- 
+  moorings |> 
+  filter(receiver_id %in% receivers) |> 
+  dplyr::select(receiver_easting, receiver_northing) |> 
+  as.matrix() |> 
+  terra::vect() |> 
+  terra::buffer(width = pars$patter$detection_range)
+# Define receiver clumps
+clumps <- 
+  obsp |>
+  dplyr::select(timestamp, detection, receiver_id) |> 
+  filter(detection == 1L) |> 
+  tidyr::unnest(cols = c(receiver_id)) |> 
+  mutate(clump = rleid(receiver_id)) |>
+  group_by(clump) |> 
+  slice(1L) |> 
+  ungroup() |> 
+  as.data.table()
+# Bathymetry colours
+zlim      <- c(0, 250) 
+zlim_neg  <- sort(zlim * -1)
+col_param <- pretty_cols_brewer(zlim = zlim, 
+                                scheme = "Blues")
+col_df <- data.frame(from = col_param$breaks[1:(length(col_param$breaks) - 1)], 
+                     to = col_param$breaks[2:(length(col_param$breaks))], 
+                     color = col_param$col)
 
-#### Make gif
-# input  <- pf_files(png_sink)[1:5]
+#### Make maps (~8 mins, 10 cl)
+if (FALSE) {
+  png_sink <- here_fig("example", "animation", "frames", "maps")
+  dir.create(png_sink, recursive = TRUE)
+  tic()
+  pf_plot_history(.dlist = dlist_cpy, 
+                  .forward = ff, .backward = fb, 
+                  .steps = seq_len(nt), 
+                  .add_surface = list(range = col_param$zlim, col = col_df, legend = FALSE),
+                  .add_forward = list(pch = "."), 
+                  .add_layer = function() {
+                    # Add detection curtains around relevant receivers
+                    terra::lines(v)
+                    # Add coast & moorings 
+                    plot(coast, add = TRUE, col = scales::alpha("palegreen3", 0.5))
+                    text(moorings$receiver_easting, moorings$receiver_northing, moorings$receiver_id, 
+                         font = 2)
+                  }, 
+                  .png = list(filename = png_sink, height = 7, width = 7, units = "in", res = 300), 
+                  .cl = 10L)
+  toc()
+}
+
+
+#### Make time series (2.5 mins s, 10 cl)
+if (TRUE) {
+  png_sink <- here_fig("example", "animation", "frames", "obs")
+  dir.create(png_sink, recursive = TRUE)
+  tic()
+  cl_lapply(seq_len(nt), .cl = 10L, .fun = function(t) {
+    # Blank plot 
+    png(file.path(png_sink, glue::glue("{t}.png")), 
+        height = 7, width = 7, units = "in", res = 300)
+    pretty_plot(obsp$timestamp, obsp$depth_neg, 
+                xlab = "", ylab = "",
+                pretty_axis_args = list(side = 3:2, 
+                                        axis = list(list(format = "%d-%b"), 
+                                                    list())),
+                type = "n")
+    # Add depth time series
+    add_lines(x = obsp$timestamp, 
+              y1 = obsp$depth_neg, 
+              y2 = obsp$depth,
+              breaks = col_param$breaks, cols = col_param$col, 
+              lwd = 2)
+    # Add detections
+    p <- which(obsp$detection == 1L)
+    points(obsp$timestamp[p], rep(0, length(p)))
+    text(clumps$timestamp, rep(-20, nrow(clumps)), clumps$receiver_id, font = )
+    # basicPlotteR::addTextLabels(as.numeric(obsp$timestamp[p]), rep(0, length(p)), labels = obsp$receiver_id[p] |> unlist())
+    # Add time step
+    lines(rep(obsp$timestamp[t], 2), zlim_neg, col = "red", lwd = 1.5)
+    dev.off()
+    NULL
+  })
+  toc()
+}
+
+#### Make videos(s)
+if (FALSE) {
+  
+  #### Input files
+  png_sink   <- here_fig("example", "animation", "frames", "maps")
+  input      <- unlist(pf_files(png_sink))
+  # input      <- input[c(1:500)]
+  
+  #### Parameters
+  # Framerate
+  fr <- 100
+  # Total video duration:
+  length(input) / fr
+  
+  #### GIF
+  # Gifs only work well with delay > 0.005 s, which is too slow:
+  # output     <- file.path(dirname(png_sink), "ani-1.gif")
+  # gifski::gifski(input, output, delay = 0.001, width = 672, height = 672)
+  
+  #### Map mp4
+  output     <- here_fig("example", "animation", "ani-1.mp4")
+  av::av_encode_video(input, output, framerate = 100)
+
+  #### Time series mp4
+  png_sink   <- here_fig("example", "animation", "frames", "maps")
+  input      <- unlist(pf_files(png_sink))
+  input      <- input[c(1:500)]
+  output     <- here_fig("example", "animation", "ani-2.mp4")
+  av::av_encode_video(input, output, framerate = 100)
+
+  
+}
+
 input  <- pf_files(png_sink)
-output <- file.path(basename(png_sink), "ani.gif")
+output <- file.path(basename(png_sink), "ani-1.gif")
 gifski::gifski(input, output)
 
 
