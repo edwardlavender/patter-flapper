@@ -500,7 +500,7 @@ col_df <- data.frame(from = col_param$breaks[1:(length(col_param$breaks) - 1)],
                      to = col_param$breaks[2:(length(col_param$breaks))], 
                      color = col_param$col)
 
-#### Make maps (~8 mins, 10 cl)
+#### Make maps (~8 mins, 10 cl; ~1 hr 16, 0 cl)
 if (FALSE) {
   png_sink <- here_fig("example", "animation", "frames", "maps")
   dir.create(png_sink, recursive = TRUE)
@@ -523,9 +523,8 @@ if (FALSE) {
   toc()
 }
 
-
-#### Make time series (2.5 mins s, 10 cl)
-if (TRUE) {
+#### Make time series (2 mins s, 10 cl)
+if (FALSE) {
   png_sink <- here_fig("example", "animation", "frames", "obs")
   dir.create(png_sink, recursive = TRUE)
   tic()
@@ -577,23 +576,21 @@ if (FALSE) {
   # output     <- file.path(dirname(png_sink), "ani-1.gif")
   # gifski::gifski(input, output, delay = 0.001, width = 672, height = 672)
   
-  #### Map mp4
+  #### Map mp4 (~9.3 mins)
+  tic()
   output     <- here_fig("example", "animation", "ani-1.mp4")
-  av::av_encode_video(input, output, framerate = 100)
+  av::av_encode_video(input, output, framerate = fr)
+  toc()
 
-  #### Time series mp4
-  png_sink   <- here_fig("example", "animation", "frames", "maps")
-  input      <- unlist(pf_files(png_sink))
-  input      <- input[c(1:500)]
+  #### Time series mp4 (~5 mins)
+  tic()
+  png_sink   <- here_fig("example", "animation", "frames", "obs")
+  input      <- unlist(pf_files(png_sink))[seq_len(length(input))]
   output     <- here_fig("example", "animation", "ani-2.mp4")
-  av::av_encode_video(input, output, framerate = 100)
+  av::av_encode_video(input, output, framerate = fr)
+  toc()
 
-  
 }
-
-input  <- pf_files(png_sink)
-output <- file.path(basename(png_sink), "ani-1.gif")
-gifski::gifski(input, output)
 
 
 ###########################
