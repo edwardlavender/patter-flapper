@@ -278,13 +278,15 @@ acs_setup_container_cells <- function(.dlist, .containers, .rcd,
 #' @title AC* helper: ACDC container likelihood
 #' @description This function filters particle proposals that are incompatible with container dynamics. When there is a long time before the next detection, we use acs_filter_container(). As we approach the next detection, we refine the representation of container dynamics with acs_filter_container_acdc(). This accounts for the observed depth at the time of the next acoustic detection. 
 
-acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
+acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist, .drop) {
   
   # Check user inputs
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
                 .algorithm = c("pos_detections"))
   }
+  # Global variables
+  lik <- NULL
   
   # * Identify the time step of the next detection (if applicable)
   # * Identify the number of time steps before the next detection
@@ -347,7 +349,8 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
       .particles <- acs_filter_container(.particles = .particles, 
                                          .obs = .obs, 
                                          .t = .t, 
-                                         .dlist = .dlist)
+                                         .dlist = .dlist, 
+                                         .drop = .drop)
       
     #### Implement the revised ACDC filter that accounts for depth observations
     } else {
@@ -364,7 +367,10 @@ acs_filter_container_acdc <- function(.particles, .obs, .t, .dlist) {
       # * We eliminate particles that are not within a 
       # * ... reachable distance of at least one valid location
       mb <- sum(.obs$mobility[.t]:.obs$mobility[pos_detection])
-      .particles <- .particles[Rfast::rowsums(dist <= mb) > 0L, ]
+      .particles[, lik := lik * ((Rfast::rowsums(dist <= mb) > 0L) + 0L)]
+      if (.drop) {
+        .particles[, lik > 0, ]
+      }
     }
   }
   

@@ -101,7 +101,7 @@ calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
 
 #' @title Depth likelihood term
 
-pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
+pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist, .drop) {
   # Checks (one off)
   if (.t == 1L) {
     check_names(.obs, "depth")
@@ -136,7 +136,10 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist) {
   # Update likelihoods 
   lik <- NULL
   .particles[, lik := lik * lik_dc, ]
-  .particles[lik > 0, ]
+  if (.drop) {
+    .particles <- .particles[lik > 0, ]
+  }
+  .particles
 }
 
 #' @title Plot the depth-error model
@@ -169,7 +172,7 @@ add_depth_error_model <- function(bathy) {
 #' @title Depth likelihood model for coarse grid 
 #' (see R/supporting/trial-coarse-fine-2.R)
 
-pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist) {
+pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist, drop) {
   
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
@@ -199,7 +202,7 @@ pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist) {
       select(cell_now = "cell", x_now = "x", y_now = "y", bathy = "value") |> 
       mutate(lik = 1L) |>
       as.data.table() |>
-      pf_lik_dc_2(.obs = .obs, .t = .t, .dlist = .dlist) 
+      pf_lik_dc_2(.obs = .obs, .t = .t, .dlist = .dlist, drop = .drop) 
     # Define whether or not there are any valid (internal) cells
     nrow(pnow) > 0
   }
