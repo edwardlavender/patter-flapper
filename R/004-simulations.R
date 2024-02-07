@@ -144,6 +144,7 @@ sapply(paths, \(d) range(d$cell_z))
 tic()
 cl_lapply(seq_len(n_path), function(i) {
 # i <- 1L
+message(paste0(rep("-", 25), collapse = ""))
 print(i)
 path     <- paths[[i]]
 moorings <- arrays[[i]]
@@ -155,6 +156,7 @@ dlist    <- dinputs[[i]]$dlist
 sink_pff <- here_data("sims", i, "forward")
 dir.create(sink_pff, recursive = TRUE)
 # Run simulation 
+print("Running forward simulation...")
 tic()
 ssf()
 out_pff <- 
@@ -200,6 +202,7 @@ sink_fig <- here_fig("sims", i, "frames")
 unlink(sink_fig, recursive = TRUE)
 dir.create(sink_fig, recursive = TRUE)
 tic()
+print("Plotting frames...")
 pf_plot_history(.dlist = fig_dlist,
                 .forward = out_pff,
                 .steps = NULL,
@@ -219,6 +222,7 @@ pf_plot_history(.dlist = fig_dlist,
                 .cl = 10L)
 toc()
 # Make animation (~1 min)
+print("Animating frames...")
 tic()
 sink_mp4 <- here_fig("sims", i, "mp4")
 dir.create(sink_mp4)
