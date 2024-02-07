@@ -142,7 +142,7 @@ sapply(paths, \(d) range(d$cell_z))
 
 #### Define simulation run & inputs
 tic()
-cl_lapply(seq_len(n_path), function(i) {
+success <- cl_lapply(seq_len(n_path), function(i) {
 # i <- 1L
 message(paste0(rep("-", 25), collapse = ""))
 print(i)
@@ -216,7 +216,7 @@ pf_plot_history(.dlist = fig_dlist,
                   points(moorings$receiver_easting, moorings$receiver_northing,
                          col = "blue", lwd = 2)
                   # Plot true position at time t
-                  points(path$x[t], path$y[t], col = "orange", lwd = 3)
+                  points(path$x[t], path$y[t], col = "black", lwd = 3)
                   terra::sbar(d = mobility, xy = "bottomleft")
                 },
                 .cl = 10L)
@@ -231,9 +231,13 @@ output <- file.path(sink_mp4, "ani.mp4")
 av::av_encode_video(input, output)
 toc()
 
+#### Outputs
+out_pff$convergence
+
 })
 toc()
 
+success
 
 #### End of code.
 ###########################
