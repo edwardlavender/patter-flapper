@@ -237,7 +237,12 @@ out_pff$convergence
 })
 toc()
 
+#### Examine success
+# Fails:
+# * 1
+# * 4
 success
+
 
 #### End of code.
 ###########################
