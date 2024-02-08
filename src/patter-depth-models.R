@@ -92,10 +92,12 @@ calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
     check_dlist(.dlist = .dlist, 
                 .algorithm = "ewindow")
   }
-  cell_now <- NULL
+  cell_now <- scale_box <- scale_tail <- NULL
   .particles[, deep := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
   .particles[, shallow := terra::extract(.dlist$algorithm$ewindow$shallow, cell_now)]
   .particles[, shallower := terra::extract(.dlist$algorithm$ewindow$shallower, cell_now)]
+  .particles[, scale_box := deep - shallow]
+  .particles[, scale_tail := shallow - shallower]
  .particles
 }
 
@@ -130,9 +132,13 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist, .drop) {
   # * ... is not contained within the error window for that location 
   lik_dc <- rep(0L, nrow(.particles))
   pos <- which((depth >= .particles$shallow) & (depth <= .particles$deep))
-  lik_dc[pos] <- 0.99
-  pos <- which((depth >= .particles$shallower) & (depth <= .particles$deep))
-  lik_dc[pos] <- 0.01
+  if (length(pos) > 0L) {
+    lik_dc[pos] <- 0.99 * .particles$scale_box[pos]
+  }
+  pos <- which((depth >= .particles$shallower) & (depth < .particles$shallow))
+  if (length(pos) > 0L) {
+    lik_dc[pos] <- 0.01 * .particles$scale_tail[pos]
+  }
   # Update likelihoods 
   lik <- NULL
   .particles[, lik := lik * lik_dc, ]
@@ -160,6 +166,8 @@ add_depth_error_model <- function(bathy) {
     shallower_digi <- shallower_digi - bathy
   }
   # Add lines to a plot
+  # * TO DO
+  # * Update scaling
   lines(c(shallower_digi, shallower_digi), c(0, 0.01), col = "red")
   lines(c(shallower_howe, shallower_howe), c(0, 0.01))
   lines(c(shallower_digi, shallower_howe), c(0.01, 0.01), col = "red")
@@ -171,6 +179,8 @@ add_depth_error_model <- function(bathy) {
 
 #' @title Depth likelihood model for coarse grid 
 #' (see R/supporting/trial-coarse-fine-2.R)
+#' TO DO
+# * Review `cell_now` use is correct
 
 pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist, drop) {
   
