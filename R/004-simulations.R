@@ -33,6 +33,24 @@ dv::src()
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
 mpa       <- readRDS(here_data("spatial", "mpa.rds"))
 
+#### Global params
+ssf()
+
+
+###########################
+###########################
+#### Simulate data 
+
+#### (optional) Test
+test <- FALSE
+if (test) {
+  n_path <- 2L
+  cl     <- 2L
+} else {
+  n_path <- 20L
+  cl     <- 20L
+}
+
 #### Define study area
 # We zoom into the MPA for speed (e.g., for preparation of detection kernels)
 boundary <- terra::ext(mpa)
@@ -51,13 +69,13 @@ period <-
 mobility <- 500
 gamma    <- 750
 
-#### Simulate paths
+#### Simulate paths (~3 mins, 20 paths)
 # We will simulate N random walks (with different origins)
 # We assume the individual was 'detected' at the start and end of each path
 tic()
 ssf()
 paths <- 
-  lapply(1:100L, function(i) {
+  lapply(1:n_path, function(i) {
     tryCatch(
       {
         p <- sim_path_walk(.bathy = bathy, 
@@ -77,6 +95,7 @@ paths <-
   }) |> 
   plyr::compact()
 toc()
+qs::qsave(paths, here_data("sims", "paths.qs"))
 # Plot an example path
 head(paths[[1]])
 n_path <- length(paths)
@@ -100,18 +119,22 @@ acoustics <-
     data.table(receiver_id = c(1L, 2L), 
                timestamp = d$timestamp[c(1L, n_step)])
   })
+qs::qsave(acoustics, here_data("sims", "acoustics.qs"))
 
 #### Simulate archival observations
 archivals <- 
   lapply(paths, function(d) {
+    ssf()
     d |> 
       select(timestamp, cell_z) |> 
       mutate(depth = runif(n(), cell_z - 5, cell_z + 5), 
              depth = if_else(depth < 0, 0, depth)) |> 
       as.data.table()
   })
+qs::qsave(archivals, here_data("sims", "archivals.qs"))
 
-#### Prepare algorithms 
+#### Prepare algorithms (~6 mins, 20 paths)
+tic()
 dinputs <- 
   lapply(seq_len(n_path), function(i) {
   
@@ -126,23 +149,41 @@ dinputs <-
                       .step = "2 mins",
                       .mobility = mobility, 
                       .receiver_range = gamma)
-  obs[, depth_shallow := depth - 5]
-  obs[, depth_deep := depth + 5]
+  obs[, depth_shallow_eps := 5]
+  obs[, depth_deep_eps := 5]
+  # Origin
+  shallow <- dlist$spatial$bathy - obs$depth_shallow_eps[1]
+  deep    <- dlist$spatial$bathy + obs$depth_deep_eps[1]
+  origin  <- (obs$depth[1] >= shallow) & (obs$depth[1] <= deep)
+  origin  <- terra::classify(origin, cbind(0, NA))
+  if (FALSE) {
+    terra::plot(origin)
+    points(paths[[i]]$x[1], paths[[i]]$y[1])
+  }
+  dlist$spatial$origin <- origin
   # AC* likelihood components
   dlist$algorithm$detection_overlaps <- acs_setup_detection_overlaps(.dlist = dlist)
   dlist$algorithm$detection_kernels  <- acs_setup_detection_kernels(.dlist = dlist)
   
+  # Outputs
   list(dlist = dlist, obs = obs)
   
 })
-
-#### TO DO
-# Fix pf_lik_dc
+toc()
+# Check depths
 sapply(paths, \(d) range(d$cell_z))
+
+
+###########################
+###########################
+#### Run algorithms
+
+#### Timings
+# 20 paths, 20 cl, 20 mins
 
 #### Define simulation run & inputs
 tic()
-success <- cl_lapply(seq_len(n_path), function(i) {
+success <- cl_lapply(seq_len(n_path), .cl = cl, .fun = function(i) {
 # i <- 1L
 message(paste0(rep("-", 25), collapse = ""))
 print(i)
@@ -154,6 +195,7 @@ dlist    <- dinputs[[i]]$dlist
 #### Forward run
 # Define output connections
 sink_pff <- here_data("sims", i, "forward")
+unlink(sink_pff, recursive = TRUE)
 dir.create(sink_pff, recursive = TRUE)
 # Run simulation 
 print("Running forward simulation...")
@@ -191,8 +233,8 @@ add_sp_path(path$cell_x, path$cell_y, length = 0.01)
 pext <- 
   out_pff$history |> 
   rbindlist(fill = TRUE) |> 
-  summarise(xmin = min(x_now), xmax = max(x_now), 
-            ymin = min(y_now), ymax = max(y_now)) |> 
+  summarise(xmin = min(c(x_now, path$x)), xmax = max(c(x_now, path$x)), 
+            ymin = min(c(y_now, path$y)), ymax = max(c(y_now, path$y))) |> 
   as.data.table()
 fig_dlist <- dlist
 fig_dlist$spatial$bathy <- terra::crop(fig_dlist$spatial$bathy, unlist(pext))
@@ -225,7 +267,8 @@ toc()
 print("Animating frames...")
 tic()
 sink_mp4 <- here_fig("sims", i, "mp4")
-dir.create(sink_mp4)
+unlink(sink_mp4, recursive = TRUE)
+dir.create(sink_mp4, recursive = TRUE)
 input  <- unlist(pf_files(sink_fig))
 output <- file.path(sink_mp4, "ani.mp4")
 av::av_encode_video(input, output)
@@ -239,8 +282,10 @@ toc()
 
 #### Examine success
 # Fails:
-# * 1
-# * 4
+# * 2, 5, 6, 7, 13, 14
+success <- unlist(success)
+names(success) <- seq_len(n_path)
+table(success)
 success
 
 
