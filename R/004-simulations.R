@@ -57,7 +57,7 @@ gamma    <- 750
 tic()
 ssf()
 paths <- 
-  lapply(1:5L, function(i) {
+  lapply(1:100L, function(i) {
     tryCatch(
       {
         p <- sim_path_walk(.bathy = bathy, 
