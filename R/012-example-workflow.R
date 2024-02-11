@@ -206,7 +206,8 @@ if (pars$patter$model == "truncated gamma") {
 # Define trial arguments
 trial <- 
   pf_opt_trial(
-    .trial_sampler_crit = 100L, 
+    .trial_kick = 2L, 
+    .trial_sampler_crit = 50L, 
     .trial_revert = 0L
   )
 # Define record options
@@ -238,7 +239,8 @@ if (alg == "acpf") {
 } else if (alg == "acdcpf") {
   args$.likelihood <- list(pf_lik_dc = pf_lik_dc_2, 
                            pf_lik_ac = pf_lik_ac, 
-                           acs_filter_container = acs_filter_container_acdc)
+                           acs_filter_container = acs_filter_container)
+                           # acs_filter_container = acs_filter_container_acdc)
 }
 
 
@@ -280,6 +282,8 @@ if (rerun) {
 # * 4572     
 # * 9267/9270
 # * 12510     - can be resolved by forward/backward reversal
+
+# Warning: Convergence error: there are no particles with positive weights at time step 12493. Returning outputs up to time step 12493.
 
 
 ###########################
