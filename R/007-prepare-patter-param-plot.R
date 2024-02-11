@@ -33,6 +33,9 @@ dv::src()
 # TO DO
 
 #### Plot observational model (depths) 
+# TO DO
+# * Integrate to one and plot probability density
+# * See add_depth_error_model()
 plot(0, xlim = c(0, 200), ylim = c(0, 1), 
      axes = FALSE, xlab = "", ylab = "",
      type = "n")
