@@ -260,10 +260,11 @@ obs_ls <-
     # DCPF observations
     dcpf <- NULL
     if (!is.null(d$archival)) {
-      dcpf <- acs_setup_obs(.archival = d$archival, 
-                            .step = pars$patter$step,
-                            .period = period, 
-                            .mobility = pars$patter$mobility)
+      dcpf <- pf_setup_obs(.dlist = pat_setup_data(.archival = d$archival),
+                           .trim = FALSE,
+                           .step = pars$patter$step,
+                           .period = period, 
+                           .mobility = pars$patter$mobility)
       # Exclude individuals with gaps (due to recapture events)
       if (any(is.na(dcpf$depth))) {
         dcpf <- NULL
@@ -277,11 +278,12 @@ obs_ls <-
     # ACPF observations
     acpf <- NULL
     if (!is.null(d$acoustics)) {
-      acpf <- acs_setup_obs(.acoustics = d$acoustics, 
-                            .step = pars$patter$step,
-                            .period = period,
-                            .mobility = pars$patter$mobility, 
-                            .detection_range = pars$patter$detection_range)
+      acpf <- pf_setup_obs(.dlist = pat_setup_data(.acoustics = d$acoustics),
+                           .trim = FALSE,
+                           .step = pars$patter$step,
+                           .period = period,
+                           .mobility = pars$patter$mobility, 
+                           .receiver_range = pars$patter$detection_range)
       acpf[, individual_id := d$acoustics$individual_id[1]]
       acpf[, block := as.character(d$acoustics$mmyy[1])]
       acpf[, algorithm := "acpf"]
@@ -290,13 +292,13 @@ obs_ls <-
     # ACDCPF observations
     acdcpf <- NULL
     if (!is.null(d$acoustics) && !is.null(d$archival)) {
-      acdcpf <- acs_setup_obs(.acoustics = d$acoustics, 
-                              .archival = d$archival, 
-                              .trim = FALSE,
-                              .step = pars$patter$step, 
-                              .period = period,
-                              .mobility = pars$patter$mobility, 
-                              .detection_range = pars$patter$detection_range)
+      acdcpf <- pf_setup_obs(.dlist = pat_setup_data(.acoustics = d$acoustics, 
+                                                     .archival = d$archival),
+                             .trim = FALSE,
+                             .step = pars$patter$step, 
+                             .period = period,
+                             .mobility = pars$patter$mobility, 
+                             .receiver_range = pars$patter$detection_range)
       acdcpf[, individual_id := d$acoustics$individual_id[1]]
       acdcpf[, block := as.character(d$acoustics$mmyy[1])]
       acdcpf[, algorithm := "acdcpf"]
