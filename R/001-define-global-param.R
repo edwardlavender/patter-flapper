@@ -33,17 +33,17 @@ library(patter)
 step <- "2 mins"
 
 #### Detection range
-detection_range <- 750
+detection_range <- 1000
 
 #### Mobility 
-mobility <- 500
+mobility <- 750
 
 #### Truncated gamma movement model
 sh <- 1
 sc <- 250
 hist(rtruncgamma(1e5, .shape = sh, .scale = sc, .mobility = mobility), 
-     probability = TRUE, breaks = 100)
-x <- seq(0, 500, by = 1)
+     probability = TRUE, breaks = 100, xlim = c(0, mobility + 200))
+x <- seq(0, mobility, by = 1)
 dtruncgamma(0, .shape = sh, .scale = sc, .mobility = mobility)
 dtruncgamma(1, .shape = sh, .scale = sc, .mobility = mobility)
 y <- dtruncgamma(x, .shape = sh, .scale = sc, .mobility = mobility)
@@ -54,7 +54,7 @@ plot_ly(data = data, x = ~x, y = ~y) |>
   layout(yaxis = list(range = c(0, 0.005)))
 
 #### Uniform movement model 
-hist(runif(1e5, 0, 500))
+hist(runif(1e5, 0, mobility))
 
 ### (original) Depth-error function 
 calc_depth_error <- function(depth) {
@@ -68,8 +68,8 @@ pars <-
   list(
     flapper = list(
       step = step,
-      detection_range = detection_range, 
-      mobility = mobility, 
+      detection_range = 750, 
+      mobility = 500, 
       calc_depth_error = calc_depth_error), 
     patter = list(
       step = step,
