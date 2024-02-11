@@ -14,3 +14,5 @@ fig/
 *.html
 *.pdf
 *.docx
+._*
+.DS_Store
