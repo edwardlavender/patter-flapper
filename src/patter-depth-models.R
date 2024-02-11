@@ -130,7 +130,7 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist, .drop) {
   # Define depth likelihoods
   # * Likelihood is zero in cells where the depth observation 
   # * ... is not contained within the error window for that location 
-  lik_dc <- rep(0L, nrow(.particles))
+  lik_dc <- rep(0, nrow(.particles))
   pos <- which((depth >= .particles$shallow) & (depth <= .particles$deep))
   if (length(pos) > 0L) {
     lik_dc[pos] <- 0.99 * .particles$scale_box[pos]
