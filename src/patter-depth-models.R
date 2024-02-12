@@ -96,8 +96,7 @@ calc_depth_envelope <- function(.particles, .obs = NULL, .t, .dlist) {
   .particles[, deep := terra::extract(.dlist$algorithm$ewindow$deep, cell_now)]
   .particles[, shallow := terra::extract(.dlist$algorithm$ewindow$shallow, cell_now)]
   .particles[, shallower := terra::extract(.dlist$algorithm$ewindow$shallower, cell_now)]
-  .particles[, scale_box := deep - shallow]
-  .particles[, scale_tail := shallow - shallower]
+  .particles[, z := (0.01 * (shallow - shallower)) + (0.99 * (deep - shallow))]
  .particles
 }
 
@@ -133,11 +132,11 @@ pf_lik_dc_2 <- function(.particles, .obs, .t, .dlist, .drop) {
   lik_dc <- rep(0, nrow(.particles))
   pos <- which((depth >= .particles$shallow) & (depth <= .particles$deep))
   if (length(pos) > 0L) {
-    lik_dc[pos] <- 0.99 * .particles$scale_box[pos]
+    lik_dc[pos] <- 0.99 / .particles$z[pos]
   }
   pos <- which((depth >= .particles$shallower) & (depth < .particles$shallow))
   if (length(pos) > 0L) {
-    lik_dc[pos] <- 0.01 * .particles$scale_tail[pos]
+    lik_dc[pos] <- 0.01 / .particles$z[pos]
   }
   # Update likelihoods 
   lik <- NULL
@@ -182,7 +181,7 @@ add_depth_error_model <- function(bathy) {
 #' TO DO
 # * Review `cell_now` use is correct
 
-pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist, drop) {
+pf_lik_dc_coarse <- function(.particles, .obs, .t, .dlist, .drop) {
   
   if (.t == 1L) {
     check_dlist(.dlist = .dlist, 
