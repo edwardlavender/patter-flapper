@@ -247,7 +247,8 @@ if (FALSE) {
   terra:::readAll(b1)
   
   # Sample cells 
-  ind <- sample.int(terra::ncell(b1), size = 1000L)
+  ind    <- sample.int(terra::ncell(b1), size = 1000L)
+  ind_xy <- terra::xyFromCell(b1, ind)
   
   # terra::xyFromCell() is unaffected
   rbenchmark::benchmark(
@@ -258,6 +259,29 @@ if (FALSE) {
   # terra::extract() is ~600 x faster for files in memory
   rbenchmark::benchmark(
     terra::extract(b1, ind),
+    terra::extract(b2, ind)
+  )
+  
+  # We know that extractions based on cell indices are SLIGHTLY faster
+  rbenchmark::benchmark(
+    terra::extract(b1, ind),
+    terra::extract(b1, ind_xy), 
+    replications = 1000L
+  )
+  
+  # (Though this difference does not appear noticeable for files on disk)
+  tic() 
+  rbenchmark::benchmark(
+    terra::extract(b2, ind),
+    terra::extract(b2, ind_xy), 
+    replications = 1000L
+  )
+  toc()
+  
+  # But terra::extract() using xy for a small file in memory 
+  # is still nearly ~600 x faster than for the full file on disk using cell IDs
+  rbenchmark::benchmark(
+    terra::extract(b1, ind_xy),
     terra::extract(b2, ind)
   )
   
