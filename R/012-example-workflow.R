@@ -36,8 +36,8 @@ library(tictoc)
 
 #### Load data
 dv::src()
-bathy     <- terra::rast(here_data("spatial", "bathy.tif")) |> terra:::readAll()
-bset      <- terra::rast(here_data("spatial", "bset.tif")) |> terra:::readAll()
+bathy     <- terra::rast(here_data("spatial", "bathy.tif")) 
+bset      <- terra::rast(here_data("spatial", "bset.tif")) 
 im        <- qs::qread(here_data("spatial", "im.qs"))
 win       <- qs::qread(here_data("spatial", "win.qs"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
@@ -60,6 +60,10 @@ manual     <- run
 ###########################
 ###########################
 #### Set up analysis
+
+#### Process SpatRasters
+terra:::readAll(bathy)
+terra::readAll(bset)
 
 #### Process movement datasets
 # Limits
@@ -95,6 +99,12 @@ dlist <- pat_setup_data(.acoustics = acc,
 # Include AC likelihood terms (required for ACPF, ACDCPF)
 dlist$algorithm$detection_overlaps <- overlaps
 dlist$algorithm$detection_kernels  <- kernels
+#
+# TO DO
+# * Time trial approaches bring kernels into memory
+# * Identify the receivers with detections & overlapping receivers
+# * Optionally crop & use xy coordinates to querying
+#
 # Include DC likelihood terms (required for DCPF, ACDCPF)
 dlist$spatial$bset      <- bset
 dlist$algorithm$ewindow <- ewin

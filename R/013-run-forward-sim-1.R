@@ -41,8 +41,8 @@ dv::src()
 obs_ls   <- qs::qread(here_data("input", "obs.qs"))
 moorings <- readRDS(here_data("mefs", "moorings.rds"))
 overlaps <- readRDS(here_data("input", "overlaps.rds"))
-bathy  <- terra::rast(here_data("spatial", "bathy.tif")) |> terra:::readAll()
-bset   <- terra::rast(here_data("spatial", "bset.tif")) |> terra:::readAll()
+bathy  <- terra::rast(here_data("spatial", "bathy.tif"))
+bset   <- terra::rast(here_data("spatial", "bset.tif")) 
 
 
 ###########################
@@ -59,9 +59,9 @@ sapply(sapply(obs_ls, \(d) d$folder[1]), function(folder) {
 }) |> invisible()
 toc()
 
-#### Wrap SpatRasters
-# TO DO
-# Test speed with/without wrapping
+#### Process SpatRasters
+terra:::readAll(bathy)
+terra::readAll(bset)
 
 #### (optional) Test
 cl   <- 50L
