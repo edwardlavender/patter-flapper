@@ -41,8 +41,8 @@ dv::src()
 obs_ls   <- qs::qread(here_data("input", "obs.qs"))
 moorings <- readRDS(here_data("mefs", "moorings.rds"))
 overlaps <- readRDS(here_data("input", "overlaps.rds"))
-# bathy  <- terra::rast(here_data("spatial", "bathy.tif"))
-# bset   <- terra::rast(here_data("spatial", "bset.tif"))
+bathy  <- terra::rast(here_data("spatial", "bathy.tif")) |> terra:::readAll()
+bset   <- terra::rast(here_data("spatial", "bset.tif")) |> terra:::readAll()
 
 
 ###########################
@@ -113,8 +113,8 @@ pbapply::pblapply(obs_ls, cl = cl, function(obs) {
   
   #### Define baseline args
   args <- list(.obs = obs,
-               .bathy = terra::rast(here_data("spatial", "bathy.tif")),
-               .n = 1e3, 
+               .bathy = bathy,
+               .n = 1e3L, 
                .trial_kick = 1L, 
                .trial_kick_crit = 25L, 
                .trial_revert_crit = 10L, 
@@ -134,7 +134,6 @@ pbapply::pblapply(obs_ls, cl = cl, function(obs) {
                                  .depth = obs$depth[1], 
                                  .calc_depth_error = calc_depth_error)
     # Define DC model
-    bset <- terra::rast(here_data("spatial", "bset.tif"))
     args$.update_ac <- function(.particles, .bathy, .obs, .t, 
                                 .bset = bset, .calc_depth_error = calc_depth_error) {
       update_ac(.particles = .particles, .bathy = .bathy, .obs = .obs, .t = .t, 

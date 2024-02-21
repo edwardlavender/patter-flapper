@@ -36,8 +36,8 @@ library(tictoc)
 
 #### Load data
 dv::src()
-bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
-bset      <- terra::rast(here_data("spatial", "bset.tif"))
+bathy     <- terra::rast(here_data("spatial", "bathy.tif")) |> terra:::readAll()
+bset      <- terra::rast(here_data("spatial", "bset.tif")) |> terra:::readAll()
 im        <- qs::qread(here_data("spatial", "im.qs"))
 win       <- qs::qread(here_data("spatial", "win.qs"))
 moorings  <- readRDS(here_data("mefs", "moorings.rds"))
