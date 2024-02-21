@@ -127,6 +127,16 @@ coast <-
   st_transform(crs = terra::crs(bathy)) |> 
   st_crop(c(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax))
 
+#### Write datasets to file
+tic()
+saveRDS(mpa, here_data("spatial", "mpa.rds"))
+saveRDS(coast, here_data("spatial", "coast.rds"))
+terra::writeRaster(bset, here_data("spatial", "bset.tif"), overwrite = TRUE)
+terra::writeRaster(digi, here_data("spatial", "digi.tif"), overwrite = TRUE)
+terra::writeRaster(howe, here_data("spatial", "howe.tif"), overwrite = TRUE)
+terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
+toc()
+
 
 ###########################
 ###########################
@@ -192,6 +202,82 @@ terra::plot(error_lismore < -10)
 
 ###########################
 ###########################
+#### Analyse bathymetry memory requirements
+
+# Size of bathymetry SpatRaster: 3.5 GB
+# * This comprises n doubles
+# * Each double is 8 bytes
+terra::ncell(bathy)
+8 * terra::ncell(bathy) / 1e9L
+
+# inMemory() reads values into memory by reference (~6 s)
+tic()
+terra:::readAll(bathy)
+toc()
+terra::inMemory(bathy)
+
+# object.size() does not measure size correctly 
+object.size(bathy)
+pryr::object_size(bathy)
+
+# Wrapping the object reads it into memory
+bw <- terra::wrap(bathy)
+bu <- terra::unwrap(bw)
+pryr::object_size(bw)
+pryr::object_size(bu)
+
+# Read vector or matrix of values into memory 
+v <- terra::values(bathy)
+m <- terra::as.matrix(bathy)
+pryr::object_size(v)
+pryr::object_size(m)
+
+# Examine memory required to process SpatRaster
+terra::mem_info(bathy)
+
+# Check free memory (GB)
+terra::free_RAM() / 1e6L
+
+# Compare handling speed for datasets in memory/on disk
+if (FALSE) {
+  
+  # Define datasets
+  b1 <- terra::rast(here_data("spatial", "bathy.tif"))
+  b2 <- terra::deepcopy(b1)
+  terra:::readAll(b1)
+  
+  # Sample cells 
+  ind <- sample.int(terra::ncell(b1), size = 1000L)
+  
+  # terra::xyFromCell() is unaffected
+  rbenchmark::benchmark(
+    terra::xyFromCell(b1, ind),
+    terra::xyFromCell(b2, ind)
+  )
+  
+  # terra::extract() is ~600 x faster for files in memory
+  rbenchmark::benchmark(
+    terra::extract(b1, ind),
+    terra::extract(b2, ind)
+  )
+  
+  # exactextractr::exact_extract() is ~2.5 x faster for files in memory
+  xy <- 
+    b1 |> 
+    terra::xyFromCell(ind) |> 
+    terra::vect(crs = terra::crs(b1)) |> 
+    terra::buffer(width = 10) |> 
+    sf::st_as_sf()
+  rbenchmark::benchmark(
+    exactextractr::exact_extract(b1, xy, progress = FALSE),
+    exactextractr::exact_extract(b2, xy, progress = FALSE)
+  )
+  
+}
+
+
+###########################
+###########################
 #### Visualise study site 
 
 #### Define graphical parameters
@@ -241,22 +327,7 @@ if (FALSE) {
   toc()
 }
 
-
-###########################
-###########################
-#### Write datasets (~ 15 s)
-
-# Spatial datasets
-tic()
-saveRDS(mpa, here_data("spatial", "mpa.rds"))
-saveRDS(coast, here_data("spatial", "coast.rds"))
-terra::writeRaster(bset, here_data("spatial", "bset.tif"), overwrite = TRUE)
-terra::writeRaster(digi, here_data("spatial", "digi.tif"), overwrite = TRUE)
-terra::writeRaster(howe, here_data("spatial", "howe.tif"), overwrite = TRUE)
-terra::writeRaster(bathy, here_data("spatial", "bathy.tif"), overwrite = TRUE)
-toc()
-
-# spatstat versions (~6 s + 115 s)
+#### Write datasets (~6 s + 115 s)
 tic()
 qs::qsave(im, here_data("spatial", "im.qs"))
 toc()
