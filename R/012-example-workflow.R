@@ -63,7 +63,7 @@ manual     <- run
 
 #### Process SpatRasters
 terra:::readAll(bathy)
-terra::readAll(bset)
+terra:::readAll(bset)
 
 #### Process movement datasets
 # Limits
@@ -143,7 +143,7 @@ stopifnot(!any(is.na(obs$depth)))
 # Visualise obs
 plot(arc$timestamp, arc$depth*-1, 
      xlim = xlim, ylim = c(-225, 0),
-     type = "n")
+     type = "n", xlab = "Time (month/day)", ylab = "Depth (m)")
 s <- seq(nrow(arc) - 1)
 arrows(arc$timestamp[s], arc$depth[s] * -1, 
        arc$timestamp[s + 1L], arc$depth[s + 1] * -1, 
@@ -153,7 +153,7 @@ points(acc$timestamp, rep(0L, nrow(acc)), col = "red")
 #### Define origin (~40 s)
 # This is included in dlist below, if necessary
 origin <- NULL
-if (run_origin) {
+if (TRUE) {
   tic()
   obs$depth[1]
   stopifnot(!is.na(obs$depth[1]))
