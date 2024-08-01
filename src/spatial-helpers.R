@@ -35,3 +35,18 @@ julia_assign_SpatRaster <- function(x, value) {
   invisible(NULL)
 }
 
+#' @title Distances along a path
+#' # https://github.com/edwardlavender/patter/blob/70e69537ea71e5a77b18e5457d6c1a0beb68190a/R/dists.R 
+
+dist_along_path <- function(.xy, .lonlat = FALSE) {
+  if (!inherits(.xy, "matrix")) {
+    if (ncol(.xy) != 2L) {
+      abort("`.xy` should be a two-column matrix of coordinates.")
+    }
+    .xy <- as.matrix(.xy, ncol = 2)
+  }
+  dist <- terra::distance(.xy,
+                          lonlat = .lonlat,
+                          sequential = TRUE)
+  c(dist[2:length(dist)], NA_real_)
+}

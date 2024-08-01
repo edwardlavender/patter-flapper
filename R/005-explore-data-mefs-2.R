@@ -1,12 +1,14 @@
 ###########################
 ###########################
-#### prepare-patter-param.R
+#### explore-data-mefs-2.R
 
 #### Aims
-# 1) Prepare patter parameters (e.g., mobility)
+# 1) Explore MEFS data with respect to movement/observation parameters
 
 #### Prerequisites
 # 1) flapper_appl project
+
+stop("This code was written with an earlier version of this project and the patter package. It is no longer run, but kept as a record of earlier analyses.")
 
 
 ###########################
