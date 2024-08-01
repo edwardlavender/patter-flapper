@@ -1,0 +1,1 @@
+op <- options(terra.pal = rev(terrain.colors(256)))
