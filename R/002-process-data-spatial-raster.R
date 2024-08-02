@@ -179,6 +179,13 @@ terra::writeRaster(bathy,
                    here_data("spatial", "bathy.tif"), 
                    overwrite = TRUE)
 
+# UD grid (25 x 25 m)
+ud_grid <- terra::aggregate(bathy, fact = 5)
+terra::writeRaster(ud_grid,
+                   here_data("spatial", "ud-grid.tif"), 
+                   overwrite = TRUE)
+
+
 
 #### End of code. 
 ###########################

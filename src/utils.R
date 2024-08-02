@@ -1,3 +1,13 @@
-date_to_POSIXct <- function(x) {
-  as.POSIXct(paste(x, "00:00:00"), tz = "UTC")
+dirs.create <- function(paths) {
+  sapply(paths, function(path) {
+    if (!dir.exists(path)) {
+      dir.create(path, recursive = TRUE)
+    }
+  }) |> 
+    suppressWarnings()
+  invisible(NULL)
+}
+
+nothing <- function() {
+  invisible(NULL)
 }
