@@ -40,7 +40,7 @@ if (test) {
   iteration <- iteration[1:2]
 } 
 
-#### Estimate coordinates (COAs): ±19 s
+#### Estimate coordinates (COAs): ~19 s
 nrow(iteration)
 iteration[, index := 1:.N]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)

@@ -50,3 +50,9 @@ dist_along_path <- function(.xy, .lonlat = FALSE) {
                           sequential = TRUE)
   c(dist[2:length(dist)], NA_real_)
 }
+
+#' @title Normalise SpatRaster
+
+spatNormalise <- function(x) {
+  x / as.numeric(terra::global(x, "sum", na.rm = TRUE)[, 1])
+}

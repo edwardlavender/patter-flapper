@@ -54,7 +54,51 @@ estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, pl
   nothing()
 }
 
-estimate_ud_dbbmm <- function() {
+estimate_ud_dbbmm <- function(sim, map, bbrast_ll) {
+
+  
+  cat("\n\n\n---------------------------------------------------------------\n")
+  msg("\n On row {sim$index}...", .envir = environment())
+  
+  # Define coordinates
+  # sim <- iteration[1, ]
+  stopifnot(rlang::has_name(sim, "file_coord"))
+  coord   <- qs::qread(sim$file_coord)
+  success <- TRUE
+  
+  # Generate UD
+  t1 <- Sys.time()
+  dbb <- tryCatch(
+    RSP::dynBBMM(input = coord,
+                 base.raster = bbrast_ll,
+                 UTM = "29"),
+    error = function(e) e)
+  t2 <- Sys.time()
+  
+  # Error handling
+  if (inherits(dbb, "error")) {
+    success <- FALSE
+    message(dbb$message)
+  }
+  
+  # Process raster
+  if (success) {
+    dbb <- dbb$dbbmm[[1]]
+    dbb <- terra::rast(dbb)
+    if (terra::nlyr(dbb) > 1L) {
+      dbb <- spatNormalise(terra::app(dbb, "sum"))
+    }
+    # Resample RSP onto map grid for consistency
+    ud <- terra::project(dbb, terra::crs(map))
+    ud <- terra::resample(ud, map)
+    ud <- terra::mask(ud, map)
+    ud <- spatNormalise(ud)
+  }
+
+  # Save outputs
+  if (success) {
+    # TO DO
+  }
   
 }
 

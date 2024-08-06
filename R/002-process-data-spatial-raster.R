@@ -41,7 +41,7 @@ julia_connect()
 #### Process Howe dataset (base)
 
 # Process base dataset
-howe <- run(here_data("spatial", "howe-full.tif"), 
+howe_full <- run(here_data("spatial", "howe-full.tif"), 
             overwrite = FALSE, 
             expr = {
               # (~33 s)
@@ -58,7 +58,7 @@ howe <- run(here_data("spatial", "howe-full.tif"),
 # * West of Islay/Coll & Tiree
 # * South and Eastern Skye
 # * West and Northern Skye
-terra::plot(howe)
+terra::plot(howe_full)
 coast |> 
   terra::simplifyGeom(tolerance = 500) |> 
   terra::plot(add = TRUE, border = "dimgrey")
@@ -68,7 +68,7 @@ howe <- run(here_data("spatial", "howe.tif"),
             overwrite = FALSE, 
             expr = {
               # ~38 s
-              terra::crop(howe, bb)
+              terra::crop(howe_full, bb)
             }, 
             read = terra::rast, 
             write = terra::writeRaster)
@@ -166,6 +166,52 @@ ebathy(350) + etag + etide
 
 ###########################
 ###########################
+#### UD estimation rasters
+
+#### UD grid
+# UDs are computed using 500 pixels in the x and y direction
+ud_grid <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy))
+ud_grid <- terra::resample(bathy, ud_grid)
+ud_grid <- ud_grid > 0
+ud_grid <- terra::classify(ud_grid, cbind(0, NA))
+ud_grid
+terra::plot(!is.na(ud_grid))
+
+#### RSP grid 
+# Define 'water' grid
+# * See guidance in patter-eval
+ud_grid_ll <- terra::project(ud_grid, "EPSG:4326")
+names(ud_grid_ll) <- "layer"
+terra::plot(ud_grid_ll)
+# Define transition layer (~1 s)
+tm <- actel::transitionLayer(ud_grid_ll, directions = 8L)
+terra::plot(raster::raster(tm))
+# Define (enlarged) dynBBMM base.raster
+# * Define regional raster from how_full
+# * Resample ud_grid onto howe_full for merging
+# * Merge the two datasets (i.e., the full dataset with the smaller, refined one)
+# * Crop an enlarged dataset (e.g., expanded by 20 km)
+tic()
+region <- terra::rast(terra::ext(howe_full), nrow = 500, ncol = 500, crs = terra::crs(bathy))
+region <- terra::resample(howe_full, region)
+bbrast <- terra::resample(ud_grid, region)
+bbrast <- terra::merge(bbrast, region, na.rm = FALSE)
+bbrast <- terra::crop(bbrast, bb + 20e3L)
+bbrast <- bbrast > 0
+bbrast <- terra::classify(bbrast, cbind(0, NA))
+bbrast_ll <- terra::project(bbrast, "EPSG:4326")
+terra::plot(bbrast_ll)
+toc()
+# Visual check
+pp <- par(mfrow = c(1, 3))
+terra::plot(howe_full)
+terra::plot(ud_grid_ll)
+terra::plot(bbrast_ll)
+par(pp)
+
+
+###########################
+###########################
 #### Write datasets
 
 # Size of bathymetry SpatRaster: 3.5 GB
@@ -178,13 +224,13 @@ terra::ncell(bathy)
 terra::writeRaster(bathy,
                    here_data("spatial", "bathy.tif"), 
                    overwrite = TRUE)
-
-# UD grid (25 x 25 m)
-ud_grid <- terra::aggregate(bathy, fact = 5)
 terra::writeRaster(ud_grid,
                    here_data("spatial", "ud-grid.tif"), 
                    overwrite = TRUE)
-
+terra::writeRaster(bbrast_ll,
+                   here_data("spatial", "bbrast_ll.tif"), 
+                   overwrite = TRUE)
+qs::qsave(tm, here_data("spatial", "tm.qs"))
 
 
 #### End of code. 

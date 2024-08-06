@@ -20,9 +20,51 @@ estimate_coord_coa <- function(sim, map, datasets) {
   
 }
 
-estimate_coord_rsp <- function() {
+estimate_coord_rsp <- function(sim, map, datasets) {
   
+  pfile <- "coord.qs"
+  dfile <- "data.qs"
   
+  # Define data
+  # sim <- iteration[1, ]
+  act <- as_actel(.map = map, 
+                  .acoustics = datasets$detections[[sim$unit_id]], 
+                  .moorings = datasets$moorings)
+  
+  # RSP arguments
+  error   <- NA_character_
+  success <- TRUE
+  args    <- list(input = act,
+                  t.layer = datasets$tm,
+                  coord.x = "Longitude", coord.y = "Latitude",
+                  er.ad = sim$er.ad)
+  
+  # RSP implementation
+  t1 <- Sys.time()
+  pout <- tryCatch(do.call(RSP::runRSP, args),
+                   error = function(e) e)
+  t2 <- Sys.time()
+  
+  if (inherits(pout, "error")) {
+    success <- FALSE
+    error   <- pout$message
+    message(error)
+  } else {
+    time <- secs(t2, t1)
+  }
+  
+  # Collect success statistics
+  dout <- data.table(routine = "rsp", 
+                     success = success, 
+                     error = error, 
+                     time = time)
+  
+  # Write outputs to file
+  if (success) {
+    qs::qsave(pout, file.path(sim$folder, pfile))
+  }
+  qs::qsave(dout, file.path(sim$folder, dfile))
+  nothing()
   
 }
 
@@ -86,9 +128,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
     cat("\n... (3) Implementing smoother...\n")
     success <- pf_smoother_wrapper(sim)
   }
-
-  #### Return outputs
-  success
+  nothing()
   
 }
 
@@ -101,7 +141,7 @@ lapply_estimate_coord_coa <- function(iteration, datasets) {
   map <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
   terra:::readAll(map)
   
-  # Estimate COAs iteratively
+  # Estimate COAs via estimate_coord_coa()
   iteration_ls <- split(iteration, collapse::seq_row(iteration))
   cl_lapply(iteration_ls, function(sim) {
     estimate_coord_coa(sim = sim, 
@@ -113,6 +153,29 @@ lapply_estimate_coord_coa <- function(iteration, datasets) {
   
 }
 
+lapply_estimate_coord_rsp <- function(iteration, datasets) {
+  
+  tictoc::tic()
+  on.exit(tictoc::toc(), add = TRUE)
+  
+  # Read grid 
+  map <- terra::rast(dv::here_data("spatial", "bathy.tif"))
+  terra:::readAll(map)
+  
+  # Read tm
+  datasets$tm <- qs::qread(dv::here_data("spatial", "tm.qs"))
+  
+  # Estimate coordinates via estimate_coord_rsp()
+  iteration_ls <- split(iteration, collapse::seq_row(iteration))
+  cl_lapply(iteration_ls, function(sim) {
+    estimate_coord_rsp(sim = sim, 
+                       map = map,
+                       datasets = datasets)
+  })
+  
+  nothing()
+  
+}
 
 lapply_estimate_coord_patter <- function(iteration, datasets) {
   
@@ -123,7 +186,7 @@ lapply_estimate_coord_patter <- function(iteration, datasets) {
   map <- terra::rast(dv::here_data("spatial", "bathy.tif"))
   terra:::readAll(map)
   
-  # Estimate coordinates iteratively
+  # Estimate coordinates via estimate_coord_patter()
   iteration_ls <- split(iteration, collapse::seq_row(iteration))
   cl_lapply(iteration_ls, function(sim) {
     estimate_coord_patter(sim = sim, 
