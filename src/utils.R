@@ -1,3 +1,7 @@
+progress <- function(t, nt = max(t)) {
+  msg("On row {t} / {nt} ({round(t/nt * 100)} %)...", .envir = environment())
+}
+
 dirs.create <- function(paths) {
   sapply(paths, function(path) {
     if (!dir.exists(path)) {
@@ -8,6 +12,3 @@ dirs.create <- function(paths) {
   invisible(NULL)
 }
 
-nothing <- function() {
-  invisible(NULL)
-}

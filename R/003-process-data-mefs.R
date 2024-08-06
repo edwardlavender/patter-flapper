@@ -68,7 +68,7 @@ moorings <-
 
 #### Check validity on `bathy`
 moorings$map_value <- 
-  terra::extract(bathy, moorings[, .(receiver_x, receiver_y)])[, 1]
+  terra::extract(bathy, cbind(moorings$receiver_x, moorings$receiver_y))[, 1]
 stopifnot(all(!is.na(moorings$map_value)))
 if (FALSE) {
   # Plot receiver positions
