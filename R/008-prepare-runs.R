@@ -23,6 +23,7 @@ library(dv)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(tictoc)
 dv::src()
 
 #### Load data 
@@ -35,10 +36,17 @@ archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 ###########################
 #### Define base folders
 
+tic()
+
+# (optional) Clean data/output/analysis
+if (FALSE) {
+  unlink(file.path("data", "output", "analysis"), recursive = TRUE)
+}
+
 # {individual}/{month}/{package}/
-unitsets[, folder_base := file.path("data", "output", "analysis", 
+unitsets[, folder_unit := file.path("data", "output", "analysis", 
                                      individual_id, month_id)]
-dirs.create(unitsets$folder_base)
+dirs.create(unitsets$folder_unit)
 
 
 ###########################
@@ -60,12 +68,19 @@ parameters <- data.table(parameter_id = 1:3L,
 iteration_coa <- 
   cross_join(iteration_ac, parameters) |> 
   arrange(unit_id, parameter_id) |> 
+  mutate(index = row_number(), 
+         folder_coord = file.path(folder_unit, "coa", dataset, parameter_id, "coord"),
+         folder_ud = file.path(folder_unit, "coa", dataset, parameter_id, "ud")) |> 
+  select("index", 
+         "unit_id", "individual_id",  "month_id", 
+         "dataset", 
+         "parameter_id", "delta_t", "folder_coord", "folder_ud") |> 
   as.data.table()
 
 #### Build COA folders
-iteration_coa[, folder := file.path(folder_base, "coa", parameter_id)]
-dirs.create(file.path(iteration_coa$folder, "coord"))
-dirs.create(file.path(iteration_coa$folder, "ud"))
+dirs.create(iteration_coa$folder_coord)
+dirs.create(iteration_coa$folder_ud)
+dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 
 
 ###########################
@@ -83,12 +98,21 @@ parameters <- data.table(parameter_id = 1:3L,
 iteration_rsp <- 
   cross_join(iteration_ac, parameters) |> 
   arrange(unit_id, parameter_id) |> 
+  mutate(index = row_number(), 
+         folder_coord = file.path(folder_unit, "rsp", dataset, parameter_id, "coord"), 
+         folder_ud = file.path(folder_unit, "rsp", dataset, parameter_id, "ud")) |> 
+  select("index", 
+         "unit_id", "individual_id",  "month_id", 
+         "dataset", 
+         "parameter_id", "er.ad", 
+         "folder_coord", "folder_ud") |> 
   as.data.table()
 
 #### Build RSP folders
-iteration_rsp[, folder := file.path(folder_base, "rsp", parameter_id)]
-dirs.create(file.path(iteration_rsp$folder, "coord"))
-dirs.create(file.path(iteration_rsp$folder, "ud"))
+dirs.create(iteration_rsp$folder_coord)
+dirs.create(iteration_rsp$folder_ud)
+dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
+dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
 
 
 ###########################
@@ -139,13 +163,24 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   }
   cbind(d, p)
   
-}) |> rbindlist()
+}) |> 
+  rbindlist() |> 
+  mutate(index = row_number(), 
+         folder_coord = file.path(folder_unit, "patter", dataset, parameter_id, "coord"), 
+         folder_ud = file.path(folder_unit, "patter", dataset, parameter_id, "ud")) |> 
+  select("index", 
+         "unit_id", "individual_id",  "month_id", 
+         "dataset", 
+         "parameter_id", "sensitivity", 
+         "shape", "scale", "mobility", 
+         "receiver_alpha", "receiver_beta",
+         "receiver_gamma", "depth_sigma", "depth_deep_eps",
+         "folder_coord", "folder_ud")
 
 #### Build patter folders
-# {individual}/{mmyy}/{patter}/{algorithm}/{parameter combination}
-iteration_patter[, folder := file.path(folder_base, "patter", dataset, parameter_id)]
-dirs.create(file.path(iteration_patter$folder, "coord"))
-dirs.create(file.path(iteration_patter$folder, "ud"))
+dirs.create(iteration_patter$folder_coord)
+dirs.create(iteration_patter$folder_ud)
+dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 
 ###########################
@@ -155,6 +190,9 @@ dirs.create(file.path(iteration_patter$folder, "ud"))
 qs::qsave(iteration_coa, here_data("input", "iteration", "coa.qs"))
 qs::qsave(iteration_rsp, here_data("input", "iteration", "rsp.qs"))
 qs::qsave(iteration_patter, here_data("input", "iteration", "patter.qs"))
+
+
+toc()
 
 
 #### End of code.

@@ -1,6 +1,4 @@
-#' @title {patter} helpers
-
-# Convert .acoustics to glatos format
+#' Convert .acoustics to glatos format
 as_glatos <- function(.acoustics) {
   data.frame(detection_timestamp_utc = .acoustics$timestamp, 
              transmitter_codespace = "000",
@@ -9,6 +7,7 @@ as_glatos <- function(.acoustics) {
   )
 }
 
+#' Convert .acoustics to actel format (for RSP)
 as_actel <- function(.map, .acoustics, .moorings) {
   
   #### Get data

@@ -1,7 +1,7 @@
-#### terra colour palette
+#' terra colour palette
 op <- options(terra.pal = rev(terrain.colors(256)))
 
-#### spatstat options
+#' spatstat options
 # For testing, set npixel to small (e.g., 50 pixel)
 # Otherwise, finer resolution is better
 # The pixel resolution should just be high enough for the plot to look nice &
@@ -10,7 +10,6 @@ op <- options(terra.pal = rev(terrain.colors(256)))
 sop <- spatstat.geom::spatstat.options(npixel = 50)
 sop$npixel
 
-
-#### Multi-threading
+#' Multi-threading
 data.table::setDTthreads(threads = Sys.getenv("OMP_NUM_THREADS"))
 data.table::getDTthreads()

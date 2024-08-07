@@ -42,7 +42,6 @@ if (test) {
 
 #### Estimate coordinates (COAs): ~19 s
 nrow(iteration)
-iteration[, index := 1:.N]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)
 lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
 
@@ -60,7 +59,7 @@ if (FALSE) {
 nrow(iteration) * 165 / 60 / 60
 
 #### Estimate UDs
-iteration[, file_coord := file.path(folder, "coord.qs")]
+iteration[, file_coord := file.path(folder_coord, "coord.qs")]
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = NULL,
                             cl = NULL, 

@@ -1,50 +1,79 @@
+#' Estimate COAs
 estimate_coord_coa <- function(sim, map, datasets) {
   
-  # Estimate COAs
-  t1 <- Sys.time()
+  # Initialise
+  cat_init(sim$index)
+  
+  # Define outputs
+  pfile <- "coord.qs"
+  dfile <- "data.qs"
+  
+  # Define data & parameters
+  detections <- datasets$detections_by_unit[[sim$unit_id]]
+  moorings   <- datasets$moorings
+  delta_t    <- sim$delta_t
+  
+  # Run algorithm
+  t1    <- Sys.time()
   coord <- coa(.map = map,
-               .acoustics = datasets$detections_by_unit[[sim$unit_id]],
-               .moorings = datasets$moorings,
-               .delta_t = sim$delta_t,
+               .acoustics = detections,
+               .moorings = moorings,
+               .delta_t = delta_t,
                .plot_weights = FALSE)
-  t2 <- Sys.time()
+  t2    <- Sys.time()
+  time  <- secs(t2, t1)
   
-  # Record convergence & timing
-  # print(head(coord))
-  time <- sim[, time := secs(t2, t1)]
+  # Collect success statistics
+  dout <- data.table(id = sim$index, 
+                     method = "coa", 
+                     routine = "coa", 
+                     success = TRUE,
+                     error = NA_character_, 
+                     convergence = TRUE, 
+                     ntrial = NA_integer_,
+                     time = time)
   
-  # Save outputs
-  qs::qsave(time, file.path(sim$folder, "data.qs"))
-  qs::qsave(coord, file.path(sim$folder, "coord.qs"))
+  # Write outputs
+  qs::qsave(pout, file.path(sim$folder_coord, pfile))
+  qs::qsave(dout, file.path(sim$folder_coord, dfile))
   nothing()
   
 }
 
+#' Estimate RSPs
 estimate_coord_rsp <- function(sim, map, datasets) {
   
+  # Initialise
+  cat_init(sim$index)
+  
+  # Define outputs
   pfile <- "coord.qs"
   dfile <- "data.qs"
   
-  # Define data
-  # sim <- iteration[1, ]
-  act <- as_actel(.map = map, 
-                  .acoustics = datasets$detections[[sim$unit_id]], 
-                  .moorings = datasets$moorings)
+  # Define data & parameters
+  detections <- datasets$detections_by_unit[[sim$unit_id]]
+  moorings   <- datasets$moorings
+  act        <- as_actel(.map = map, 
+                         .acoustics = detections, 
+                         .moorings = moorings)
+  tm         <- datasets$tm
+  er.ad      <- sim$er.add
   
-  # RSP arguments
+  # Initialise algorithm
   error   <- NA_character_
   success <- TRUE
-  args    <- list(input = act,
-                  t.layer = datasets$tm,
+  args    <- list(input = detections,
+                  t.layer = tm,
                   coord.x = "Longitude", coord.y = "Latitude",
-                  er.ad = sim$er.ad)
+                  er.ad = er.ad)
   
-  # RSP implementation
+  # Run algorithm
   t1 <- Sys.time()
   pout <- tryCatch(do.call(RSP::runRSP, args),
                    error = function(e) e)
   t2 <- Sys.time()
   
+  # Handle errors
   if (inherits(pout, "error")) {
     success <- FALSE
     error   <- pout$message
@@ -54,31 +83,41 @@ estimate_coord_rsp <- function(sim, map, datasets) {
   }
   
   # Collect success statistics
-  dout <- data.table(routine = "rsp", 
+  dout <- data.table(id = sim$index, 
+                     method = "rsp", 
+                     routine = "rsp", 
                      success = success, 
                      error = error, 
+                     convergence = TRUE, 
+                     ntrial = NA_integer_,
                      time = time)
   
-  # Write outputs to file
+  # Write outputs
   if (success) {
-    qs::qsave(pout, file.path(sim$folder, pfile))
+    qs::qsave(pout, file.path(sim$folder_coord, pfile))
   }
-  qs::qsave(dout, file.path(sim$folder, dfile))
+  qs::qsave(dout, file.path(sim$folder_coord, dfile))
   nothing()
   
 }
 
+# Estimate particles
 estimate_coord_patter <- function(sim, map, datasets) {
   
-  #### Read data
-  # sim <- iteration[81, ]
-  cat("\n\n\n---------------------------------------------------------------\n")
-  msg("\n On row {sim$index}...", .envir = environment())
+  #### Initialise
+  cat_init(sim$index)
+  
+  #### Define outputs
+  # See pf_filter_wrapper()
+  # See pf_smoother_wrapper()
+  
+  #### Define data & parameters
+  # Parameters are defined by the patter_*() functions below
   detections  <- datasets$detections_by_unit[[sim$unit_id]]
-  archival    <- datasets$archival_by_unit[[sim$unit_id]]
   moorings    <- datasets$moorings
+  archival    <- datasets$archival_by_unit[[sim$unit_id]]
 
-  #### Particle filter arguments 
+  #### Initialise particle filter
   # Timeline
   timeline <- patter_timeline(sim$month_id)
   if (TRUE) {
@@ -88,7 +127,6 @@ estimate_coord_patter <- function(sim, map, datasets) {
                                   .step = "2 mins",
                                   .trim = TRUE)[1:10L]
   }
-  # range(timeline)
   # Movement model
   state       <- "StateXY"
   model_move  <- patter_ModelMove(sim)
@@ -131,70 +169,3 @@ estimate_coord_patter <- function(sim, map, datasets) {
   nothing()
   
 }
-
-lapply_estimate_coord_coa <- function(iteration, datasets) {
-  
-  tictoc::tic()
-  on.exit(tictoc::toc(), add = TRUE)
-  
-  # Read grid
-  map <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
-  terra:::readAll(map)
-  
-  # Estimate COAs via estimate_coord_coa()
-  iteration_ls <- split(iteration, collapse::seq_row(iteration))
-  cl_lapply(iteration_ls, function(sim) {
-    estimate_coord_coa(sim = sim, 
-                       map = map,
-                       datasets = datasets)
-  })
-  
-  nothing()
-  
-}
-
-lapply_estimate_coord_rsp <- function(iteration, datasets) {
-  
-  tictoc::tic()
-  on.exit(tictoc::toc(), add = TRUE)
-  
-  # Read grid 
-  map <- terra::rast(dv::here_data("spatial", "bathy.tif"))
-  terra:::readAll(map)
-  
-  # Read tm
-  datasets$tm <- qs::qread(dv::here_data("spatial", "tm.qs"))
-  
-  # Estimate coordinates via estimate_coord_rsp()
-  iteration_ls <- split(iteration, collapse::seq_row(iteration))
-  cl_lapply(iteration_ls, function(sim) {
-    estimate_coord_rsp(sim = sim, 
-                       map = map,
-                       datasets = datasets)
-  })
-  
-  nothing()
-  
-}
-
-lapply_estimate_coord_patter <- function(iteration, datasets) {
-  
-  tictoc::tic()
-  on.exit(tictoc::toc(), add = TRUE)
-  
-  # Read grid
-  map <- terra::rast(dv::here_data("spatial", "bathy.tif"))
-  terra:::readAll(map)
-  
-  # Estimate coordinates via estimate_coord_patter()
-  iteration_ls <- split(iteration, collapse::seq_row(iteration))
-  cl_lapply(iteration_ls, function(sim) {
-    estimate_coord_patter(sim = sim, 
-                          map = map,
-                          datasets = datasets)
-  })
-  
-  nothing()
-  
-}
-

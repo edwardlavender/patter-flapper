@@ -1,8 +1,10 @@
+#' Define a 2 minute timeline given the mmyy
 patter_timeline <- function(mmyy) {
   period <- mmyyrng(mmyy)
   seq(period[1],  period[2], by = "2 mins")
 }
 
+#' Define the movement model for a simulation
 patter_ModelMove <- function(sim) {
   move_xy(dbn_length =
             glue::glue("truncated(Gamma({sim$shape},
@@ -11,6 +13,7 @@ patter_ModelMove <- function(sim) {
           dbn_angle = "Uniform(-pi, pi)")
 }
 
+#' Define the model_obs and yobs inputs for a forward run of the particle filter
 patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archival) {
   
   #### Acoustics datasets
@@ -66,6 +69,7 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
   
 }
 
+#' Update the model_obs and yobs inputs for a backward run of the particle filter
 patter_ModelObs_backward <- function(sim, model_obs) {
   if (sim$dataset %in% c("ac", "acdc")) {
     # Update container dataset (which is direction-dependent)
@@ -77,6 +81,7 @@ patter_ModelObs_backward <- function(sim, model_obs) {
   model_obs
 } 
 
+#' Define the number of particles to use for ACPF/DCPF/ACDCPF runs
 patter_np <- function(sim) {
   if (sim$dataset == "ac") {
     np <- 1e4L
@@ -88,6 +93,9 @@ patter_np <- function(sim) {
   np
 }
 
+#' Initialise the particle filter
+#' * This code is extracted from pf_filter()
+#' * This enables more efficient iterative implementations of the actual filter
 pf_filter_init <- function(.map,
                            .timeline,
                            .state = "StateXY", .xinit = NULL, .xinit_pars = list(),
@@ -138,6 +146,8 @@ pf_filter_init <- function(.map,
   
 }
 
+#' Run the particle filter
+#' * As above, this code is extracted from pf_filter()
 pf_filter_run <- function(args) {
   # Run filter
   pf_obj <- set_pf_filter(.n_move = 100000L,
@@ -148,9 +158,10 @@ pf_filter_run <- function(args) {
   pf_particles(.xinit = NULL, .pf_obj = pf_obj)
 }
 
+#' Define a pf_filter() that runs the algorithms for a given simulation
 pf_filter_wrapper <- function(sim, args) {
   
-  # Define output files (fwd, bwd, smo) 
+  # Define outputs (fwd, bwd)
   if (args$.direction == "forward") {
     routine <- "fwd"
     pfile   <- "coord-fwd.qs"
@@ -162,6 +173,9 @@ pf_filter_wrapper <- function(sim, args) {
   } else {
     stop("args$.direction is missing!")
   }
+  
+  # Define data & parameters
+  # * These are passed down from args, above
   
   # Initialise variables
   success     <- FALSE
@@ -215,23 +229,27 @@ pf_filter_wrapper <- function(sim, args) {
   
   # Collect success statistics
   success <- !inherits(pout, "error") && pout$convergence
-  dout    <- data.table(routine = routine, 
+  dout    <- data.table(id = sim$index, 
+                        method = "particle", 
+                        routine = routine, 
                         success = success, 
                         error = error, 
                         convergence = convergence, 
                         n_trial = n_trial_req,
                         time = time)
   
-  # Write outputs to file
+  # Write outputs
   if (success) {
     qs::qsave(pout, file.path(sim$folder, pfile))
   }
   qs::qsave(dout, file.path(sim$folder, dfile))
   
   # Return success
+  # * This controls whether or not we run smoothing
   success
 }
 
+#' Create a smoothing wrapper that runs the smoother for a given simulation
 pf_smoother_wrapper <- function(sim) {
   
   # Define output files
@@ -240,21 +258,23 @@ pf_smoother_wrapper <- function(sim) {
   
   # Run smoother
   t1      <- Sys.time()
-  pout <- pf_smoother_two_filter(.n_particle = 1000L,
-                                 .verbose = FALSE)
+  pout    <- pf_smoother_two_filter(.n_particle = 1000L,
+                                    .verbose = FALSE)
   t2 <- Sys.time()
   
   # Collect success statistics
   time <- secs(t2, t1)
-  dout <- data.table(routine = "smo", 
+  dout <- data.table(id = sim$index, 
+                     method = "particle", 
+                     routine = "smo", 
                      success = TRUE, 
                      error = NA_character_, 
                      convergence = TRUE, 
                      time = time)
   
-  # Write outputs to file
+  # Write outputs
   qs::qsave(pout, file.path(sim$folder, pfile))
   qs::qsave(dout, file.path(sim$folder, dfile))
-  TRUE
+  nothing()
   
 }

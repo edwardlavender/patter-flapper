@@ -55,7 +55,6 @@ if (test) {
 
 #### Estimate coordinates (patter)
 nrow(iteration)
-iteration[, index := 1:.N]
 datasets <- list(detections_by_unit = acoustics_by_unit, 
                  moorings = moorings,
                  archival_by_unit = archival_by_unit)

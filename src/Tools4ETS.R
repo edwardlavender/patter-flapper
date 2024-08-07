@@ -1,13 +1,14 @@
-#' @title {Tools4ETS} imports & extensions
+#' {Tools4ETS} imports & extensions
 
-secs <- function(time1, time2) {
-  as.numeric(difftime(time1, time2, units = "secs"))
-}
-
+# Convert Date to POSIXct
 date_to_POSIXct <- function(x) {
   as.POSIXct(paste(x, "00:00:00"), tz = "UTC")
 }
 
+# Duration (secs)
+secs <- function(time1, time2) {
+  as.numeric(difftime(time1, time2, units = "secs"))
+}
 
 # Differences
 difference <- function(x2, x1, f = NULL, ...) {

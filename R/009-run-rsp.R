@@ -42,19 +42,18 @@ if (test) {
   iteration <- iteration[1:2]
 } 
 
-#### Estimate coordinates (RSPs):
+#### Estimate coordinates (RSPs)
 nrow(iteration)
-iteration[, index := 1:.N]
 moorings[, receiver_gamma := 1500]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)
 lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
 
-#### Estimate DBBMMs:
-iteration[, file_coord := file.path(folder, "coord.qs")]
+#### Estimate DBBMMs
+iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+lapply_estimate_ud_dbbmm(iteration = iteration, 
+                         cl = NULL, 
+                         plot = FALSE)
 
-map       <- terra::rast(here_data("spatial", "ud-grid.tif"))
-bbrast_ll <- terra::rast(here_data("spatial", "bbrast_ll.tif"))
-terra:::readAll(bbrast_ll)
 
 #### End of code.
 ###########################
