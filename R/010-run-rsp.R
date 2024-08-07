@@ -47,7 +47,7 @@ if (test) {
 #### Estimate coordinates
 # Time trial
 lapply_estimate_coord_rsp(iteration = iteration[1, ], datasets = datasets)
-# Implementation
+# Implementation (~10 mins)
 lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
 # (optional) Examine selected coords
 lapply_qplot_coord(iteration, 
@@ -66,7 +66,7 @@ lapply_qplot_coord(iteration,
 lapply_estimate_ud_dbbmm(iteration = iteration[1, ], 
                          cl = NULL, 
                          plot = FALSE)
-# Implementation 
+# Implementation (~2.5 hours, 1 cl)
 lapply_estimate_ud_dbbmm(iteration = iteration, 
                          cl = 2L, 
                          plot = FALSE)

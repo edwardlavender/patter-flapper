@@ -38,7 +38,7 @@ iteration[, file_coord := file.path(folder_coord, "coord.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)
 
 #### (optional) Testing
-test <- TRUE
+test <- FALSE
 if (test) {
   iteration <- iteration[1:2]
 } 
@@ -53,6 +53,9 @@ lapply_qplot_coord(iteration, "coord.qs")
 
 #### Estimate UDs
 # Time trial 
+# * 1 iteration         : 162.067 s (500 pixels, sigma = bw.h)
+# * nrow(iterations) ETA: 16 hours (1 cl)
+nrow(iteration) * 162.067 / 60 / 60 
 lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
                             extract_coord = NULL,
                             cl = NULL, 
