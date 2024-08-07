@@ -1,3 +1,27 @@
+#' h bandwidth estimator
+
+bw.h <- function(X) {
+  # Code from adehabitatHR:::.kernelUDs with tweaks
+  # & adapted for adehabitatHR
+  sdxy <- sqrt(0.5 * (var(X$x) + var(X$y)))
+  sdxy * (X$n^(-1/6))
+}
+
+if (FALSE) {
+  library(testthat)
+  library(adehabitatHR)
+  data(puechabonsp)
+  loc      <- puechabonsp$relocs
+  ud       <- kernelUD(loc[, 1])
+  h_expect <- ud$Brock@h$h
+  coord    <- loc[loc$Name == "Brock", ]@coords
+  X        <- data.frame(x = coord[, 1], y = coord[, 2])
+  sdxy     <- sqrt(0.5 * (var(X$x) + var(X$y)))
+  h_calc   <- sdxy * (nrow(X)^(-1/6))
+  expect_equal(h_calc, h_expect)
+  # > TRUE
+}
+
 #' Estimate UDs using spatstat
 estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, plot) {
   
@@ -10,6 +34,10 @@ estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, pl
   
   # Define data 
   stopifnot(rlang::has_name(sim, "file_coord"))
+  if (!file.exists(sim$file_coord)) {
+    message("Coordinate file does not exist.")
+    return(nothing())
+  }
   coord <- qs::qread(sim$file_coord)
   if (!is.null(extract_coord)) {
     coord <- extract_coord(coord)
@@ -93,6 +121,10 @@ estimate_ud_dbbmm <- function(sim, map, bbrast_ll, plot) {
   
   # Define data 
   stopifnot(rlang::has_name(sim, "file_coord"))
+  if (!file.exists(sim$file_coord)) {
+    message("Coordinate file does not exist.")
+    return(nothing())
+  }
   coord   <- qs::qread(sim$file_coord)
 
   # Initialise algorithm

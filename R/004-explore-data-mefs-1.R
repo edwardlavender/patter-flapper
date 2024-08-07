@@ -19,13 +19,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(dv)
-library(data.table)
-library(dtplyr)
-library(dplyr)
 library(ggplot2)
-library(patter)
-library(tictoc)
 dv::src()
 
 #### Load data

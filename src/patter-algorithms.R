@@ -182,13 +182,15 @@ pf_filter_wrapper <- function(sim, args) {
   error       <- NA_character_
   convergence <- FALSE
   time        <- NA_real_
+  n_trial     <- 1L
+  n_trial_req <- NA_integer_
   
   # Initialise filter
   # * We initialise the filter once, for speed
   cat("... ... (a) Initialising filter...\n\n")
   init <- tryCatch(do.call(pf_filter_init, args, quote = TRUE),
            error = function(e) e)
-  if (inherits("init", "error")) {
+  if (inherits(init, "error")) {
     error <- init$message
     message(error)
   }
@@ -197,8 +199,6 @@ pf_filter_wrapper <- function(sim, args) {
   cat("\n... ... (b) Iteratively implementing filter...\n")
   if (!inherits(init, "error")) {
     
-    n_trial     <- 1L
-    n_trial_req <- NA_integer_
     while (n_trial < 10L) {
       
       cat(paste0("... ... ... On trial ", n_trial, "...\n"))
@@ -224,11 +224,10 @@ pf_filter_wrapper <- function(sim, args) {
         }
       }
     }
-    
+    success <- !inherits(pout, "error") && pout$convergence
   }
   
   # Collect success statistics
-  success <- !inherits(pout, "error") && pout$convergence
   dout    <- data.table(id = sim$index, 
                         method = "particle", 
                         routine = routine, 
@@ -240,9 +239,9 @@ pf_filter_wrapper <- function(sim, args) {
   
   # Write outputs
   if (success) {
-    qs::qsave(pout, file.path(sim$folder, pfile))
+    qs::qsave(pout, file.path(sim$folder_coord, pfile))
   }
-  qs::qsave(dout, file.path(sim$folder, dfile))
+  qs::qsave(dout, file.path(sim$folder_coord, dfile))
   
   # Return success
   # * This controls whether or not we run smoothing
@@ -273,8 +272,8 @@ pf_smoother_wrapper <- function(sim) {
                      time = time)
   
   # Write outputs
-  qs::qsave(pout, file.path(sim$folder, pfile))
-  qs::qsave(dout, file.path(sim$folder, dfile))
+  qs::qsave(pout, file.path(sim$folder_coord, pfile))
+  qs::qsave(dout, file.path(sim$folder_coord, dfile))
   nothing()
   
 }

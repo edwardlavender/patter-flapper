@@ -15,7 +15,7 @@ estimate_coord_coa <- function(sim, map, datasets) {
   
   # Run algorithm
   t1    <- Sys.time()
-  coord <- coa(.map = map,
+  pout  <- coa(.map = map,
                .acoustics = detections,
                .moorings = moorings,
                .delta_t = delta_t,
@@ -57,12 +57,12 @@ estimate_coord_rsp <- function(sim, map, datasets) {
                          .acoustics = detections, 
                          .moorings = moorings)
   tm         <- datasets$tm
-  er.ad      <- sim$er.add
+  er.ad      <- sim$er.ad
   
   # Initialise algorithm
   error   <- NA_character_
   success <- TRUE
-  args    <- list(input = detections,
+  args    <- list(input = act,
                   t.layer = tm,
                   coord.x = "Longitude", coord.y = "Latitude",
                   er.ad = er.ad)
@@ -155,7 +155,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   success <- pf_filter_wrapper(sim = sim, args = args)
   # Backward filter 
   if (success) {
-    cat("\n ... (2) Implementing backward filter...\n")
+    cat("\n... (2) Implementing backward filter...\n")
     args$.yobs      <- patter_ModelObs_backward(sim, model_obs)$yobs
     args$.direction <- "backward"
     success         <- pf_filter_wrapper(sim = sim, args = args)

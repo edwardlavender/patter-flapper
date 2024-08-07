@@ -19,13 +19,6 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(dv)
-library(data.table)
-library(dtplyr)
-library(dplyr, warn.conflicts = FALSE)
-library(lubridate)
-library(JuliaCall)
-library(patter)
 dv::src()
 
 #### Load data 
@@ -40,12 +33,19 @@ archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 ###########################
 #### Run algorithm 
 
-#### Connect to Julia 
+#### Set up
+# JuliaCall
 julia_connect()
 set_seed()
 set_map(map)
 JuliaCall::julia_command(ModelObsAcousticContainer)
 JuliaCall::julia_command(ModelObsAcousticContainer.logpdf_obs)
+# Iterations & datasets
+nrow(iteration)
+iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+datasets <- list(detections_by_unit = acoustics_by_unit, 
+                 moorings = moorings,
+                 archival_by_unit = archival_by_unit)
 
 #### (optional) Testing
 test <- TRUE
@@ -53,20 +53,29 @@ if (test) {
   iteration <- iteration[1:2L, ]
 } 
 
-#### Estimate coordinates (patter)
-nrow(iteration)
-datasets <- list(detections_by_unit = acoustics_by_unit, 
-                 moorings = moorings,
-                 archival_by_unit = archival_by_unit)
-lapply_estimate_coord_patter(iteration = iteration, 
-                             datasets = datasets)
+#### Estimate coordinates
+# Time trial
+lapply_estimate_coord_patter(iteration = iteration[1, ], datasets = datasets)
+# Implementation
+lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+# Examine selected coords 
+lapply_qplot_coord(iteration, 
+                   "coord-smo.qs",
+                   extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
 #### Estimate UDs
-iteration[, file_coord := file.path(folder, "coord-smo.qs")]
-lapply_estimate_ud_spatstat(iteration = iteration, 
-                            extract_coord = function(x) x$states,
+# Time trial 
+lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
+                            extract_coord = function(s) s$states,
                             cl = NULL, 
                             plot = FALSE)
+# Implementation 
+lapply_estimate_ud_spatstat(iteration = iteration, 
+                            extract_coord = function(s) s$states,
+                            cl = NULL, 
+                            plot = FALSE)
+# (optional) Examine selected UDs
+lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
 
 
 #### End of code.

@@ -19,11 +19,6 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(dv)
-library(data.table)
-library(dtplyr)
-library(dplyr, warn.conflicts = FALSE)
-library(tictoc)
 dv::src()
 
 #### Load data 

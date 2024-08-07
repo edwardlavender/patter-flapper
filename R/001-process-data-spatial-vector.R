@@ -22,11 +22,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(dv)
-library(dplyr)
 library(sf)
-library(patter)
-library(tictoc)
 dv::src()
 
 #### Load data

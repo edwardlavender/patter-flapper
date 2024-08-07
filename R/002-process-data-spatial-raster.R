@@ -19,12 +19,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(dv)
-library(dplyr)
-library(JuliaCall)
-library(patter)
 library(sf)
-library(tictoc)
 dv::src()
 
 #### Load data
@@ -33,6 +28,7 @@ coast <- qreadvect(here_data("spatial", "coast.qs"))
 howe  <- terra::rast(here_data_raw("bathymetry", "firth-of-lorn", "EXTRACTED_DEPTH1.tif"))
 
 #### Julia connection
+tic()
 julia_connect()
 
 
@@ -101,23 +97,25 @@ terra:::readAll(bathy)
 # * Compare the depth of the cell to the median depth for the surrounding eight cells
 # * If greater than 50 m below the median, set to the median value
 
-# Compute the median value for each cell based on surrounding cells (~46 s)
-tic()
-focals <- terra::focal(bathy, w = 3, 
-                       fun = "median", na.rm = TRUE,
-                       na.policy = "omit")
-toc()
-
-# Export data to Julia for processing (~15 s)
-tic()
-julia_assign_SpatRaster("bathy", bathy)
-julia_assign_SpatRaster("focals", focals)
-toc()
-
-# Process spikes in Julia (~20 s)
-tic()
-julia_code(
-  '
+if (FALSE) {
+  
+  # Compute the median value for each cell based on surrounding cells (~46 s)
+  tic()
+  focals <- terra::focal(bathy, w = 3, 
+                         fun = "median", na.rm = TRUE,
+                         na.policy = "omit")
+  toc()
+  
+  # Export data to Julia for processing (~15 s)
+  tic()
+  julia_assign_SpatRaster("bathy", bathy)
+  julia_assign_SpatRaster("focals", focals)
+  toc()
+  
+  # Process spikes in Julia (~20 s)
+  tic()
+  julia_code(
+    '
   using Base.Threads: @threads
   @time for i in 1:size(bathy)[1]
     println(i)
@@ -129,8 +127,10 @@ julia_code(
   end
   GeoArrays.write("data/spatial/spikes.tif", bathy)
   '
-)
-toc()
+  )
+  toc()
+  
+}
 
 # Load smoothed bathymetry into R
 smooth <- terra::rast("data/spatial/spikes.tif")
@@ -231,6 +231,9 @@ terra::writeRaster(bbrast_ll,
                    here_data("spatial", "bbrast_ll.tif"), 
                    overwrite = TRUE)
 qs::qsave(tm, here_data("spatial", "tm.qs"))
+
+
+toc()
 
 
 #### End of code. 

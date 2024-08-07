@@ -19,14 +19,7 @@ rm(list = ls())
 dv::clear()
 
 #### Essential packages
-library(collapse)
-library(dv)
-library(data.table)
-library(dtplyr)
-library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
-library(patter)
-library(tictoc)
 dv::src()
 
 #### Load data 

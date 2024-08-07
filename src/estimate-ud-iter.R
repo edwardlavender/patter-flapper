@@ -15,10 +15,13 @@ lapply_estimate_ud_spatstat <- function(iteration,
   # Read estimation window
   win <- qs::qread(dv::here_data("spatial", "win.qs"))
   # Define bandwidth estimators
-  # * null     : fast
-  # * bw.ppl   : slow
-  # * bw.diggle: slow
-  sigmas <- list(null = NULL) 
+  # * h, null (fast), bw.ppl (slow), bw.diggle (slow)
+  sigmas <- list(h = bw.h) 
+  # spatstat/{sigma} folders should exist 
+  # * These are defined in R/prepare-runs.R
+  sapply(names(sigmas), function(sigma_label) {
+    stopifnot(dir.exists(file.path(iteration$folder_ud, "spatstat", sigma_label)))
+  })
   # Define UD function
   estimate_ud <- function(.xi, .chunkargs) {
     estimate_ud_spatstat(sim = .xi, 
@@ -69,8 +72,8 @@ lapply_estimate_ud_dbbmm <- function(iteration,
               map       <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
               bbrast_ll <- terra::rast(dv::here_data("spatial", "bbrast_ll.tif"))
               terra:::readAll(map)
-              terra::readAll(bbrast_ll)
-              list(map, bbrast_ll)
+              terra:::readAll(bbrast_ll)
+              list(map = map, bbrast_ll = bbrast_ll)
             },
             .fun = estimate_ud)
   
