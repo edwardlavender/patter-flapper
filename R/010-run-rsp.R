@@ -38,7 +38,7 @@ iteration[, file_coord := file.path(folder_coord, "coord.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)
 
 #### (optional) Testing
-test <- TRUE
+test <- FALSE
 if (test) {
   iteration <- iteration[1:2]
 }
@@ -47,12 +47,12 @@ if (test) {
 #### Estimate coordinates
 # Time trial
 lapply_estimate_coord_rsp(iteration = iteration[1, ], datasets = datasets)
-# Implementation (~10 mins)
+# Implementation (~6 mins)
 lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
 # (optional) Examine selected coords
 lapply_qplot_coord(iteration, 
                   "coord.qs",
-                   extract_coord <- function(coord) {
+                   extract_coord = function(coord) {
                      cbind(coord$detections[[1]]$Longitude, 
                            coord$detections[[1]]$Latitude) |> 
                        terra::vect(crs = "EPSG:4326") |> 
@@ -66,9 +66,9 @@ lapply_qplot_coord(iteration,
 lapply_estimate_ud_dbbmm(iteration = iteration[1, ], 
                          cl = NULL, 
                          plot = FALSE)
-# Implementation (~2.5 hours, 1 cl)
+# Implementation (26 mins, 8 cl)
 lapply_estimate_ud_dbbmm(iteration = iteration, 
-                         cl = 2L, 
+                         cl = 8L, 
                          plot = FALSE)
 # (optional) Examine selected UDs
 lapply_qplot_ud(iteration, "dbbmm", "ud.tif")

@@ -214,11 +214,15 @@ par(pp)
 ###########################
 #### Write datasets
 
-# Size of bathymetry SpatRaster: 3.5 GB
+# Size of bathymetry SpatRaster: 4.5 GB
 # * This comprises n doubles
 # * Each double is 8 bytes
 terra::ncell(bathy)
 8 * terra::ncell(bathy) / 1e9L
+
+# Size of UD rasters: < 1 MB
+8 * terra::ncell(ud_grid) / 1e9L
+8 * terra::ncell(bbrast_ll) / 1e9L
 
 # Write data
 terra::writeRaster(bathy,

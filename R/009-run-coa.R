@@ -61,9 +61,10 @@ lapply_estimate_ud_spatstat(iteration = iteration[1, ],
                             cl = NULL, 
                             plot = FALSE)
 # Implementation 
+# * For testing, 11 mins with 50 pixels, sigma = bw.h, cl = 8
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = NULL,
-                            cl = NULL, 
+                            cl = 8L, 
                             plot = FALSE)
 # (optional) Examine selected UDs
 lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")

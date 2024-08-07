@@ -13,3 +13,8 @@ sop$npixel
 #' Multi-threading
 data.table::setDTthreads(threads = Sys.getenv("OMP_NUM_THREADS"))
 data.table::getDTthreads()
+
+#' Progress bar (chunk) options for cl_lapply()
+#' * This is the number of chunks per core
+#' * We read rasters into memory on each chunk (slow), so this number is relatively low
+pbo <- pbapply::pboptions("nout" = 10)
