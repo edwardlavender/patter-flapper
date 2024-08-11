@@ -164,6 +164,9 @@ if (FALSE) {
   toc()
 }
 
+# Number of cells
+terra::ncell(bathy)
+
 # Depth range (~2 s)
 if (FALSE) {
   tic()
