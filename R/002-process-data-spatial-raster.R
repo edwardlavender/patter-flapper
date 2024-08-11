@@ -151,7 +151,25 @@ spikes <- bathy - smooth
 
 ###########################
 ###########################
-#### Bathymetric uncertainty 
+#### Bathymetry statistics 
+
+# Study area size (~38 s)
+if (FALSE) {
+  tic()
+  area <- terra::cellSize(bathy, unit = "km")
+  terra::global(area, "sum")
+  # 13916.83
+  toc()
+}
+
+# Depth range (~2 s)
+if (FALSE) {
+  tic()
+  terra::global(bathy, "range", na.rm = TRUE)
+  toc()
+  # min     max
+  # map_value   0 349.999
+}
 
 # Bathymetric uncertainty ranges from 1-5 m 
 # > We can envelope this within a single parameter for speed (e.g, 5 m)
