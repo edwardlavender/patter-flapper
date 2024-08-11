@@ -96,6 +96,8 @@ terra:::readAll(bathy)
 # * Iterate over cells (in Julia)
 # * Compare the depth of the cell to the median depth for the surrounding eight cells
 # * If greater than 50 m below the median, set to the median value
+# * TO DO
+# * See: https://www.gebco.net/about_us/faq/ 
 
 if (FALSE) {
   
