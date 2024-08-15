@@ -8,7 +8,7 @@
 #### Prerequisites
 # 1) flapper_appl project
 
-stop("This code was written with an earlier version of this project and the patter package. It is no longer run, but kept as a record of earlier analyses.")
+stop("This code was written with an earlier version of this project and the patter package (and later partially modified). It is no longer run, but kept as a record of earlier analyses.")
 
 
 ###########################
@@ -33,20 +33,23 @@ library(tictoc)
 
 #### Load data
 dv::src()
-howe      <- terra::rast(here_data("spatial", "howe.tif"))
+# howe      <- terra::rast(here_data("spatial", "howe.tif"))
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
-moorings  <- readRDS(here_data("mefs", "moorings.rds"))
-acoustics <- readRDS(here_data("mefs", "acoustics.rds"))
-archival  <- readRDS(here_data("mefs", "archival.rds"))
-pars      <- readRDS(here_data("input", "pars.rds"))
+moorings  <- qs::qread(here_data("input", "mefs", "moorings.qs"))
+acoustics <- qs::qread(here_data("input", "mefs", "acoustics.qs"))
+archival  <- qs::qread(here_data("input", "mefs", "archival.qs"))
+# pars      <- readRDS(here_data("input","input",  "pars.rds"))
+
 
 ###########################
 ###########################
 #### Define parameters
 
-mobility         <- pars$flapper$mobility
-gamma            <- pars$flapper$detection_range
-calc_depth_error <- pars$flapper$calc_depth_error
+gamma    <- 750
+mobility <- 500
+# mobility         <- pars$flapper$mobility
+# gamma            <- pars$flapper$detection_range
+# calc_depth_error <- pars$flapper$calc_depth_error
 
 
 ###########################
@@ -91,7 +94,7 @@ acoustics |>
 acoustics <- 
   acoustics |> 
   left_join(moorings |> 
-              select("receiver_id", "receiver_easting", "receiver_northing", "receiver_range"), 
+              select("receiver_id", "receiver_x", "receiver_y"), 
             by = "receiver_id")
 
 # Calculate speeds 
@@ -101,7 +104,7 @@ acoustics <-
   arrange(timestamp) |> 
   mutate(
     # Calculate minimum travel distance (between nearest detection container edges)
-    dist = dist_along_path(cbind(receiver_easting, receiver_northing), 
+    dist = dist_along_path(cbind(receiver_x, receiver_y), 
                            .lonlat = FALSE) - gamma*2, 
     # Translate distances to speeds (metres per minute)
     duration = serial_difference(timestamp, units = "mins"), 
@@ -109,6 +112,7 @@ acoustics <-
   as.data.table()
 
 # Validate there are no movements exceeding mobility 
+max(acoustics$speed, na.rm = TRUE)
 table(acoustics$speed > (mobility / 2))
 
 
@@ -119,6 +123,18 @@ table(acoustics$speed > (mobility / 2))
 
 ###########################
 #### Vertical movement
+
+#### Vertical ascents
+# (ignore breaks in time series)
+serial_difference(c(0, 10, 40))
+archival |> 
+  group_by(individual_id) |>
+  mutate(vdist = serial_difference(depth)) |> 
+  filter(!is.na(vdist) & vdist > 0) |>
+  ungroup() |> 
+  as.data.table() |> 
+  pull(vdist) |> 
+  utils.add::basic_stats()
 
 #### Vertical distances
 # (ignore breaks in time series)
