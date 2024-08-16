@@ -1,5 +1,16 @@
-#' Plot selected coords
+#' Set par parameters
+set_par <- function(...) {
+  par(mgp = c(3, 0.25, 0), tcl = -0.25, ...)
+}
 
+#' Add distribution polygons
+add_dbn <- function(x, y,
+                    col = scales::alpha("lightgrey", 0.25), ...) {
+  polygon(c(x, rev(x)), c(y, rep(0, length(y))), col = col, ...)
+  invisible(NULL)
+}
+
+#' Plot selected coords
 lapply_qplot_coord <- function(iteration, ..., extract_coord = NULL) {
   bathy <- terra::rast(here_data("spatial", "bathy.tif"))
   pp <- par(mfrow = c(2, 2))
