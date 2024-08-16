@@ -28,49 +28,65 @@ library(truncdist)
 ###########################
 #### Movement model
 
+###########################
+#### Resting
+
+
+x <- seq(0, 100, length.out = 1e5)
+y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 0, scale = 10)
+y <- y / max(y)
+pretty_plot(x, y,
+            xlab = "", ylab = "",
+            xlim = range(x),
+            type = "l")
+
 
 ###########################
-#### Step lengths 
+#### Active
+
+# TO DO
+# Save figs
+# Add arrows with guides for other species
 
 #### Define parameters
-p <- data.frame(k = c(1, 1, 15), 
-                theta = c(50, 15, 15), 
+p <- data.frame(k = c(5, 1, 10), 
+                theta = c(80, 40, 150), 
                 mobility = c(1095, 990, 1125),
                 lwd = c(2, 1, 1), 
                 col = c("black", "red", "blue"))
 
-#### Define adjustment for distance units
-# unit <- "m_per_2_min"
-unit <- "DL_per_sec"
-if (unit == "m_per_2_min") {
-  s <- 1
-} else if (unit == "DL_per_sec") {
-  s <- 120 / 1.75
-}
 
 #### Set up plot
 # png(here_fig("model-move.png"),
 #     height = 3, width = 6, units = "in", res = 600)
 # pp <- set_par(mfrow = c(1, 2), mar = c(1.5, 1.5, 1.5, 1.5), oma = c(2, 3, 1, 1))
+xlim <- c(0, 1200)
 
 #### Plot probability densities 
 for (i in 1:3) {
   x <- seq(0, p$mobility[i] + 1, length.out = 1e5)
   y <- dtrunc(x, "gamma", a = 0, b = p$mobility[i], shape = p$k[i], scale = p$theta[i])
+  y <- dtrunc(x, "cauchy", a = 0, b = p$mobility[i], location = p$k[i], scale = p$theta[i])
   y <- y / max(y)
   if (i == 1) {
   pretty_plot(x, y,
-              xlim = c(0, max(p$mobility) / s),
-              pretty_axis_args = list(), #paa,
+              xlab = "", ylab = "",
+              xlim = xlim,
               type = "n")
   }
-  lines(x / s, y, lwd = p$lwd[i], col = p$col[i])
+  lines(x, y, lwd = p$lwd[i], col = p$col[i])
 }
-mtext(side = 1, "Step length (m)", line = 2)
-mtext(side = 2, "Density", line = 3.5)
+
+# Add axis for DLs-1
+xat <- pretty_axis(lim = list(xlim / 120 / 1.75))[[1]]$axis$at
+axis(1, at = xlim, lwd.ticks = 0, labels = FALSE, pos = -0.1)
+axis(side = 1, at = xat * 120 * 1.75, labels = xat, pos = -0.1)
+
+# mtext(side = 1, "Step length", line = 2)
+# mtext(side = 2, "Density", line = 3.5)
 # dev.off()
 
-
+stop()
 
 ###########################
 #### Turning angles
@@ -83,8 +99,8 @@ pretty_plot(x, y,
             type = "l")
 
 lines(x, y)
-mtext(side = 1, "Turning angle (rad)", line = 2)
-mtext(side = 2, "Density", line = 3.5)
+# mtext(side = 1, "Turning angle (rad)", line = 2)
+# mtext(side = 2, "Density", line = 3.5)
 # dev.off()
 
 
