@@ -1,6 +1,6 @@
 #' Set par parameters
 set_par <- function(...) {
-  par(mgp = c(3, 0.25, 0), tcl = -0.25, ...)
+  par(mgp = c(3, 0.4, 0), tcl = -0.25, ...)
 }
 
 #' Add distribution polygons
