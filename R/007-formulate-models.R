@@ -91,6 +91,12 @@ for (i in 1:3) {
               type = "n")
   }
   lines(x, y, lwd = p$lwd[i], col = p$col[i])
+  arrows(x0 = p$mobility[i], 
+         x1 = p$mobility[i], 
+         y0 = 0.075, 
+         y1 = 0.025, 
+         length = 0.05, 
+         col = p$col[i])
 }
 
 # Add legend
@@ -141,7 +147,7 @@ dev.off()
 #### Define parameters
 p <- data.frame(alpha = c(4, 3, 5), 
                 beta = c(-0.0094, -0.01, -0.009), 
-                gamma = c(1500, 1200, 1750),
+                gamma = c(1750, 1500, 2000),
                 lwd = c(1.5, 1, 1), 
                 col = c("black", "red", "blue"), 
                 label = c("Best-guess", "Restrictive", "Flexible"))
@@ -151,7 +157,7 @@ p <- data.frame(alpha = c(4, 3, 5),
 png(here_fig("model-obs-acoustic.png"), 
     height = 4, width = 4, units = "in", res = 600)
 set_par()
-xlim <- c(0, 1750)
+xlim <- c(0, 2000)
 
 #### Plot probability densities 
 for (i in 1:3) {
@@ -162,7 +168,7 @@ for (i in 1:3) {
     print(y[1])
     pretty_plot(x, y,
                 xlab = "", ylab = "",
-                pretty_axis_args = list(axis = list(x = list(at = c(0, 500, 1000, 1500)), # c(0, 250, 500, 750, 1000, 1250, 1500, 1750)), 
+                pretty_axis_args = list(axis = list(x = list(at = c(0, 500, 1000, 1500, 2000)), # c(0, 250, 500, 750, 1000, 1250, 1500, 1750)), 
                                                     y = list(at = yat))
                 ),
                 xlim = xlim,
@@ -173,6 +179,13 @@ for (i in 1:3) {
     lines(xlim, c(0.5, 0.5), lty = 3, col = "dimgrey")
   }
   lines(x, y, lwd = p$lwd[i], col = p$col[i])
+  arrows(x0 = p$gamma[i], 
+         x1 = p$gamma[i], 
+         y0 = 0.05, 
+         y1 = 0, 
+         length = 0.05, 
+         col = p$col[i])
+  # rug(p$gamma[i], pos = -0.1, lwd = 2, col = p$col[i])
 }
 dev.off()
 
@@ -199,7 +212,7 @@ ylim <- c(p$mu[1] * -1 - max(p$deep_depth_eps) - 20, 0)
 
 #### Plot probability densities 
 for (i in 1:3) {
-  x <- seq(0, 400, length.out = 1e5)
+  x <- seq(0, p$mu[i] + p$deep_depth_eps[i] + 0.1, length.out = 1e5)
   y <- dtrunc(x, "norm", a = 0, b = p$mu[i] + p$deep_depth_eps[i], mean = p$mu[i], sd = p$sigma[i])
   # y <- dtrunc(x, "cauchy", a = 0, b = p$mu[i] + p$deep_depth_eps[i], location = p$mu[i], scale = 15)
   y <- y / max(y)
@@ -243,6 +256,12 @@ for (i in 1:3) {
     lines(c(a, 1), c(z, z), lty = 3, col = "dimgrey")
   }
   lines(y, x, lwd = p$lwd[i], col = p$col[i])
+  arrows(x0 = 0.05, 
+         x1 = 0, 
+         y0 = (p$mu[i] + p$deep_depth_eps[i]) * -1, 
+         y1 = (p$mu[i] + p$deep_depth_eps[i]) * -1, 
+         length = 0.05, 
+         col = p$col[i])
 }
 dev.off()
 
