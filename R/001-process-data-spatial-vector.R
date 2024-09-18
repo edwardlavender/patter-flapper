@@ -145,6 +145,7 @@ if (FALSE) {
 #### Write datasets to file (~1 s)
 
 tic()
+terra::writeVector(vect(bb), here_data_raw("boundaries", "bb.shp"))
 qsaveext(bb, here_data("spatial", "bb.qs"))
 qsavevect(mpa, here_data("spatial", "mpa.qs"))
 qsavevect(coast, here_data("spatial", "coast.qs"))

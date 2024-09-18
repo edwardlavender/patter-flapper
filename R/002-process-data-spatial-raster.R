@@ -73,19 +73,100 @@ howe <- run(here_data("spatial", "howe.tif"),
 # * Loch Linnhe
 # * North-western Coll
 # * Southern boundary (South Jura)
-terra::plot(howe)
-coast |> 
-  terra::simplifyGeom(tolerance = 500) |> 
-  terra::plot(add = TRUE, border = "dimgrey")
+plot_howe <- function() {
+  terra::plot(howe)
+  coast |> 
+    terra::simplifyGeom(tolerance = 500) |> 
+    terra::plot(add = TRUE, border = "dimgrey")
+  nothing()
+}
+plot_howe()
 
 
 ###########################
 ###########################
 #### Expand Howe dataset
 
-# TO DO
 bathy <- howe
 terra:::readAll(bathy)
+
+#### Loch Linnhe (~36 s)
+files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
+                    pattern = "Loch Linnhe Blk.*\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+linnhe <- get_bathy(files = files, 
+                    bathy = bathy, 
+                    coast = coast, 
+                    outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-linnhe.tif"))
+
+#### Loch Etive (~11 s)
+files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
+                    pattern = "Loch Etive.*\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+etive <- get_bathy(files = files,
+                   bathy = bathy, 
+                   coast = coast, 
+                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-etive.tif"))
+terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
+
+#### Loch Creran (~6 s)
+files <- list.files(here_data_raw("bathymetry", "loch-creran", "datasets"), 
+                    pattern = "Loch Creran.*\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+creran <- get_bathy(files = files,
+                   bathy = bathy, 
+                   coast = coast, 
+                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-creran.tif"))
+terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
+
+#### Coll and Tiree (~82 s)
+files <- list.files(here_data_raw("bathymetry", "coll-and-tiree", "datasets"), 
+                    pattern = "\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+coll <- get_bathy(files = files,
+                    bathy = bathy, 
+                    coast = coast, 
+                    outfile = here_data_raw("bathymetry", "temporary", "tiles", "col.tif"))
+
+#### Islay (~34 mins)
+files <- list.files(here_data_raw("bathymetry", "islay", "datasets"), 
+                    pattern = "\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+islay <- get_bathy(files = files,
+                   bathy = bathy, 
+                   coast = coast, 
+                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "islay.tif"))
+
+#### Lochgilphead (~89 s)
+files <- list.files(here_data_raw("bathymetry", "lochgilphead", "datasets"), 
+                    pattern = "\\.bag$", 
+                    full.names = TRUE, recursive = TRUE)
+terra::rast(files[1])
+lochgilphead <- get_bathy(files = files,
+                          bathy = bathy, 
+                          coast = coast, 
+                          outfile = here_data_raw("bathymetry", "temporary", "tiles", "lochgilphead.tif"))
+
+#### Merge datasets (~3 mins?)
+tic()
+# Expand datasets
+bathys <- list(linnhe, etive, creran, coll, islay, lochgilphead)
+bathys <- lapply(bathys, function(r) {
+  terra::resample(r, bathy, threads = TRUE)
+})
+# Merge datasets (~2 mins)
+bathys <- append(list(bathy), bathys)
+bathy <- do.call(terra::merge, bathys)
+# Save dataset
+terra::writeRaster(bathy, 
+                   here_data_raw("bathymetry", "temporary", "merged-dataset.tif"), 
+                   overwrite = TRUE)
+toc()
 
 
 ###########################
@@ -96,8 +177,7 @@ terra:::readAll(bathy)
 # * Iterate over cells (in Julia)
 # * Compare the depth of the cell to the median depth for the surrounding eight cells
 # * If greater than 50 m below the median, set to the median value
-# * TO DO
-# * See: https://www.gebco.net/about_us/faq/ 
+# * For further information about spikes, see https://www.gebco.net/about_us/faq/ 
 
 if (FALSE) {
   
