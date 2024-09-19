@@ -29,6 +29,7 @@ acoustics <- as.data.table(acoustics)
 archival  <- as.data.table(archival)
 moorings  <- as.data.table(moorings)
 bathy     <- terra::rast(here_data("spatial", "bathy.tif"))
+coast     <- qreadvect(here_data("spatial", "coast.qs"))
 
 
 ###########################
@@ -64,20 +65,35 @@ moorings <-
 #### Check validity on `bathy`
 moorings$map_value <- 
   terra::extract(bathy, cbind(moorings$receiver_x, moorings$receiver_y))[, 1]
-stopifnot(all(!is.na(moorings$map_value)))
+# Receiver 2 is in very shallow water (NA)
+moorings[is.na(map_value), ]
+# Further examinination:
 if (FALSE) {
   # Plot receiver positions
   terra::plot(bathy)
   text(moorings$receiver_x, moorings$receiver_y,
        moorings$receiver_id, cex = 0.5)
+  
   # Examine bathymetry around selected receiver 
   xy <- cbind(moorings$receiver_x[1], moorings$receiver_y[1])
+  buf <- 1e2
   bathy |> 
-    terra::crop(terra::ext(xy[1] - 1e3, xy[1] + 1e3, 
-                           xy[2] - 1e3, xy[2] + 1e3)) |> 
+    terra::crop(terra::ext(xy[1] - buf, xy[1] + buf, 
+                           xy[2] - buf, xy[2] + buf)) |> 
     terra::plot()
   points(xy)
+  terra::lines(coast)
+  # Check depth in nearest location (use buf = 1e2 and locator())
+  terra::extract(bathy, cbind(719462, 6273481))
+
+  # There were never any detections at this receiver
+  2 %in% MEFS::acoustics$receiver_id 
 }
+
+# Exclude receiver 2
+# > It is incompatible with out bathymetry layer
+moorings <- moorings[receiver_id != 2, ]
+
 
 
 ###########################
