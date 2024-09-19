@@ -168,6 +168,8 @@ archival <-
   filter(date >= arc_start_date & date <= arc_end_date) |>
   ungroup() |>
   as.data.table()
+# Additional check for NAs
+any(is.na(archival$depth))
 
 #### (optional) Exclude individuals that moved beyond the study area
 # * We exclude individuals known to have moved beyond study area based on depth time series
@@ -187,6 +189,28 @@ if (FALSE) {
 ###########################
 #### Define iteration dataset
 
+#### (optional) Focus on individuals/months with both acoustic & archival data
+# We do not analyse all data
+# We focus on individuals/months with both datasets
+# This facilitates comparisons between DCPF, ACPF and ACDCPF algorithms 
+acoustics[, key := paste(individual_id, mmyy)]
+archival[, key := paste(individual_id, mmyy)]
+keys      <- intersect(acoustics$key, archival$key)
+acoustics <- acoustics[key %in% keys, ]
+archival  <- archival[key %in% keys, ]
+# There are 50 individual/month combinations
+length(keys)
+# For each individual, this is the number of months with data:
+acoustics |> group_by(individual_id) |> summarise(n_months = length(unique(mmyy)))
+identical(acoustics |> group_by(individual_id) |> summarise(n_months = length(unique(mmyy))),
+          archival |> group_by(individual_id) |> summarise(n_months = length(unique(mmyy)))) |> stopifnot()
+# For each month, this is the number of individuals with data
+acoustics |> group_by(mmyy) |> summarise(n_ids = length(unique(individual_id)))
+identical(acoustics |> group_by(mmyy) |> summarise(n_ids = length(unique(individual_id))) ,
+          archival |> group_by(mmyy) |> summarise(n_ids = length(unique(individual_id)))) |> stopifnot()
+# Update mons vector (not required)
+# mons <- mons[mons %in% as.Date(archival$timestamp)]
+
 #### Define template individual/months dataset
 # Individuals/months are the unit of analysis
 units <- 
@@ -194,7 +218,6 @@ units <-
      mmyy = mmyy(mons)) |> 
   arrange(individual_id) |> 
   as.data.table()
-
 units[, unit_id := seq_len(.N)]
 
 #### Build a list of raw acoustic datasets
@@ -241,11 +264,9 @@ archival_by_unit <-
   # Retain data for individuals at liberty for the entire month
   # > Achieved above.
   
-  # Retain data for individuals with detections in > two weeks on a total of >= 7 days
-  if (any(is.na(arc$depth))) {
-    return(NULL)
-  }
-    
+  # Retain data for individuals with complete archival time series
+  # > Achieved above. 
+
   arc
 
 })
@@ -280,6 +301,14 @@ unitsets <- lapply(split(units, units$unit_id), function(d) {
 
 head(unitsets)
 table(unitsets$dataset)
+
+#### Checks
+# For every individual/month, there is an ac, dc and acdc dataset
+unitsets |> 
+  group_by(individual_id, month_id) |> 
+  summarise(n = n()) |> 
+  pull(n) |> 
+  table()
 
 
 ###########################
