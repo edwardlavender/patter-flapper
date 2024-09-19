@@ -14,8 +14,8 @@ etide  <- 2.50
 
 # Bathymetric error (depth-dependent)
 # * .bathy may be a SpatRaster or a numeric vector
-ebathy <- function(.bathy) {
-  sqrt(0.5002 + (0.013 * .bathy)^2)
+ebathy <- function(.bathy, .a = 0.5, .b = 0.013) {
+  sqrt(.a + (.b * .bathy)^2)
 }
 
 # Total deep error
