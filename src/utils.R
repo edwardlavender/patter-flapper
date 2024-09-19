@@ -24,3 +24,12 @@ dirs.create <- function(paths) {
   invisible(NULL)
 }
 
+#' Sort bathymetry datasets
+
+sort_bathysets <- function(x) {
+  x |> dirname() |> basename() |> unique() |> gtools::mixedsort()
+}
+
+fill <- function(x, name) {
+  c(name, rep("", length(x) - 1))
+}

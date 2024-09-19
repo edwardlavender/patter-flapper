@@ -94,6 +94,7 @@ terra:::readAll(bathy)
 files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
                     pattern = "Loch Linnhe Blk.*\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_linnhe <- files
 terra::rast(files[1])
 linnhe <- get_bathy(files = files, 
                     bathy = bathy, 
@@ -104,6 +105,7 @@ linnhe <- get_bathy(files = files,
 files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
                     pattern = "Loch Etive.*\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_etive <- files
 terra::rast(files[1])
 etive <- get_bathy(files = files,
                    bathy = bathy, 
@@ -115,6 +117,7 @@ terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
 files <- list.files(here_data_raw("bathymetry", "loch-creran", "datasets"), 
                     pattern = "Loch Creran.*\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_creran <- files
 terra::rast(files[1])
 creran <- get_bathy(files = files,
                    bathy = bathy, 
@@ -126,6 +129,7 @@ terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
 files <- list.files(here_data_raw("bathymetry", "coll-and-tiree", "datasets"), 
                     pattern = "\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_coll <- files
 terra::rast(files[1])
 coll <- get_bathy(files = files,
                     bathy = bathy, 
@@ -136,6 +140,7 @@ coll <- get_bathy(files = files,
 files <- list.files(here_data_raw("bathymetry", "islay", "datasets"), 
                     pattern = "\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_islay <- files
 terra::rast(files[1])
 islay <- get_bathy(files = files,
                    bathy = bathy, 
@@ -146,6 +151,7 @@ islay <- get_bathy(files = files,
 files <- list.files(here_data_raw("bathymetry", "lochgilphead", "datasets"), 
                     pattern = "\\.bag$", 
                     full.names = TRUE, recursive = TRUE)
+files_lochgilphead <- files
 terra::rast(files[1])
 lochgilphead <- get_bathy(files = files,
                           bathy = bathy, 
@@ -167,6 +173,25 @@ terra::writeRaster(bathy,
                    here_data_raw("bathymetry", "temporary", "merged-dataset.tif"), 
                    overwrite = TRUE)
 toc()
+
+#### Record datasets
+dlinnhe       <- files_linnhe |> sort_bathysets()
+detive        <- files_etive |> sort_bathysets()
+dcreran       <- files_creran |> sort_bathysets()
+dcoll         <- files_coll |> sort_bathysets()
+dislay        <- files_islay |> sort_bathysets()
+dlochgilphead <- files_lochgilphead |> sort_bathysets()
+bathysets <- data.table(
+  Region = c("(Base) Firth of Lorn", 
+             fill(dcoll, "Coll and Tiree"),
+             fill(dislay, "Islay"), 
+             fill(dcreran, "Loch Creran"), 
+             fill(detive, "Loch Etive"), 
+             fill(dlinnhe, "Loch Linnhe"), 
+             fill(dlochgilphead, "Lochgilphead")),
+  Dataset = c("Howe et al. (2014)", dcoll, dislay, dcreran, detive, dlinnhe, dlochgilphead))
+prettyGraphics::tidy_write(bathysets, here_fig("bathysets.txt"))
+# rstudioapi::navigateToFile(here_fig("bathysets.txt"))
 
 
 ###########################
