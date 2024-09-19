@@ -66,8 +66,8 @@ ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars
 julia_connect()
 set_seed()
 set_map(map)
-JuliaCall::julia_command(ModelObsAcousticContainer)
-JuliaCall::julia_command(ModelObsAcousticContainer.logpdf_obs)
+julia_command(ModelObsAcousticContainer)
+julia_command(ModelObsAcousticContainer.logpdf_obs)
 
 
 ###########################
@@ -114,53 +114,93 @@ iteration_coa <-
 spatstat.geom::spatstat.options("npixel" = 100)
  
 
-###########################
-###########################
-#### Run simulations
 
-#### Define simulation arguments
-# Define timeline 
+
+###########################
+###########################
+#### Simulate paths and observations
+
+#### Define simulation timeline 
 timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
                 as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
                 by = "2 mins")
 
-#### De novo simulation
-# Simulate path
-# Simulate initial location
-# * We could sample from the tagging locations
-# * But we instead sample from the receiver array to ensure  
-# * ... we generate some detections for the COA/RSP/AC*PF algorithms
+#### Simulate initial location
+# We could sample from the tagging locations
+# But we instead sample from the receiver array to ensure  
+# ... we generate some detections for the COA/RSP/AC*PF algorithms
 # xinit   <- xinits[sample.int(nrow(xinits), 1), ]
 xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
                         min(moorings$receiver_y), max(moorings$receiver_y))
 xinit_map <- terra::crop(map, xinit_bb)
 xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
 xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
+
+
+#### (Temporary) resting investigation
+archival <- qs::qread(here_data("input", "archival_by_unit.qs")) |> plyr::compact()
+archival <- rbindlist(archival)
+archival[, fct := paste(individual_id, mmyy)]
+archival[, state := get_mvt_resting(copy(archival), fct = "fct")]
+
+
+arc <- archival[1:1000, ]
+
+duration <- rle(arc$state)
+duration <- duration$lengths[duration$values == 0L]
+
+fitdistrplus::descdist(duration)
+
+dbn <- "gamma"
+dbn <- "exponential"
+pars <- MASS::fitdistr(duration, "gamma")
+plotdist(duration, "gamma", as.list(pars$estimate))
+
+# hist(duration, breaks = 5, probability = TRUE)
+# curve(dcauchy(x, pars$estimate[1], pars$estimate[2]), col = "red", lwd = 2, add = TRUE)
+
+#### Define movement model
+behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
+julia_assign("behaviour", behaviour)
+julia_command(ModelMoveFlapper)
+julia_command(simulate_step.ModelMoveFlapper)
+julia_command(logpdf_step.ModelMoveFlapper)
+
+
+
 coord_path <- sim_path_walk(.map = map, 
                             .timeline = timeline, 
                             .state = "StateXY", 
                             .xinit = xinit, 
-                            .model_move = move_xy(), 
+                            .model_move = move_flapper(), 
                             .n_path = 1L, 
                             .plot = TRUE)
+
+
+
+
 points(moorings$receiver_x, moorings$receiver_y)
 # Map path UD (~58 s with 100 pixels)
 ud_path <- map_dens(.map = map, 
                     .owin = win,
                     sigma = bw.h,
                     .coord = coord_path[, .(x, y)]
-                    )
+)
 # Simulate observations
 yobs <- sim_observations(.timeline = timeline, 
                          .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
                          .model_obs_pars = ModelObsPars)
+
+###########################
+###########################
+#### Run algorithms
 
 #### COA algorithm
 # Estimate coordinates 
 table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
 coord_coa <- coa(.map = map, 
                  .acoustics = yobs$ModelObsAcousticLogisTrunc[[1]][obs > 0L, ],
-                 .delta_t = "100 hours") 
+                 .delta_t = "24 hours") 
 stopifnot(nrow(coord_coa) > 0)
 terra::plot(map)
 points(coord_coa$x, coord_coa$y)
