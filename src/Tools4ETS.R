@@ -65,3 +65,19 @@ if (FALSE) {
   lapply(paste0("0", 1:9, "-2016"), mmyyrng)
   lapply(paste0(10:12, "-2016"), mmyyrng)
 }
+
+#' Duration of resting/active behaviour
+
+duration_state <- function(data, fct = NULL, state) {
+  data <- copy(data)
+  if (is.null(fct)) {
+    data[, fct := 1L]
+  }
+  lapply(split(data, data$fct), function(d) {
+    duration <- rle(d$state)
+    duration <- duration$lengths[duration$values == state]
+    data.frame(unit_id = d$fct[1], duration = duration)
+  }) |> rbindlist() |>
+    filter(!is.na(duration)) |> 
+    as.data.table()
+}
