@@ -291,6 +291,17 @@ ebathy(350)
 # (e.g., multiple datasets)
 ebathy(350) + etag + etide
 
+# Uncertainties for Order 1a surveys and other types
+# https://iho.int/uploads/user/pubs/standards/s-44/S-44_Edition_6.1.0.pdf, page 18
+# * Howe et al. (2014) survey was order 1a (confirmed by John Howe)
+# * Order 1b surveys are the same in terms of TVU
+# * Order 2 surveys are less accurate (± 8 m): 
+# a = 1.0 m
+# b = 0.023
+ebathy(0, .a = 1.0, .b = 0.023)
+ebathy(350, .a = 0.5, .b = 0.023)
+
+
 
 ###########################
 ###########################
