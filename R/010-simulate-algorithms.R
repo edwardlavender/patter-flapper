@@ -74,18 +74,6 @@ julia_command(ModelObsAcousticContainer.logpdf_obs)
 ###########################
 #### Set up simulations 
 
-#### Set up datasets
-# Define tagging locations in UTM 29N
-xinits <- 
-  cbind(skateids$long_tag_capture, skateids$lat_tag_capture) |>
-  terra::vect(crs = "EPSG:4326") |>
-  terra::project(terra::crs(map)) |> 
-  terra::crds() |>
-  as.data.table() |>
-  mutate(map_value = terra::extract(map, cbind(x, y))[, 1]) |> 
-  select("map_value", "x", "y") |> 
-  as.data.table()
-
 #### COA algorithm
 # Define parameters
 pcoa <- data.table(parameter_id = 1:3L, 
@@ -106,90 +94,84 @@ iteration_coa <-
 # dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 
 #### RSP algorithm
+# TO DO
 
 #### Patter algorithms 
+# TO DO
 
 #### Estimation parameters
-
-spatstat.geom::spatstat.options("npixel" = 100)
+# Adjust the number of pixels in spatstat for improved speed
+# spatstat.geom::spatstat.options("npixel" = 100)
  
-
-
 
 ###########################
 ###########################
 #### Simulate paths and observations
 
-#### Define simulation timeline 
-timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
-                as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
-                by = "2 mins")
+# This code is run three times, generating three paths & corresponding observational datasets
+for (id in 1:3) {
+  
+  # id <- 1
+  set_seed(id)
+  
+  #### Define simulation timeline 
+  timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
+                  as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
+                  by = "2 mins")
+  
+  #### Simulate initial location
+  # We sample an initial location from the receiver array 
+  # This helps to ensure we generate some detections for the COA/RSP/AC*PF algorithms
+  xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
+                          min(moorings$receiver_y), max(moorings$receiver_y))
+  xinit_map <- terra::crop(map, xinit_bb)
+  xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
+  xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
+  
+  #### Simulate behavioural states 
+  # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
+  behaviour   <- simulate_behaviour(timeline)
+  julia_assign("behaviour", behaviour)
+  
+  #### Define movement model
+  julia_command(ModelMoveFlapper)
+  julia_command(simulate_step.ModelMoveFlapper)
+  julia_command(logpdf_step.ModelMoveFlapper)
+  
+  #### Simulate movement path 
+  coord_path <- sim_path_walk(.map = map, 
+                              .timeline = timeline, 
+                              .state = "StateXY", 
+                              .xinit = xinit, 
+                              .model_move = move_flapper(), 
+                              .n_path = 1L, 
+                              .plot = TRUE)
+  points(moorings$receiver_x, moorings$receiver_y)
+  
+  #### Map path UD 
+  # * 1 min with 100 pixels
+  # * 3.5 mins with 500 pixels 
+  ud_path <- map_dens(.map = map, 
+                      .owin = win,
+                      sigma = bw.h,
+                      .coord = coord_path[, .(x, y)]
+  )
+  
+  #### Simulate observations
+  yobs <- sim_observations(.timeline = timeline, 
+                           .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
+                           .model_obs_pars = ModelObsPars)
+  # Check we have simulated detections
+  stopifnot(length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L)) > 100)
+  table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
+  
+  #### Save datasets
+  qs::qsave(coord_path, here_data(coord_path, "input", "simulation", id, "coord.qs"))
+  qs::qsave(yobs, here_data(ud_path, "input", "simulation", id, "yobs.qs") )
+  terra::writeRaster(here_data(ud_path, "input", "simulation", id, "ud.tif"))
+  
+}
 
-#### Simulate initial location
-# We could sample from the tagging locations
-# But we instead sample from the receiver array to ensure  
-# ... we generate some detections for the COA/RSP/AC*PF algorithms
-# xinit   <- xinits[sample.int(nrow(xinits), 1), ]
-xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
-                        min(moorings$receiver_y), max(moorings$receiver_y))
-xinit_map <- terra::crop(map, xinit_bb)
-xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
-xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
-
-
-#### (Temporary) resting investigation
-archival <- qs::qread(here_data("input", "archival_by_unit.qs")) |> plyr::compact()
-archival <- rbindlist(archival)
-archival[, fct := paste(individual_id, mmyy)]
-archival[, state := get_mvt_resting(copy(archival), fct = "fct")]
-
-
-arc <- archival[1:1000, ]
-
-duration <- rle(arc$state)
-duration <- duration$lengths[duration$values == 0L]
-
-fitdistrplus::descdist(duration)
-
-dbn <- "gamma"
-dbn <- "exponential"
-pars <- MASS::fitdistr(duration, "gamma")
-plotdist(duration, "gamma", as.list(pars$estimate))
-
-# hist(duration, breaks = 5, probability = TRUE)
-# curve(dcauchy(x, pars$estimate[1], pars$estimate[2]), col = "red", lwd = 2, add = TRUE)
-
-#### Define movement model
-behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
-julia_assign("behaviour", behaviour)
-julia_command(ModelMoveFlapper)
-julia_command(simulate_step.ModelMoveFlapper)
-julia_command(logpdf_step.ModelMoveFlapper)
-
-
-
-coord_path <- sim_path_walk(.map = map, 
-                            .timeline = timeline, 
-                            .state = "StateXY", 
-                            .xinit = xinit, 
-                            .model_move = move_flapper(), 
-                            .n_path = 1L, 
-                            .plot = TRUE)
-
-
-
-
-points(moorings$receiver_x, moorings$receiver_y)
-# Map path UD (~58 s with 100 pixels)
-ud_path <- map_dens(.map = map, 
-                    .owin = win,
-                    sigma = bw.h,
-                    .coord = coord_path[, .(x, y)]
-)
-# Simulate observations
-yobs <- sim_observations(.timeline = timeline, 
-                         .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
-                         .model_obs_pars = ModelObsPars)
 
 ###########################
 ###########################
@@ -210,3 +192,27 @@ ud_path <- map_dens(.map = map,
                     sigma = bw.h,
                     .coord = coord_coa[, .(x, y)]
                     )
+
+
+
+###########################
+###########################
+#### RSP algorithms
+
+
+
+###########################
+###########################
+#### Patter algorithms
+
+
+
+###########################
+###########################
+#### Synthesis
+
+
+
+#### End of code. 
+###########################
+###########################
