@@ -196,6 +196,27 @@ prettyGraphics::tidy_write(bathysets, here_fig("bathysets.txt"))
 
 ###########################
 ###########################
+#### Handle inshore areas
+
+# (optional) TO DO
+
+# There are inshore areas where bathymetry data are lacking 
+# E.g., around Lismore where data for receiver 2 are lacking 
+# We could fill these data with zeros
+# This gives the algorithms more 'shallow-water' space to explore
+# But coastline data are also uncertain
+# This is not currently implemented
+
+# Method:
+# Define grid with zeros
+# Mask areas in the sea (coast + 100 m buffeer)
+# Mask areas on land (coast)
+# Keep zeros in a 100 m band around coastline
+# Merge with bathy, replacing NAs in this region with zeros, if required
+
+
+###########################
+###########################
 #### Handle spikes
 
 # Method
