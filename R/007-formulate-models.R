@@ -39,7 +39,7 @@ png(here_fig("model-move-step-length-resting.png"),
     height = 4, width = 4, units = "in", res = 600)
 set_par()
 x <- seq(0, 100, length.out = 1e5)
-y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 0, scale = 10)
+y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 0, scale = 5)
 y <- y / max(y)
 xlim <- range(x)
 pretty_plot(x, y,
@@ -50,6 +50,13 @@ pretty_plot(x, y,
                                     ),
             xlim = xlim,
             type = "l")
+if (FALSE) {
+  # Compare new values to current model 
+  x <- seq(0, 100, length.out = 1e5)
+  y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 0, scale = 5)
+  y <- y / max(y)
+  lines(x, y, col = "red")
+}
 xat <- pretty_axis(lim = list(xlim / 120 / 1.75))[[1]]$axis$at
 axis(1, at = xlim, lwd.ticks = 0, labels = FALSE, pos = -0.2)
 axis(side = 1, at = xat * 120 * 1.75, labels = xat, pos = -0.2)
@@ -61,7 +68,7 @@ dev.off()
 
 #### Define parameters
 p <- data.frame(k = c(5, 1, 10), 
-                theta = c(80, 40, 150), 
+                theta = c(100, 60, 150), 
                 mobility = c(1095, 990, 1125),
                 lwd = c(1.5, 1, 1), 
                 col = c("black", "red", "blue"), 
@@ -77,7 +84,7 @@ xlim <- c(0, 1200)
 #### Plot probability densities 
 for (i in 1:3) {
   x <- seq(0, p$mobility[i] + 1, length.out = 1e5)
-  y <- dtrunc(x, "gamma", a = 0, b = p$mobility[i], shape = p$k[i], scale = p$theta[i])
+  # y <- dtrunc(x, "gamma", a = 0, b = p$mobility[i], shape = p$k[i], scale = p$theta[i])
   y <- dtrunc(x, "cauchy", a = 0, b = p$mobility[i], location = p$k[i], scale = p$theta[i])
   y <- y / max(y)
   if (i == 1) {
@@ -97,6 +104,14 @@ for (i in 1:3) {
          y1 = 0.025, 
          length = 0.05, 
          col = p$col[i])
+}
+
+if (FALSE) {
+  # Compare new values to current model 
+  x <- seq(0, p$mobility[i] + 1, length.out = 1e5)
+  y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 5, scale = 100)
+  y <- y / max(y)
+  lines(x, y, col = "purple")
 }
 
 # Add legend
@@ -198,7 +213,7 @@ dev.off()
 # Make plot for seabed depth (mu) = 50 m and 350 m
 p <- data.frame(mu = 350, 
                 sigma = c(20, 15, 30), 
-                deep_depth_eps = c(20, 15, 30),
+                deep_depth_eps = c(20, 15, 25),
                 lwd = c(1.5, 1, 1), 
                 col = c("black", "red", "blue"), 
                 label = c("Best-guess", "Restrictive", "Flexible"))
