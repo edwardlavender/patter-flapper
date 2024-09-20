@@ -25,7 +25,9 @@ library(fvcom.tbx)
 library(truncdist)
 
 #### Local pars
-yat <- c(0, 0.25, 0.5, 0.75, 1)
+yat  <- c(0, 0.25, 0.5, 0.75, 1)
+lwds <- c(1.5, 1, 1)
+cols <- c("black", "red", "blue")
 
 
 ###########################
@@ -35,11 +37,18 @@ yat <- c(0, 0.25, 0.5, 0.75, 1)
 ###########################
 #### Resting
 
+#### Define parameters
+pmovement_rest <- data.table(k1 = c(0, 0, 0), 
+                             theta1 = c(5, 5, 5), 
+                             mobility = c(1095, 990, 1125))
+p       <- copy(pmovement_rest)
+p$label <- c("Best-guess", "Restrictive", "Flexible")
+
 png(here_fig("model-move-step-length-resting.png"), 
     height = 4, width = 4, units = "in", res = 600)
 set_par()
 x <- seq(0, 100, length.out = 1e5)
-y <- dtrunc(x, "cauchy", a = 0, b = 1095, location = 0, scale = 5)
+y <- dtrunc(x, "cauchy", a = 0, b = p$mobility[1], location = p$k1[1], scale = p$theta1[1])
 y <- y / max(y)
 xlim <- range(x)
 pretty_plot(x, y,
@@ -67,13 +76,13 @@ dev.off()
 #### Active
 
 #### Define parameters
-p <- data.frame(k = c(5, 1, 10), 
-                theta = c(100, 60, 150), 
-                mobility = c(1095, 990, 1125),
-                lwd = c(1.5, 1, 1), 
-                col = c("black", "red", "blue"), 
-                label = c("Best-guess", "Restrictive", "Flexible"))
-
+pmovement_active <-  data.table(k2 = c(5, 1, 10), 
+                                theta2 = c(100, 60, 150), 
+                                mobility = c(1095, 990, 1125))
+p       <- copy(pmovement_active)
+p$label <- c("Best-guess", "Restrictive", "Flexible")
+p$lwd   <- lwds
+p$col   <- cols
 
 #### Set up plot
 png(here_fig("model-move-step-length-active.png"), 
@@ -84,8 +93,8 @@ xlim <- c(0, 1200)
 #### Plot probability densities 
 for (i in 1:3) {
   x <- seq(0, p$mobility[i] + 1, length.out = 1e5)
-  # y <- dtrunc(x, "gamma", a = 0, b = p$mobility[i], shape = p$k[i], scale = p$theta[i])
-  y <- dtrunc(x, "cauchy", a = 0, b = p$mobility[i], location = p$k[i], scale = p$theta[i])
+  # y <- dtrunc(x, "gamma", a = 0, b = p$mobility[i], shape = p$k2[i], scale = p$theta2[i])
+  y <- dtrunc(x, "cauchy", a = 0, b = p$mobility[i], location = p$k2[i], scale = p$theta2[i])
   y <- y / max(y)
   if (i == 1) {
   pretty_plot(x, y,
@@ -160,13 +169,13 @@ dev.off()
 #### Acoustic observation model 
 
 #### Define parameters
-p <- data.frame(alpha = c(4, 3, 5), 
-                beta = c(-0.0094, -0.01, -0.009), 
-                gamma = c(1750, 1500, 2000),
-                lwd = c(1.5, 1, 1), 
-                col = c("black", "red", "blue"), 
-                label = c("Best-guess", "Restrictive", "Flexible"))
-
+pdetection <- data.table(receiver_alpha = c(4, 3, 5), 
+                         receiver_beta = c(-0.0094, -0.01, -0.009), 
+                         receiver_gamma = c(1750, 1500, 2000))
+p       <- copy(pdetection)
+p$label <- c("Best-guess", "Restrictive", "Flexible")
+p$lwd   <- lwds
+p$col   <- cols
 
 #### Set up plot
 png(here_fig("model-obs-acoustic.png"), 
@@ -176,8 +185,8 @@ xlim <- c(0, 2000)
 
 #### Plot probability densities 
 for (i in 1:3) {
-  x <- seq(0, p$gamma[i] + 1, length.out = 1e5)
-  y <- ddetlogistic(x, p$alpha[i], p$beta[i], p$gamma[i])
+  x <- seq(0, p$receiver_gamma[i] + 1, length.out = 1e5)
+  y <- ddetlogistic(x, p$receiver_alpha[i], p$receiver_beta[i], p$receiver_gamma[i])
   # y <- y / max(y)
   if (i == 1) {
     print(y[1])
@@ -194,13 +203,13 @@ for (i in 1:3) {
     lines(xlim, c(0.5, 0.5), lty = 3, col = "dimgrey")
   }
   lines(x, y, lwd = p$lwd[i], col = p$col[i])
-  arrows(x0 = p$gamma[i], 
-         x1 = p$gamma[i], 
+  arrows(x0 = p$receiver_gamma[i], 
+         x1 = p$receiver_gamma[i], 
          y0 = 0.05, 
          y1 = 0, 
          length = 0.05, 
          col = p$col[i])
-  # rug(p$gamma[i], pos = -0.1, lwd = 2, col = p$col[i])
+  # rug(p$receiver_gamma[i], pos = -0.1, lwd = 2, col = p$col[i])
 }
 dev.off()
 
@@ -211,25 +220,25 @@ dev.off()
 
 #### Define parameters
 # Make plot for seabed depth (mu) = 50 m and 350 m
-p <- data.frame(mu = 350, 
-                sigma = c(20, 15, 30), 
-                deep_depth_eps = c(20, 15, 25),
-                lwd = c(1.5, 1, 1), 
-                col = c("black", "red", "blue"), 
-                label = c("Best-guess", "Restrictive", "Flexible"))
-
+pdepth <- data.frame(mu = 350, 
+                     depth_sigma = c(20, 15, 30), 
+                     depth_deep_eps = c(20, 15, 25))
+p       <- copy(pdepth)
+p$label <- c("Best-guess", "Restrictive", "Flexible")
+p$lwd   <- lwds
+p$col   <- cols
 
 #### Set up plot
 png(here_fig(paste0("model-obs-archival-", p$mu[1], "m.png")), 
     height = 4, width = 4, units = "in", res = 600)
 set_par()
-ylim <- c(p$mu[1] * -1 - max(p$deep_depth_eps) - 20, 0)
+ylim <- c(p$mu[1] * -1 - max(p$depth_deep_eps) - 20, 0)
 
 #### Plot probability densities 
 for (i in 1:3) {
-  x <- seq(0, p$mu[i] + p$deep_depth_eps[i] + 0.1, length.out = 1e5)
-  y <- dtrunc(x, "norm", a = 0, b = p$mu[i] + p$deep_depth_eps[i], mean = p$mu[i], sd = p$sigma[i])
-  # y <- dtrunc(x, "cauchy", a = 0, b = p$mu[i] + p$deep_depth_eps[i], location = p$mu[i], scale = 15)
+  x <- seq(0, p$mu[i] + p$depth_deep_eps[i] + 0.1, length.out = 1e5)
+  y <- dtrunc(x, "norm", a = 0, b = p$mu[i] + p$depth_deep_eps[i], mean = p$mu[i], sd = p$depth_sigma[i])
+  # y <- dtrunc(x, "cauchy", a = 0, b = p$mu[i] + p$depth_deep_eps[i], location = p$mu[i], scale = 15)
   y <- y / max(y)
   x <- abs(x) * -1
   # y <- y / max(y)
@@ -273,12 +282,23 @@ for (i in 1:3) {
   lines(y, x, lwd = p$lwd[i], col = p$col[i])
   arrows(x0 = 0.05, 
          x1 = 0, 
-         y0 = (p$mu[i] + p$deep_depth_eps[i]) * -1, 
-         y1 = (p$mu[i] + p$deep_depth_eps[i]) * -1, 
+         y0 = (p$mu[i] + p$depth_deep_eps[i]) * -1, 
+         y1 = (p$mu[i] + p$depth_deep_eps[i]) * -1, 
          length = 0.05, 
          col = p$col[i])
 }
 dev.off()
+
+
+###########################
+###########################
+#### Save parameter datasets
+
+#### All parameters
+pars <- list(pmovement = cbind(pmovement_rest[, .(k1, theta1)], pmovement_active),
+             pdetection = pdetection, 
+             pdepth = pdepth)
+qs::qsave(pars, here_data("input", "pars.qs"))
 
 
 #### End of code. 

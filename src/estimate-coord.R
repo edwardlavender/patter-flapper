@@ -123,9 +123,13 @@ estimate_coord_patter <- function(sim, map, datasets) {
   if (TRUE) {
     # Use a restricted timeline for testing
     warn("Using a restricted timeline for testing!")
+    # Use the first N observations required to achieve at least two detections at different receivers
+    # This is necessary so that $yobs$ModelObsAcousticContainer is not empty
+    sel <- which(timeline %in% detections$timestamp[detections$receiver_id != detections$receiver_id[1]])
+    sel <- 1:sel[1]
     timeline <- assemble_timeline(.datasets = plyr::compact(list(detections, archival)),
                                   .step = "2 mins",
-                                  .trim = TRUE)[1:10L]
+                                  .trim = TRUE)[sel]
   }
   # Movement model
   state       <- "StateXY"
@@ -145,7 +149,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
                .yobs = model_obs$yobs,
                .model_obs = model_obs$model_obs,
                .model_move = model_move,
-               .n_particle = patter_np(sim),
+               .n_particle = sim$np, # patter_np(sim),
                .direction = "forward",
                .verbose = TRUE)
   
@@ -162,7 +166,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   }
 
   #### Implement smoothing 
-  if (success) {
+  if (success & sim$smooth) {
     cat("\n... (3) Implementing smoother...\n")
     success <- pf_smoother_wrapper(sim)
   }

@@ -27,13 +27,13 @@ as_actel <- function(.map, .acoustics, .moorings) {
     moorings |>
     mutate(Start = paste(.data$receiver_start, "00:00"),
            Stop = paste(.data$receiver_end + 1, "00:00")) |>
-    select(Receiver = "receiver_id",
+    dplyr::select(Receiver = "receiver_id",
            Station.name = "receiver_id",
            "Start", "Stop")
   # Spatial datasets
   moorings_ll <-
     moorings |>
-    select("receiver_x", "receiver_y") |>
+    dplyr::select("receiver_x", "receiver_y") |>
     as.matrix() |>
     terra::vect(crs = terra::crs(.map)) |>
     terra::project("EPSG: 4326") |>
@@ -48,7 +48,7 @@ as_actel <- function(.map, .acoustics, .moorings) {
       Array = "A0", Section = "unspecified",
       Type = "Hydrophone", 
       Range = .moorings$receiver_gamma) |>
-    select(Station.name = "receiver_id",
+    dplyr::select(Station.name = "receiver_id",
            "Longitude", "Latitude", "x", "y",
            "Array", "Section", "Type", "Range")
   # Detections
@@ -58,7 +58,7 @@ as_actel <- function(.map, .acoustics, .moorings) {
            Timestamp = .data$timestamp,
            CodeSpace = "unspecified",
            Signal = 1L) |>
-    select("Receiver", "Timestamp", "CodeSpace", "Signal")
+    dplyr::select("Receiver", "Timestamp", "CodeSpace", "Signal")
   
   #### Run actel::explore() non-interactively
   # Collate datasets

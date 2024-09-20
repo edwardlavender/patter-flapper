@@ -2,7 +2,7 @@
 
 bw.h <- function(X) {
   # Code from adehabitatHR:::.kernelUDs with tweaks
-  # & adapted for adehabitatHR
+  # & adapted for spatstat.explore
   sdxy <- sqrt(0.5 * (var(X$x) + var(X$y)))
   sdxy * (X$n^(-1/6))
 }

@@ -6,11 +6,10 @@ patter_timeline <- function(mmyy) {
 
 #' Define the movement model for a simulation
 patter_ModelMove <- function(sim) {
-  move_xy(dbn_length =
-            glue::glue("truncated(Gamma({sim$shape},
-                                    {sim$scale}),
-                              upper = {sim$mobility})"),
-          dbn_angle = "Uniform(-pi, pi)")
+  stopifnot(all(c("k1", "theta1", "k2", "theta2", "mobility") %in% colnames(sim)))
+  move_flapper(dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
+               dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"),
+               dbn_angle = "Uniform(-pi, pi)")
 }
 
 #' Define the model_obs and yobs inputs for a forward run of the particle filter
@@ -20,8 +19,11 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
   if (sim$dataset %in% c("ac", "acdc")) {
     # Detection model parameters
     receiver_alpha <- receiver_beta <- receiver_gamma <- NULL
+    moorings[, receiver_alpha := NULL]
     moorings[, receiver_alpha := sim$receiver_alpha]
+    moorings[, receiver_beta := NULL]
     moorings[, receiver_beta := sim$receiver_beta]
+    moorings[, receiver_gamma := NULL]
     moorings[, receiver_gamma := sim$receiver_gamma]
     # Assemble acoustic data
     acoustics <- assemble_acoustics(.timeline = timeline,

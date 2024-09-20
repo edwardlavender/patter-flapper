@@ -56,6 +56,9 @@ iteration_ac <-
 
 #### Define COA parameters
 # > We consider a 'best', 'restrictive' and 'flexible' parameter value
+
+# TO DO
+# Update based on simulations
 parameters <- data.table(parameter_id = 1:3L, 
                          delta_t = c("6 hours", "12 hours", "24 hours"))
 
@@ -86,6 +89,8 @@ dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 # > Implemented above. 
 
 #### Define parameters
+# TO DO
+# Update based on simulations
 parameters <- data.table(parameter_id = 1:3L, 
                          er.ad = c(250 * 0.05, 250 * 0.10, 250 * 0.15))
 
@@ -119,6 +124,9 @@ dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
 # * 'best' guess parameters (first value)
 # * 'restrictive' parameters (second value)
 # * 'flexible' parameters (third value)
+
+# TO DO
+# Read from file
 pmovement <- data.table(shape = c(15, 15, 15), 
                         scale = c(250, 250, 250), 
                         mobility = c(1000, 500, 1500))
@@ -171,6 +179,13 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
          "receiver_alpha", "receiver_beta",
          "receiver_gamma", "depth_sigma", "depth_deep_eps",
          "folder_coord", "folder_ud")
+
+# TO DO
+# Add additional columns as required by updates during simulation development
+# sim$month_id 
+# sim$k1, sim$k2, sim$theta1, sim$theta2, sim$mobility 
+# Change patter_np(sim) to sim$np
+# Conditionally implement smoothing if sim$smooth
 
 #### Build patter folders
 dirs.create(iteration_patter$folder_coord)

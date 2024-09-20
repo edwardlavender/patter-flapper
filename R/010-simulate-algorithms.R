@@ -24,7 +24,7 @@
 # - For each dataset/algorithm (ACPF, DCPF, ACDCPF)
 # - For each set of the number of particles (10,000, 20,000, ... etc.)
 # - For each set of parameter values
-# - For 1, ..., 30 iterations
+# - For 1, ..., N iterations
 # --> Run filter & record convergence (for convergence analysis)
 # --> If also maximum number of particles, run smoother (for residency analysis)
 # --> If also iterations 1:3, estimate UDs (for maps)
@@ -42,25 +42,21 @@ dv::clear()
 
 #### Essential packages
 dv::src()
+library(spatstat)
+library(ggplot2)
 
 #### Load data 
 map      <- terra::rast(here_data("spatial", "bathy.tif"))
+ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
 win      <- qs::qread(dv::here_data("spatial", "win.qs"))
 skateids <- qs::qread(here_data("input", "mefs", "skateids.qs"))
-# moorings <- qs::qread(here_data("input", "mefs", "moorings.qs"))
-# Best-guess ModelObs parameters
-# * Define in formulate-models.R
 moorings <- qs::qread(here_data("input", "mefs", "moorings.qs")) 
-ModelObsAcousticLogisTruncPars <- 
-  moorings |> 
-  select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
-  mutate(receiver_alpha = 4, receiver_beta = -0.01, receiver_gamma = 1750) |> 
-  as.data.table()
-ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1, 
-                                           sigma = 20, 
-                                           depth_deep_eps = 20)
-ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
-                     ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
+pars     <- qs::qread(here_data("input", "pars.qs"))
+
+
+###########################
+###########################
+#### Set up algorithms 
 
 #### Julia set up
 julia_connect()
@@ -69,106 +65,127 @@ set_map(map)
 julia_command(ModelObsAcousticContainer)
 julia_command(ModelObsAcousticContainer.logpdf_obs)
 
+#### Define simulation settings
+# We simulate three paths
+n_path   <- 3L
+# Simulation timeline
+timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
+                as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
+                by = "2 mins")
 
-###########################
-###########################
-#### Set up simulations 
+#### Define ModelMove structure to simulate paths
+# We simulate the path using the best-guess parameters
+model_move <- patter_ModelMove(pars$pmovement[1, ])
 
-#### COA algorithm
-# Define parameters
-pcoa <- data.table(parameter_id = 1:3L, 
-                   delta_t = c("6 hours", "12 hours", "24 hours"))
-# Define iteration dataset
-iteration_coa <- 
-  CJ(path = 1:3L, parameter_id = 1:3, dataset = "ac", iter = 1L) |>
-  mutate(dataset = "ac", 
-         delta_t = pcoa$delta_t[match(parameter_id, pcoa$parameter_id)], 
-         folder = file.path("data", "output", "simulation", "coa"),
-         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
-         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
-         ) |> 
+#### Define ModelObs structures to simulate observations 
+# We simulate parameters using best-guess parameters
+ModelObsAcousticLogisTruncPars <- 
+  moorings |> 
+  select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
+  mutate(receiver_alpha = pars$pdetection$receiver_alpha[1], 
+         receiver_beta = pars$pdetection$receiver_beta[1], 
+         receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
-# Build folders
-# dirs.create(iteration_coa$folder_coord)
-# dirs.create(iteration_coa$folder_ud)
-# dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
+ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
+                                           sigma = pars$pdepth$sigma, 
+                                           depth_deep_eps = pars$pdepth$deep_depth_eps)
+ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
+                     ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
 
-#### RSP algorithm
-# TO DO
+#### Define ancillary datasets for algorithm runs
+# COA & patter run with simulated acoustic data
+# RSP requires moorings dataset to prepare the actel dataset
+# * Receiver deployment dates must be dates that align with simulation timeline
+moorings <- 
+  moorings |> 
+  mutate(receiver_start = as.Date(min(timeline)), 
+         receiver_end = as.Date(max(timeline)), 
+         receiver_gamma = 1750) |> 
+  as.data.table()
+head(moorings)
 
-#### Patter algorithms 
-# TO DO
+#### Define UD estimation settings 
+# npixel for UD estimation 
+spatstat.geom::spatstat.options("npixel" = 500)
+# (optional) NULL model 
+ud_null <- terra::setValues(ud_grid, 1)
+ud_null <- terra::mask(ud_null, ud_grid)
+ud_null <- spatNormalise(ud_null)
+# terra::plot(ud_null)
 
-#### Estimation parameters
-# Adjust the number of pixels in spatstat for improved speed
-# spatstat.geom::spatstat.options("npixel" = 100)
- 
 
 ###########################
 ###########################
 #### Simulate paths and observations
 
-# This code is run three times, generating three paths & corresponding observational datasets
-for (id in 1:3) {
+if (FALSE) {
   
-  # id <- 1
-  set_seed(id)
-  
-  #### Define simulation timeline 
-  timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
-                  as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
-                  by = "2 mins")
-  
-  #### Simulate initial location
-  # We sample an initial location from the receiver array 
-  # This helps to ensure we generate some detections for the COA/RSP/AC*PF algorithms
-  xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
-                          min(moorings$receiver_y), max(moorings$receiver_y))
-  xinit_map <- terra::crop(map, xinit_bb)
-  xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
-  xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
-  
-  #### Simulate behavioural states 
-  # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
-  behaviour   <- simulate_behaviour(timeline)
-  julia_assign("behaviour", behaviour)
-  
-  #### Define movement model
-  julia_command(ModelMoveFlapper)
-  julia_command(simulate_step.ModelMoveFlapper)
-  julia_command(logpdf_step.ModelMoveFlapper)
-  
-  #### Simulate movement path 
-  coord_path <- sim_path_walk(.map = map, 
-                              .timeline = timeline, 
-                              .state = "StateXY", 
-                              .xinit = xinit, 
-                              .model_move = move_flapper(), 
-                              .n_path = 1L, 
-                              .plot = TRUE)
-  points(moorings$receiver_x, moorings$receiver_y)
-  
-  #### Map path UD 
-  # * 1 min with 100 pixels
-  # * 3.5 mins with 500 pixels 
-  ud_path <- map_dens(.map = map, 
-                      .owin = win,
-                      sigma = bw.h,
-                      .coord = coord_path[, .(x, y)]
-  )
-  
-  #### Simulate observations
-  yobs <- sim_observations(.timeline = timeline, 
-                           .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
-                           .model_obs_pars = ModelObsPars)
-  # Check we have simulated detections
-  stopifnot(length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L)) > 100)
-  table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
-  
-  #### Save datasets
-  qs::qsave(coord_path, here_data(coord_path, "input", "simulation", id, "coord.qs"))
-  qs::qsave(yobs, here_data(ud_path, "input", "simulation", id, "yobs.qs") )
-  terra::writeRaster(here_data(ud_path, "input", "simulation", id, "ud.tif"))
+  iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
+  lapply(split(iteration_path, 1:3), function(sim) {
+    
+    # This code is run three times, generating three paths & corresponding observational datasets
+    # s <- 2; id <- 1   # path 1
+    # s <- 3; id <- 2 # path 2
+    # s <- 4; id <- 3 # path 3
+    s <- sim$s; id <- sim$id
+    set_seed(s)
+    
+    #### Simulate initial location
+    # We sample an initial location from the receiver array 
+    # This helps to ensure we generate some detections for the COA/RSP/AC*PF algorithms
+    xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
+                            min(moorings$receiver_y), max(moorings$receiver_y))
+    xinit_map <- terra::crop(map, xinit_bb)
+    xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
+    xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
+    
+    #### Simulate behavioural states 
+    # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
+    behaviour   <- simulate_behaviour(timeline)
+    julia_assign("behaviour", behaviour)
+    
+    #### Define movement model
+    julia_command(ModelMoveFlapper)
+    julia_command(simulate_step.ModelMoveFlapper)
+    julia_command(logpdf_step.ModelMoveFlapper)
+    
+    #### Simulate movement path 
+    coord_path <- sim_path_walk(.map = map, 
+                                .timeline = timeline, 
+                                .state = "StateXY", 
+                                .xinit = xinit, 
+                                .model_move = model_move, 
+                                .n_path = 1L, 
+                                .plot = TRUE)
+    points(moorings$receiver_x, moorings$receiver_y)
+    
+    #### Simulate observations
+    yobs <- sim_observations(.timeline = timeline, 
+                             .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
+                             .model_obs_pars = ModelObsPars)
+    # Check we have simulated detections
+    stopifnot(length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L)) > 100)
+    table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
+    
+    #### Map path UD 
+    # * 1 min with 100 pixels
+    # * 3.5 mins with 500 pixels 
+    stopifnot(spatstat.geom::spatstat.options("npixel") == 500)
+    ud_path <- map_dens(.map = ud_grid, 
+                        .owin = win,
+                        .coord = coord_path[, .(x, y)],
+                        .discretise = TRUE,
+                        sigma = bw.h, 
+                        .fterra = TRUE)
+    
+    #### Save datasets
+    qs::qsave(coord_path, here_data("input", "simulation", id, "coord.qs"))
+    qs::qsave(yobs, here_data("input", "simulation", id, "yobs.qs"))
+    terra::writeRaster(ud_path$ud, here_data("input", "simulation", id, "ud.tif"), 
+                       overwrite = TRUE)
+    beepr::beep(10)
+    
+  })
   
 }
 
@@ -177,35 +194,282 @@ for (id in 1:3) {
 ###########################
 #### Run algorithms
 
-#### COA algorithm
-# Estimate coordinates 
-table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
-coord_coa <- coa(.map = map, 
-                 .acoustics = yobs$ModelObsAcousticLogisTrunc[[1]][obs > 0L, ],
-                 .delta_t = "24 hours") 
-stopifnot(nrow(coord_coa) > 0)
-terra::plot(map)
-points(coord_coa$x, coord_coa$y)
-# Estimate UD
-ud_path <- map_dens(.map = map, 
-                    .owin = win,
-                    sigma = bw.h,
-                    .coord = coord_coa[, .(x, y)]
-                    )
+#### Build iteration dataset
+# Define parameters
+pcoa <- data.table(parameter_id = 1:10L, 
+                   delta_t = c("1 hour", "2 hours", "6 hours", "12 hours", "1 day", 
+                               "2 days", "3 days", "4 days", "5 days", "6 days"))
+# Define dataset
+iteration_coa <- 
+  CJ(unit_id = seq_len(n_path), parameter_id = pcoa$parameter_id, dataset = "ac", iter = 1L) |>
+  mutate(dataset = "ac", 
+         delta_t = pcoa$delta_t[match(parameter_id, pcoa$parameter_id)], 
+         folder = file.path("data", "output", "simulation", unit_id, "coa"),
+         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
+         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
+  ) |> 
+  arrange(unit_id, parameter_id) |>
+  as.data.table()
+# Build folders
+dirs.create(iteration_coa$folder_coord)
+dirs.create(iteration_coa$folder_ud)
+dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 
+#### Define datasets
+# Dataset for each unit_id
+detections_by_unit <- lapply(seq_len(n_path), function(path) {
+  acoustics  <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
+  acoustics$ModelObsAcousticLogisTrunc[[1]] |> 
+    filter(obs == 1L) |>
+    select(timestamp, receiver_id = sensor_id, receiver_x, receiver_y) |>
+    as.data.table()
+})
+datasets <- list(detections_by_unit = detections_by_unit, moorings = NULL)
+
+#### Estimate coordinates (~10 s)
+iteration <- copy(iteration_coa)
+iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
+# (optional) Examine selected coords
+lapply_qplot_coord(iteration, "coord.qs")
+
+#### Estimate UDs
+# Implementation (9 mins, 500 pixels, sigma = bw.h, cl = 7L)
+nrow(iteration)
+lapply_estimate_ud_spatstat(iteration = iteration, 
+                            extract_coord = NULL,
+                            cl = 9L, 
+                            plot = FALSE)
+# (optional) Examine selected UDs
+lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+
+#### Visualise ME
+# Compute ME 
+me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  # sim <- iteration[1, ]
+  skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+           .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+})
+# Visualise ME ~ delta_t
+iteration |>
+  mutate(me = me, 
+         delta_t = factor(delta_t, levels = pcoa$delta_t)) |> 
+  as.data.table() |> 
+  ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
+  geom_point() + 
+  geom_line()
+
+# > Best guess:       4 days
+# > Restricted value: 2 day
+# > Flexible value:   3 days 
 
 
 ###########################
 ###########################
 #### RSP algorithms
 
+#### Build iteration dataset
+# Define parameters
+prsp <- data.table(parameter_id = 1:10L, 
+                   er.ad = c(250 * 0.001, 
+                             250 * 0.005, 
+                             250 * 0.01, 
+                             250 * 0.05, # default 
+                             250 * 0.10, 
+                             250 * 0.20, 
+                             250 * 0.40, 
+                             250 * 0.50, 
+                             250 * 1,
+                             250 * 2
+                             ))
+# Define dataset
+iteration_rsp <- 
+  CJ(unit_id = seq_len(n_path), parameter_id = prsp$parameter_id, dataset = "ac", iter = 1L) |>
+  mutate(dataset = "ac", 
+         er.ad = prsp$er.ad[match(parameter_id, prsp$parameter_id)], 
+         folder = file.path("data", "output", "simulation", unit_id, "coa"),
+         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
+         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
+  ) |> 
+  arrange(unit_id, parameter_id) |>
+  as.data.table()
+# Build folders
+dirs.create(iteration_rsp$folder_coord)
+dirs.create(iteration_rsp$folder_ud)
+dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
+dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
+
+#### Define datasets
+datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
+
+#### Estimate coordinates (~2 mins)
+iteration <- copy(iteration_rsp)
+iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
+# (optional) Examine selected coords
+lapply_qplot_coord(iteration, 
+                   "coord.qs",
+                   extract_coord = function(coord) {
+                     cbind(coord$detections[[1]]$Longitude, 
+                           coord$detections[[1]]$Latitude) |> 
+                       terra::vect(crs = "EPSG:4326") |> 
+                       terra::project("EPSG:32629") |> 
+                       terra::crds() |> 
+                       as.data.frame()
+                   })
+
+#### Estimate UDs
+# Implementation (35 s, 10 cl)
+lapply_estimate_ud_dbbmm(iteration = iteration, 
+                         cl = 10L, 
+                         plot = FALSE)
+# (optional) Examine selected UDs
+lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
+
+#### Visualise ME 
+me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  # sim <- iteration[1, ]
+  skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+           .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+})
+# Visualise ME ~ er.ad
+iteration |>
+  mutate(me = me, 
+         # me_null = me_null,
+         er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
+  as.data.table() |> 
+  ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
+  geom_point() + 
+  geom_line()
+
+# > Best guess:       125
+# > Restricted value: 1
+# > Flexible value:   250 
 
 
 ###########################
 ###########################
 #### Patter algorithms
 
+#### Define unitsets (unit_ids & algorithms)
+unitsets <- 
+  CJ(unit_id = seq_len(n_path), 
+     dataset = c("ac", "dc", "acdc")) |>
+  arrange(unit_id, factor(dataset, c("ac", "dc", "acdc"))) |>
+  as.data.table()
 
+#### Define parameters
+# Observation model parameters 
+pmovement  <- pars$pmovement
+pdetection <- pars$pdetection
+pdepth     <- pars$pdepth
+parameters <- 
+  rbind(
+    cbind(sensitivity = "best", pmovement[1, ], pdetection[1, ], pdepth[1, ]),
+    cbind(sensitivity = "movement", pmovement[2:3, ], pdetection[1, ], pdepth[1, ]),
+    cbind(sensitivity = "ac", pmovement[1, ], pdetection[2:3, ], pdepth[1, ]),
+    cbind(sensitivity = "dc", pmovement[1, ], pdetection[1, ], pdepth[2:3, ]) 
+  )
+parameters[, model_obs := seq_len(.N)]
+# Algorithm settings (particles & no. of iters)
+np <- c(10000, 25000, 50000, 100000, 250000)
+ni <- 1:10L
+# Collect algorithm settings and model parameters
+parameters <- 
+  CJ(model_obs = parameters$model_obs, np = np) |> 
+  left_join(parameters, 
+            by = "model_obs") |> 
+  mutate(parameter_id = row_number()) |> 
+  as.data.table()
+# We run each setting ni times
+parameters <- 
+  lapply(ni, function(i) {
+  p <- copy(parameters)
+  p[, iter := i]
+  p
+}) |> rbindlist()
+
+#### Define iteration dataset
+iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
+  
+  # Keep the relevant parameters, dependent upon the algorithm
+  if (d$dataset == "ac") {
+    p <- parameters[sensitivity %in% c("best", "movement", "ac"), ]
+    p[, c("depth_sigma", "depth_deep_eps") := NA_real_]
+  }
+  if (d$dataset == "dc") {
+    p <- parameters[sensitivity %in% c("best", "movement", "dc"), ]
+    p[, c("receiver_alpha", "receiver_beta", "receiver_gamma") := NA_real_]
+  }
+  if (d$dataset == "acdc") {
+    p <- copy(parameters)
+  }
+  cbind(d, p)
+  
+}) |> 
+  rbindlist() |> 
+  mutate(index = row_number(), 
+         folder = file.path("data", "output", "simulation", unit_id, "patter"),
+         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
+         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")) |>
+  dplyr::select("index", 
+         "unit_id",
+         "dataset", 
+         "parameter_id", "iter", "sensitivity", 
+         "k1", "k2", "theta1", "theta2", "mobility", 
+         "receiver_alpha", "receiver_beta",
+         "receiver_gamma", "depth_sigma", "depth_deep_eps",
+         "np",
+         "folder_coord", "folder_ud") |>
+  as.data.table()
+
+#### Add supporting columns
+# sim$month_id is required by estimate_coord_patter() to define the timeline
+iteration_patter[, month_id := "042024"]
+# Implement smoothing for simulations that use the max. number of particles
+iteration_patter[, smooth := FALSE]
+iteration_patter[np == max(np), smooth := TRUE]
+# Change patter_np(sim) to sim$np
+
+#### Build patter folders
+dirs.create(iteration_patter$folder_coord)
+dirs.create(iteration_patter$folder_ud)
+dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
+
+#### Define datasets
+# Detection data
+# * Use detection data
+# * assemble_acoustics() is called under the hood
+# Depth data
+archival_by_unit <- lapply(seq_len(n_path), function(path) {
+  yobs <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
+  yobs$ModelObsDepthNormalTrunc[[1]]
+})
+datasets <- list(detections_by_unit = detections_by_unit, 
+                 moorings = moorings,
+                 archival_by_unit = archival_by_unit)
+
+#### Estimate coordinates
+
+
+# TO DO
+# * Provide behavioural data
+# * Activate ModelMoveFlapper
+#
+
+
+
+
+# Implementation
+iteration <- copy(iteration_patter)
+lapply_estimate_coord_patter(iteration = iteration[1, ], datasets = datasets)
+# Examine selected coords 
+lapply_qplot_coord(iteration, 
+                   "coord-smo.qs",
+                   extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
+
+#### 
+iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 
 ###########################
 ###########################
