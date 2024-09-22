@@ -26,6 +26,7 @@ julia_assign_SpatRaster <- function(x, value) {
     terra::writeRaster(value, file)
   }
   # Set env
+  file <- normalizePath(file, winslash = "/", mustWork = TRUE)
   JuliaCall::julia_command(glue::glue('{x} = GeoArrays.read("{file}");'))
   invisible(NULL)
 }

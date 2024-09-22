@@ -63,13 +63,15 @@ as_actel <- function(.map, .acoustics, .moorings) {
   #### Run actel::explore() non-interactively
   # Collate datasets
   input     <- list(bio = act_bio, 
-                       spatial = act_spatial, 
-                       deployments = act_deployments, 
-                       detections = act_detections)
+                    spatial = act_spatial, 
+                    deployments = act_deployments, 
+                    detections = act_detections)
   input.rds <- tempfile(fileext = ".rds")
+  input.rds <- normalizePath(input.rds, winslash = "/", mustWork = TRUE)
   on.exit(unlink(input.rds), add = TRUE)
   saveRDS(input, input.rds)
   output.rds <- tempfile(fileext = ".rds")
+  output.rds <- normalizePath(output.rds, winslash = "/", mustWork = TRUE)
   on.exit(unlink(output.rds), add = TRUE)
   # Build script
   actel.R <- tempfile(fileext = ".R")
