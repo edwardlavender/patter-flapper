@@ -59,7 +59,7 @@ logpdf_step.ModelMoveFlapper <-
                        t::Int64, length::Float64, angle::Float64, behaviour::Vector{Int64} = behaviour) 
     if behaviour[t] == 1
       length_logpdf = logpdf(model_move.dbn_length_rest, length)
-    elseif behaviour == 2
+    elseif behaviour[t] == 2
       length_logpdf = logpdf(model_move.dbn_length_active, length)
     end 
     length_logpdf + logpdf(model_move.dbn_angle, angle)
