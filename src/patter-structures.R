@@ -1,10 +1,11 @@
 #' ModelMoveFlapper
 
-move_flapper <- function(dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
+move_flapper <- function(mobility = "750.0", 
+                         dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
                          dbn_length_active = "truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)", 
                          dbn_angle = "Uniform(-pi, pi)") {
   julia_check_exists("env")
-  glue("ModelMoveFlapper(env, {dbn_length_rest}, {dbn_length_active}, {dbn_angle});")
+  glue("ModelMoveFlapper(env, {mobility}, {dbn_length_rest}, {dbn_length_active}, {dbn_angle});")
 }
 
 # Check behaviour of Cauchy distribution matches behaviour in R: yes. 
@@ -17,11 +18,12 @@ move_flapper <- function(dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 
 
 ModelMoveFlapper <- 
   '
-  struct ModelMoveFlapper{T, U, V, W} <: Patter.ModelMove
+  struct ModelMoveFlapper{T, U, V, W, X} <: Patter.ModelMove
     map::T
-    dbn_length_rest::U
-    dbn_length_active::V
-    dbn_angle::W
+    mobility::U
+    dbn_length_rest::V
+    dbn_length_active::W
+    dbn_angle::X
   end
   '
 

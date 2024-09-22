@@ -7,7 +7,8 @@ patter_timeline <- function(mmyy) {
 #' Define the movement model for a simulation
 patter_ModelMove <- function(sim) {
   stopifnot(all(c("k1", "theta1", "k2", "theta2", "mobility") %in% colnames(sim)))
-  move_flapper(dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
+  move_flapper(mobility = sim$mobility, 
+               dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
                dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"),
                dbn_angle = "Uniform(-pi, pi)")
 }
