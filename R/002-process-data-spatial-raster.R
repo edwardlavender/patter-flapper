@@ -337,6 +337,11 @@ ud_grid <- terra::classify(ud_grid, cbind(0, NA))
 ud_grid
 terra::plot(!is.na(ud_grid))
 
+#### UD grid (NULL model)
+ud_null <- terra::setValues(ud_grid, 1)
+ud_null <- terra::mask(ud_null, ud_grid)
+ud_null <- spatNormalise(ud_null)
+
 #### RSP grid 
 # Define 'water' grid
 # * See guidance in patter-eval
@@ -390,6 +395,9 @@ terra::writeRaster(bathy,
                    overwrite = TRUE)
 terra::writeRaster(ud_grid,
                    here_data("spatial", "ud-grid.tif"), 
+                   overwrite = TRUE)
+terra::writeRaster(ud_null,
+                   here_data("spatial", "ud-null.tif"), 
                    overwrite = TRUE)
 terra::writeRaster(bbrast_ll,
                    here_data("spatial", "bbrast_ll.tif"), 
