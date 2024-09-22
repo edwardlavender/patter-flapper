@@ -113,7 +113,7 @@ spatstat.geom::spatstat.options("npixel" = 500)
 ###########################
 #### Simulate paths and observations
 
-if (TRUE) {
+if (FALSE) {
   
   iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
   lapply(split(iteration_path, 1:3), function(sim) {
@@ -183,34 +183,12 @@ if (TRUE) {
   
 }
 
-
-###########################
-###########################
-#### Run algorithms
-
-#### Build iteration dataset
-# Define parameters
-pcoa <- data.table(parameter_id = 1:10L, 
-                   delta_t = c("1 hour", "2 hours", "6 hours", "12 hours", "1 day", 
-                               "2 days", "3 days", "4 days", "5 days", "6 days"))
-# Define dataset
-iteration_coa <- 
-  CJ(unit_id = seq_len(n_path), parameter_id = pcoa$parameter_id, dataset = "ac", iter = 1L) |>
-  mutate(dataset = "ac", 
-         delta_t = pcoa$delta_t[match(parameter_id, pcoa$parameter_id)], 
-         folder = file.path("data", "output", "simulation", unit_id, "coa"),
-         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
-         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
-  ) |> 
-  arrange(unit_id, parameter_id) |>
-  as.data.table()
-# Build folders
-dirs.create(iteration_coa$folder_coord)
-dirs.create(iteration_coa$folder_ud)
-dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
-
-#### Define datasets
-# Dataset for each unit_id
+#### Load datasets
+# Behaviour
+behaviour_by_unit <- lapply(seq_len(n_path), function(path) {
+  qs::qread(here_data("input", "simulation", path, "behaviour.qs"))
+})
+# Detections
 detections_by_unit <- lapply(seq_len(n_path), function(path) {
   acoustics  <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
   acoustics$ModelObsAcousticLogisTrunc[[1]] |> 
@@ -218,146 +196,187 @@ detections_by_unit <- lapply(seq_len(n_path), function(path) {
     select(timestamp, receiver_id = sensor_id, receiver_x, receiver_y) |>
     as.data.table()
 })
-datasets <- list(detections_by_unit = detections_by_unit, moorings = NULL)
-
-#### Estimate coordinates (~10 s)
-iteration <- copy(iteration_coa)
-iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
-# (optional) Examine selected coords
-lapply_qplot_coord(iteration, "coord.qs")
-
-#### Estimate UDs
-# Implementation (45 s, 500 pixels, sigma = bw.h, cl = (9L))
-nrow(iteration)
-lapply_estimate_ud_spatstat(iteration = iteration, 
-                            extract_coord = NULL,
-                            cl = 9L, 
-                            plot = FALSE)
-# (optional) Examine selected UDs
-lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
-
-#### Visualise ME
-# Compute ME 
-me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
-  # sim <- iteration[1, ]
-  skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
-           .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+# Depths
+archival_by_unit <- lapply(seq_len(n_path), function(path) {
+  yobs <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
+  yobs$ModelObsDepthNormalTrunc[[1]]
 })
-# Visualise ME ~ delta_t
-it_me <- 
-  iteration |>
-  mutate(me = me, 
-         delta_t = factor(delta_t, levels = pcoa$delta_t)) |> 
-  as.data.table()
-it_me_avg <- 
-  it_me |> 
-  group_by(delta_t) |> 
-  summarise(me = mean(.data$me)) |> 
-  as.data.table()
-it_me |> 
-  as.data.table() |> 
-  ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
-  geom_point() + 
-  geom_line() + 
-  geom_line(data = it_me_avg, aes(delta_t, me),
-            colour = "black", group = 1) 
 
-# > Best guess:       3 days
-# > Restricted value: 2 day
-# > Flexible value:   4 days 
+
+###########################
+###########################
+#### Run algorithms
+
+if (FALSE) {
+  
+  #### Build iteration dataset
+  # Define parameters
+  pcoa <- data.table(parameter_id = 1:10L, 
+                     delta_t = c("1 hour", "2 hours", "6 hours", "12 hours", "1 day", 
+                                 "2 days", "3 days", "4 days", "5 days", "6 days"))
+  # Define dataset
+  iteration_coa <- 
+    CJ(unit_id = seq_len(n_path), parameter_id = pcoa$parameter_id, dataset = "ac", iter = 1L) |>
+    mutate(dataset = "ac", 
+           delta_t = pcoa$delta_t[match(parameter_id, pcoa$parameter_id)], 
+           folder = file.path("data", "output", "simulation", unit_id, "coa"),
+           folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
+           folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
+    ) |> 
+    arrange(unit_id, parameter_id) |>
+    as.data.table()
+  # Build folders
+  dirs.create(iteration_coa$folder_coord)
+  dirs.create(iteration_coa$folder_ud)
+  dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
+  
+  #### Define datasets
+  datasets <- list(detections_by_unit = detections_by_unit, moorings = NULL)
+  
+  #### Estimate coordinates (~10 s)
+  iteration <- copy(iteration_coa)
+  iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+  lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
+  # (optional) Examine selected coords
+  lapply_qplot_coord(iteration, "coord.qs")
+  
+  #### Estimate UDs
+  # Implementation (45 s, 500 pixels, sigma = bw.h, cl = (9L))
+  nrow(iteration)
+  lapply_estimate_ud_spatstat(iteration = iteration, 
+                              extract_coord = NULL,
+                              cl = 9L, 
+                              plot = FALSE)
+  # (optional) Examine selected UDs
+  lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+  
+  #### Visualise ME
+  # Compute ME 
+  me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+    # sim <- iteration[1, ]
+    skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+             .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+  })
+  # Visualise ME ~ delta_t
+  it_me <- 
+    iteration |>
+    mutate(me = me, 
+           delta_t = factor(delta_t, levels = pcoa$delta_t)) |> 
+    as.data.table()
+  it_me_avg <- 
+    it_me |> 
+    group_by(delta_t) |> 
+    summarise(me = mean(.data$me)) |> 
+    as.data.table()
+  it_me |> 
+    as.data.table() |> 
+    ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
+    geom_point() + 
+    geom_line() + 
+    geom_line(data = it_me_avg, aes(delta_t, me),
+              colour = "black", group = 1) 
+  
+  # > Best guess:       3 days
+  # > Restricted value: 2 day
+  # > Flexible value:   4 days 
+  
+}
 
 
 ###########################
 ###########################
 #### RSP algorithms
 
-#### Build iteration dataset
-# Define parameters
-prsp <- data.table(parameter_id = 1:10L, 
-                   er.ad = c(250 * 0.001, 
-                             250 * 0.005, 
-                             250 * 0.01, 
-                             250 * 0.05, # default 
-                             250 * 0.10, 
-                             250 * 0.20, 
-                             250 * 0.40, 
-                             250 * 0.50, 
-                             250 * 1,
-                             250 * 2
-                             ))
-# Define dataset
-iteration_rsp <- 
-  CJ(unit_id = seq_len(n_path), parameter_id = prsp$parameter_id, dataset = "ac", iter = 1L) |>
-  mutate(dataset = "ac", 
-         er.ad = prsp$er.ad[match(parameter_id, prsp$parameter_id)], 
-         folder = file.path("data", "output", "simulation", unit_id, "coa"),
-         folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
-         folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
-  ) |> 
-  arrange(unit_id, parameter_id) |>
-  as.data.table()
-# Build folders
-dirs.create(iteration_rsp$folder_coord)
-dirs.create(iteration_rsp$folder_ud)
-dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
-dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
-
-#### Define datasets
-datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
-
-#### Estimate coordinates (~2 mins)
-iteration <- copy(iteration_rsp)
-iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
-# (optional) Examine selected coords
-lapply_qplot_coord(iteration, 
-                   "coord.qs",
-                   extract_coord = function(coord) {
-                     cbind(coord$detections[[1]]$Longitude, 
-                           coord$detections[[1]]$Latitude) |> 
-                       terra::vect(crs = "EPSG:4326") |> 
-                       terra::project("EPSG:32629") |> 
-                       terra::crds() |> 
-                       as.data.frame()
-                   })
-
-#### Estimate UDs
-# Implementation (35 s, 10 cl)
-lapply_estimate_ud_dbbmm(iteration = iteration, 
-                         cl = 10L, 
-                         plot = FALSE)
-# (optional) Examine selected UDs
-lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
-
-#### Visualise ME 
-me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
-  # sim <- iteration[1, ]
-  skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
-           .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
-})
-# Visualise ME ~ er.ad
-it_me <- 
-  iteration |>
-  mutate(me = me, 
-         er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
-  as.data.table()
-it_me_avg <- 
+if (FALSE) {
+  
+  #### Build iteration dataset
+  # Define parameters
+  prsp <- data.table(parameter_id = 1:10L, 
+                     er.ad = c(250 * 0.001, 
+                               250 * 0.005, 
+                               250 * 0.01, 
+                               250 * 0.05, # default 
+                               250 * 0.10, 
+                               250 * 0.20, 
+                               250 * 0.40, 
+                               250 * 0.50, 
+                               250 * 1,
+                               250 * 2
+                     ))
+  # Define dataset
+  iteration_rsp <- 
+    CJ(unit_id = seq_len(n_path), parameter_id = prsp$parameter_id, dataset = "ac", iter = 1L) |>
+    mutate(dataset = "ac", 
+           er.ad = prsp$er.ad[match(parameter_id, prsp$parameter_id)], 
+           folder = file.path("data", "output", "simulation", unit_id, "coa"),
+           folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
+           folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
+    ) |> 
+    arrange(unit_id, parameter_id) |>
+    as.data.table()
+  # Build folders
+  dirs.create(iteration_rsp$folder_coord)
+  dirs.create(iteration_rsp$folder_ud)
+  dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
+  dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
+  
+  #### Define datasets
+  datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
+  
+  #### Estimate coordinates (~2 mins)
+  iteration <- copy(iteration_rsp)
+  iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+  lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
+  # (optional) Examine selected coords
+  lapply_qplot_coord(iteration, 
+                     "coord.qs",
+                     extract_coord = function(coord) {
+                       cbind(coord$detections[[1]]$Longitude, 
+                             coord$detections[[1]]$Latitude) |> 
+                         terra::vect(crs = "EPSG:4326") |> 
+                         terra::project("EPSG:32629") |> 
+                         terra::crds() |> 
+                         as.data.frame()
+                     })
+  
+  #### Estimate UDs
+  # Implementation (35 s, 10 cl)
+  lapply_estimate_ud_dbbmm(iteration = iteration, 
+                           cl = 10L, 
+                           plot = FALSE)
+  # (optional) Examine selected UDs
+  lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
+  
+  #### Visualise ME 
+  me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+    # sim <- iteration[1, ]
+    skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+             .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+  })
+  # Visualise ME ~ er.ad
+  it_me <- 
+    iteration |>
+    mutate(me = me, 
+           er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
+    as.data.table()
+  it_me_avg <- 
+    it_me |> 
+    group_by(er.ad) |> 
+    summarise(me = mean(.data$me)) |> 
+    as.data.table()
   it_me |> 
-  group_by(er.ad) |> 
-  summarise(me = mean(.data$me)) |> 
-  as.data.table()
-it_me |> 
-  as.data.table() |> 
-  ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
-  geom_point() + 
-  geom_line() + 
-  geom_line(data = it_me_avg, aes(er.ad, me),
-            colour = "black", group = 1) 
-
-# > Best guess:       100
-# > Restricted value: 25
-# > Flexible value:   250 
+    as.data.table() |> 
+    ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
+    geom_point() + 
+    geom_line() + 
+    geom_line(data = it_me_avg, aes(er.ad, me),
+              colour = "black", group = 1) 
+  
+  # > Best guess:       100
+  # > Restricted value: 25
+  # > Flexible value:   250 
+  
+}
 
 
 ###########################
@@ -449,18 +468,7 @@ dirs.create(iteration_patter$folder_ud)
 dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 #### Define datasets
-# movement data
-behaviour_by_unit <- lapply(seq_len(n_path), function(path) {
-  qs::qread(here_data("input", "simulation", path, "behaviour.qs"))
-})
-# Detection data
-# * Use detection data
-# * assemble_acoustics() is called under the hood
-# Depth data
-archival_by_unit <- lapply(seq_len(n_path), function(path) {
-  yobs <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
-  yobs$ModelObsDepthNormalTrunc[[1]]
-})
+# NB: the detection data is used b/c assemble_acoustics() is called under the hood
 datasets <- list(detections_by_unit = detections_by_unit, 
                  moorings = moorings,
                  archival_by_unit = archival_by_unit, 
