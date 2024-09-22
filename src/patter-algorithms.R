@@ -19,11 +19,17 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
   if (sim$dataset %in% c("ac", "acdc")) {
     # Detection model parameters
     receiver_alpha <- receiver_beta <- receiver_gamma <- NULL
-    moorings[, receiver_alpha := NULL]
+    if (rlang::has_name(moorings, "receiver_alpha")) {
+      moorings[, receiver_alpha := NULL]
+    }
+    if (rlang::has_name(moorings, "receiver_beta")) {
+      moorings[, receiver_beta := NULL]
+    }
+    if (rlang::has_name(moorings, "receiver_gamma")) {
+      moorings[, receiver_gamma := NULL]
+    }
     moorings[, receiver_alpha := sim$receiver_alpha]
-    moorings[, receiver_beta := NULL]
     moorings[, receiver_beta := sim$receiver_beta]
-    moorings[, receiver_gamma := NULL]
     moorings[, receiver_gamma := sim$receiver_gamma]
     # Assemble acoustic data
     acoustics <- assemble_acoustics(.timeline = timeline,
