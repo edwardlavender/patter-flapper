@@ -23,6 +23,8 @@ dv::clear()
 
 #### Essential packages
 library(sf)
+library(terra)
+library(spatstat)
 dv::src()
 
 #### Load data
@@ -30,7 +32,6 @@ howe       <- terra::rast(here_data_raw("bathymetry", "firth-of-lorn", "EXTRACTE
 mpa_open   <- st_read(here_data_raw("mpa", "management_areas", "MPA_Open_area.shp"))
 mpa_closed <- st_read(here_data_raw("mpa", "management_areas", "LSSOJ_MPA_CLosed_areat.shp"))
 coast      <- st_read(here_data_raw("coast", "westminster_const_region.shp"))
-
 
 
 ###########################
@@ -127,12 +128,37 @@ toc()
 ###########################
 #### Prepare {spatstat} inputs
 
+#### Define sea
+sea <- st_invert(st_as_sf(coast)) |> terra::vect()
+# plot(st_geometry(sea), col = "blue")
+
 #### Define observation window (~4 s)
 tic()
-win <- as.owin.sf(st_as_sf(coast), .invert = TRUE)
+win <- as.owin(st_as_sf(sea))
 toc()
 
-#### Visualise observation window (~164 s)
+#### Trial smoother windows (~44 mins)
+# dmin = 0      : UD estimation: 161 s
+# dmin = 100    : Simplification: 462 s, UD estimation: 19 s
+# dmin = 500    : Simplification: 452 s, UD estimation: 12 s
+# dmin = 1000   : Simplification: 452 s, UD estimation: 10 s
+# dmin = 2000   : Simplification: 442 s, UD estimation: 10 s
+# dmin = 5000   : Simplification: 459 s, UD estimation: 10 s
+wins <- cl_lapply(c(0, 100, 500, 1000, 2000, 5000), function(dmin) {
+  simplify.owin.trial(sea = sea, win = win, dmin = dmin)
+})
+qs::qsave(wins, here_data("spatial", "wins.qs"))
+
+# > Wiith dmin <= 1000, we have accurate representation of coastline.
+# > With dmin = 2000, we start to see the effects of rounding 
+# > (without further speedup in UD estimation). 
+# > With dmin = 5000, we have too much smoothing of coastline. 
+# > (and no further speedup in UD estimation). 
+
+# Use win smoothed by dmin = 1000
+win <- wins[[4]] 
+
+#### Visualise observation window (<164 s)
 if (FALSE) {
   tic()
   plot(win, col = "blue")
