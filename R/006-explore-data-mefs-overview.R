@@ -120,7 +120,6 @@ plot(acc$timestamp, acc$gap, type = "l")
 
 # (optional) Collate acoustic & archival time series 
 # & visualise time series for a selected individual
-# (TO DO)
 
 
 #### End of code. 

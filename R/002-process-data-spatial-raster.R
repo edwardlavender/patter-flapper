@@ -273,7 +273,7 @@ spikes <- bathy - smooth
 #### Validate bathymetry 
 
 # (optional) Compare datasets in overlapping regions
-# TO DO
+# (optional) TO DO
 # See old code for outline
 
 

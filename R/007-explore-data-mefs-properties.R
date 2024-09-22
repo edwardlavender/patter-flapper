@@ -428,7 +428,6 @@ obs <-
       as.data.table()
     
     # Fill gaps in archival time series
-    # TO DO
     # * Evaluate behaviour of pf_forward() when depth = NA
     # * .update_ac() function needs to be able to handle this
     if (!all(unique(diff(arc$timestamp)) %in% 2)) {
@@ -635,7 +634,6 @@ range(depths)
 ###########################
 #### Container dynamics
 
-# (optional) TO DO
 # * Validate there are possible locations within each acoustic container
 # * For individuals that left the MPA, we expect some departure from this expectation
 
