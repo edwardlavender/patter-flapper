@@ -158,7 +158,9 @@ qs::qsave(wins, here_data("spatial", "wins.qs"))
 # Use win smoothed by dmin = 1000
 win <- wins[[4]] 
 
-#### Visualise observation window (<164 s)
+#### Visualise observation window 
+# (<164 s)
+# < 1 s for dmin = 1000
 if (FALSE) {
   tic()
   plot(win, col = "blue")
