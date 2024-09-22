@@ -22,30 +22,33 @@ dv::clear()
 dv::src()
 
 #### Load data 
-map       <- terra::rast(here_data("spatial", "bathy.tif"))
-iteration <- qs::qread(here_data("input", "iteration", "patter.qs"))
-moorings  <- qs::qread(here_data("input", "mefs", "moorings.qs"))
+map               <- terra::rast(here_data("spatial", "bathy.tif"))
+iteration         <- qs::qread(here_data("input", "iteration", "patter.qs"))
+moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
+behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
 
 
 ###########################
 ###########################
 #### Run algorithm 
 
-#### Set up
-# JuliaCall
+#### Julia Set up
 julia_connect()
 set_seed()
 set_map(map)
-JuliaCall::julia_command(ModelObsAcousticContainer)
-JuliaCall::julia_command(ModelObsAcousticContainer.logpdf_obs)
-# Iterations & datasets
+julia_command(ModelMoveFlapper)
+julia_command(ModelObsAcousticContainer)
+julia_command(ModelObsAcousticContainer.logpdf_obs)
+
+#### Define iterations
 nrow(iteration)
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, 
                  moorings = moorings,
-                 archival_by_unit = archival_by_unit)
+                 archival_by_unit = archival_by_unit, 
+                 behaviour_by_unit = behaviour_by_unit)
 
 #### (optional) Testing
 test <- TRUE
