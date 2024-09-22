@@ -54,13 +54,10 @@ iteration_ac <-
   filter(dataset == "ac") |> 
   as.data.table()
 
-#### Define COA parameters
+#### Define COA parameters (based on simulations)
 # > We consider a 'best', 'restrictive' and 'flexible' parameter value
-
-# TO DO
-# Update based on simulations
 parameters <- data.table(parameter_id = 1:3L, 
-                         delta_t = c("6 hours", "12 hours", "24 hours"))
+                         delta_t = c("4 days", "3 days", "5 days"))
 
 #### Define iteration dataset
 iteration_coa <- 
@@ -88,11 +85,9 @@ dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 #### Identify individuals/months with detections
 # > Implemented above. 
 
-#### Define parameters
-# TO DO
-# Update based on simulations
+#### Define parameters (based on simulations)
 parameters <- data.table(parameter_id = 1:3L, 
-                         er.ad = c(250 * 0.05, 250 * 0.10, 250 * 0.15))
+                         er.ad = c(125, 1, 250))
 
 #### Define iteration dataset
 iteration_rsp <- 
@@ -124,17 +119,9 @@ dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
 # * 'best' guess parameters (first value)
 # * 'restrictive' parameters (second value)
 # * 'flexible' parameters (third value)
-
-# TO DO
-# Read from file
-pmovement <- data.table(shape = c(15, 15, 15), 
-                        scale = c(250, 250, 250), 
-                        mobility = c(1000, 500, 1500))
-pdetection <- data.table(receiver_alpha = c(4, 5, 2), 
-                         receiver_beta = c(-0.01, -0.02, -0.001), 
-                         receiver_gamma = c(1500, 1000, 2000))
-pdepth <- data.table(depth_sigma = c(50, 10, 100), 
-                     depth_deep_eps = c(20, 12, 30))
+pmovement  <- pars$pmovement
+pdetection <- pars$pdetection
+pdepth     <- pars$pdepth
 # Collate parameter combinations
 # * Best guess parameters
 # * Variable movement parameters (with others held at best-guess values)
@@ -175,17 +162,16 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
          "unit_id", "individual_id",  "month_id", 
          "dataset", 
          "parameter_id", "sensitivity", 
-         "shape", "scale", "mobility", 
-         "receiver_alpha", "receiver_beta",
-         "receiver_gamma", "depth_sigma", "depth_deep_eps",
-         "folder_coord", "folder_ud")
-
-# TO DO
-# Add additional columns as required by updates during simulation development
-# sim$month_id 
-# sim$k1, sim$k2, sim$theta1, sim$theta2, sim$mobility 
-# Change patter_np(sim) to sim$np
-# Conditionally implement smoothing if sim$smooth
+         "k1", "k2", "theta1", "theta2", "mobility", 
+         "receiver_alpha", "receiver_beta", "receiver_gamma", 
+         "depth_sigma", "depth_deep_eps",
+         "folder_coord", "folder_ud") |>
+  as.data.table()
+# Add additional controls
+np <- data.table(dataset = c("ac", "dc", "acdc"), 
+                 np = c(1e4L, 1e5L, 1e6L))
+iteration_patter[, np := np$np[match(dataset, np$dataset)]]
+iteration_patter[, smooth := TRUE]
 
 #### Build patter folders
 dirs.create(iteration_patter$folder_coord)
