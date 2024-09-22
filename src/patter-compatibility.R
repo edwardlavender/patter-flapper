@@ -67,11 +67,11 @@ as_actel <- function(.map, .acoustics, .moorings) {
                     deployments = act_deployments, 
                     detections = act_detections)
   input.rds <- tempfile(fileext = ".rds")
-  input.rds <- normalizePath(input.rds, winslash = "/", mustWork = TRUE)
+  input.rds <- normalizePath(input.rds, winslash = "/", mustWork = FALSE)
   on.exit(unlink(input.rds), add = TRUE)
   saveRDS(input, input.rds)
   output.rds <- tempfile(fileext = ".rds")
-  output.rds <- normalizePath(output.rds, winslash = "/", mustWork = TRUE)
+  output.rds <- normalizePath(output.rds, winslash = "/", mustWork = FALSE)
   on.exit(unlink(output.rds), add = TRUE)
   # Build script
   actel.R <- tempfile(fileext = ".R")
