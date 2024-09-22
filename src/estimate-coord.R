@@ -116,6 +116,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   detections  <- datasets$detections_by_unit[[sim$unit_id]]
   moorings    <- datasets$moorings
   archival    <- datasets$archival_by_unit[[sim$unit_id]]
+  behaviour   <- datasets$behaviour_by_unit[[sim$unit_id]]
 
   #### Initialise particle filter
   # Timeline
@@ -134,6 +135,10 @@ estimate_coord_patter <- function(sim, map, datasets) {
   # Movement model
   state       <- "StateXY"
   model_move  <- patter_ModelMove(sim)
+  julia_assign("behaviour", behaviour)
+  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
+  JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
+
   # Observation model(s)
   model_obs <- patter_ModelObs_forward(sim = sim, 
                                        timeline = timeline, 
