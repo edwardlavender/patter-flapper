@@ -105,14 +105,8 @@ moorings <-
   as.data.table()
 head(moorings)
 
-#### Define UD estimation settings 
-# npixel for UD estimation 
+#### UD settings
 spatstat.geom::spatstat.options("npixel" = 500)
-# (optional) NULL model 
-ud_null <- terra::setValues(ud_grid, 1)
-ud_null <- terra::mask(ud_null, ud_grid)
-ud_null <- spatNormalise(ud_null)
-# terra::plot(ud_null)
 
 
 ###########################
