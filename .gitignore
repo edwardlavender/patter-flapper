@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 .Renviron
+.Rprofile 
+
 data-raw/
 data/*
 !data/inst
