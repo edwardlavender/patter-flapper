@@ -162,8 +162,7 @@ if (TRUE) {
     table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
     
     #### Map path UD 
-    # * 1 min with 100 pixels
-    # * 3.5 mins with 500 pixels 
+    # * 13 s 500 pixels 
     stopifnot(spatstat.geom::spatstat.options("npixel") == 500)
     ud_path <- map_dens(.map = ud_grid, 
                         .owin = win,
@@ -173,7 +172,7 @@ if (TRUE) {
                         .fterra = TRUE)
     
     #### Save datasets
-    qs::qsave(behaviour, here_data("input", simulation, id, "behaviour.qs"))
+    qs::qsave(behaviour, here_data("input", "simulation", id, "behaviour.qs"))
     qs::qsave(coord_path, here_data("input", "simulation", id, "coord.qs"))
     qs::qsave(yobs, here_data("input", "simulation", id, "yobs.qs"))
     terra::writeRaster(ud_path$ud, here_data("input", "simulation", id, "ud.tif"), 
@@ -229,7 +228,7 @@ lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
 lapply_qplot_coord(iteration, "coord.qs")
 
 #### Estimate UDs
-# Implementation (9 mins, 500 pixels, sigma = bw.h, cl = 7L)
+# Implementation (45 s, 500 pixels, sigma = bw.h, cl = (9L))
 nrow(iteration)
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = NULL,
@@ -246,17 +245,27 @@ me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
            .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
 })
 # Visualise ME ~ delta_t
-iteration |>
+it_me <- 
+  iteration |>
   mutate(me = me, 
          delta_t = factor(delta_t, levels = pcoa$delta_t)) |> 
+  as.data.table()
+it_me_avg <- 
+  it_me |> 
+  group_by(delta_t) |> 
+  summarise(me = mean(.data$me)) |> 
+  as.data.table()
+it_me |> 
   as.data.table() |> 
   ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
   geom_point() + 
-  geom_line()
+  geom_line() + 
+  geom_line(data = it_me_avg, aes(delta_t, me),
+            colour = "black", group = 1) 
 
-# > Best guess:       4 days
+# > Best guess:       3 days
 # > Restricted value: 2 day
-# > Flexible value:   3 days 
+# > Flexible value:   4 days 
 
 
 ###########################
@@ -328,17 +337,26 @@ me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
            .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
 })
 # Visualise ME ~ er.ad
-iteration |>
+it_me <- 
+  iteration |>
   mutate(me = me, 
-         # me_null = me_null,
          er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
+  as.data.table()
+it_me_avg <- 
+  it_me |> 
+  group_by(er.ad) |> 
+  summarise(me = mean(.data$me)) |> 
+  as.data.table()
+it_me |> 
   as.data.table() |> 
   ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
   geom_point() + 
-  geom_line()
+  geom_line() + 
+  geom_line(data = it_me_avg, aes(er.ad, me),
+            colour = "black", group = 1) 
 
-# > Best guess:       125
-# > Restricted value: 1
+# > Best guess:       100
+# > Restricted value: 25
 # > Flexible value:   250 
 
 
@@ -424,7 +442,6 @@ iteration_patter[, month_id := "042024"]
 # Implement smoothing for simulations that use the max. number of particles
 iteration_patter[, smooth := FALSE]
 iteration_patter[np == max(np), smooth := TRUE]
-# Change patter_np(sim) to sim$np
 
 #### Build patter folders
 dirs.create(iteration_patter$folder_coord)
@@ -452,10 +469,10 @@ datasets <- list(detections_by_unit = detections_by_unit,
 #### Estimate coordinates
 # Implementation
 iteration <- copy(iteration_patter)
-lapply_estimate_coord_patter(iteration = iteration[1, ], datasets = datasets)
+lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
-                   "coord-smo.qs",
+                   "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
 #### Estimate UDs
