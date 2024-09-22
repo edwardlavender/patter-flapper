@@ -62,6 +62,7 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 julia_connect()
 set_seed()
 set_map(map)
+julia_command(ModelMoveFlapper)
 julia_command(ModelObsAcousticContainer)
 julia_command(ModelObsAcousticContainer.logpdf_obs)
 
@@ -87,8 +88,8 @@ ModelObsAcousticLogisTruncPars <-
          receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
 ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                           sigma = pars$pdepth$sigma, 
-                                           depth_deep_eps = pars$pdepth$deep_depth_eps)
+                                           sigma = pars$pdepth$depth_sigma, 
+                                           depth_deep_eps = pars$pdepth$depth_deep_eps)
 ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
                      ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
 
@@ -118,7 +119,7 @@ ud_null <- spatNormalise(ud_null)
 ###########################
 #### Simulate paths and observations
 
-if (FALSE) {
+if (TRUE) {
   
   iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
   lapply(split(iteration_path, 1:3), function(sim) {
@@ -145,7 +146,6 @@ if (FALSE) {
     julia_assign("behaviour", behaviour)
     
     #### Define movement model
-    julia_command(ModelMoveFlapper)
     julia_command(simulate_step.ModelMoveFlapper)
     julia_command(logpdf_step.ModelMoveFlapper)
     
@@ -179,6 +179,7 @@ if (FALSE) {
                         .fterra = TRUE)
     
     #### Save datasets
+    qs::qsave(behaviour, here_data("input", simulation, id, "behaviour.qs"))
     qs::qsave(coord_path, here_data("input", "simulation", id, "coord.qs"))
     qs::qsave(yobs, here_data("input", "simulation", id, "yobs.qs"))
     terra::writeRaster(ud_path$ud, here_data("input", "simulation", id, "ud.tif"), 
@@ -437,6 +438,10 @@ dirs.create(iteration_patter$folder_ud)
 dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 #### Define datasets
+# movement data
+behaviour_by_unit <- lapply(seq_len(n_path), function(path) {
+  qs::qread(here_data("input", "simulation", path, "behaviour.qs"))
+})
 # Detection data
 # * Use detection data
 # * assemble_acoustics() is called under the hood
@@ -447,19 +452,10 @@ archival_by_unit <- lapply(seq_len(n_path), function(path) {
 })
 datasets <- list(detections_by_unit = detections_by_unit, 
                  moorings = moorings,
-                 archival_by_unit = archival_by_unit)
+                 archival_by_unit = archival_by_unit, 
+                 behaviour_by_unit = behaviour_by_unit)
 
 #### Estimate coordinates
-
-
-# TO DO
-# * Provide behavioural data
-# * Activate ModelMoveFlapper
-#
-
-
-
-
 # Implementation
 iteration <- copy(iteration_patter)
 lapply_estimate_coord_patter(iteration = iteration[1, ], datasets = datasets)
@@ -468,8 +464,18 @@ lapply_qplot_coord(iteration,
                    "coord-smo.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
-#### 
+#### Estimate UDs
+# We estimate UDs for iterations 1:3 with max number of particles
+# * TO DO, filter iteration! 
+# Implementation 
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+lapply_estimate_ud_spatstat(iteration = iteration, 
+                            extract_coord = function(s) s$states,
+                            cl = NULL, 
+                            plot = FALSE)
+# (optional) Examine selected UDs
+lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+
 
 ###########################
 ###########################
