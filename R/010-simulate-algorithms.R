@@ -100,7 +100,7 @@ ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars
 moorings <- 
   moorings |> 
   mutate(receiver_start = as.Date(min(timeline)), 
-         receiver_end = as.Date(max(timeline)), 
+         receiver_end = as.Date(as.Date(max(timeline) + lubridate::days(1))), 
          receiver_gamma = 1750) |> 
   as.data.table()
 head(moorings)
