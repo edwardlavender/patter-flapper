@@ -57,7 +57,7 @@ iteration_ac <-
 #### Define COA parameters (based on simulations)
 # > We consider a 'best', 'restrictive' and 'flexible' parameter value
 parameters <- data.table(parameter_id = 1:3L, 
-                         delta_t = c("4 days", "3 days", "5 days"))
+                         delta_t = c("3 days", "2 days", "4 days"))
 
 #### Define iteration dataset
 iteration_coa <- 
@@ -87,7 +87,7 @@ dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 
 #### Define parameters (based on simulations)
 parameters <- data.table(parameter_id = 1:3L, 
-                         er.ad = c(125, 1, 250))
+                         er.ad = c(100, 25, 250))
 
 #### Define iteration dataset
 iteration_rsp <- 
