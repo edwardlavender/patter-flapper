@@ -119,7 +119,7 @@ if (FALSE) {
   lapply(split(iteration_path, 1:3), function(sim) {
     
     # This code is run three times, generating three paths & corresponding observational datasets
-    # s <- 2; id <- 1   # path 1
+    # s <- 2; id <- 1 # path 1
     # s <- 3; id <- 2 # path 2
     # s <- 4; id <- 3 # path 3
     s <- sim$s; id <- sim$id
@@ -245,7 +245,7 @@ if (FALSE) {
   nrow(iteration)
   lapply_estimate_ud_spatstat(iteration = iteration, 
                               extract_coord = NULL,
-                              cl = 9L, 
+                              cl = 10L, 
                               plot = FALSE)
   # (optional) Examine selected UDs
   lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
