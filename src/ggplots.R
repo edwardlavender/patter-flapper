@@ -28,7 +28,20 @@ ggplot_maps <- function(mapdt,
     # Get map coordinates via as.data.frame() or terra::spatSample() 
     rdt <- as.data.frame(r, xy = TRUE, na.rm = TRUE) |> as.data.table()
     colnames(rdt) <- c("x", "y", "map_value")
-    cbind(d, rdt)
+    # Link data.tables (e.g., row/column)
+    d <- cbind(d, rdt)
+    # Define colours
+    # * facet_wrap() forces the same zlim across all plots
+    # * For individual colours, between min and max, we have to:
+    # - Build the col column here
+    # - Use scale_fill_identity()
+    cols <- getOption("terra.pal")
+    ints  <- seq(min(d$map_value), max(d$map_value), length.out = length(cols))
+    cols <- data.table(int = ints, 
+                       col = cols)
+    d[, col := cols$col[findInterval(d$map_value, cols$int)]]
+    stopifnot(all(!is.na(d$col)))
+    d
   }) |> rbindlist()
 
   # Build ggplot
@@ -36,8 +49,9 @@ ggplot_maps <- function(mapdt,
     mapdata |> 
     ggplot() + 
     theme_bw() + 
-    geom_raster(aes(x = x, y = y, fill = map_value)) +
-    scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
+    geom_raster(aes(x = x, y = y, fill = col)) +
+    scale_fill_identity() + 
+    # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
     geom_sf(data = coast, fill = scales::alpha("dimgrey", 0.5)) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 
