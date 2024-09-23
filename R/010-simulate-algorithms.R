@@ -320,8 +320,6 @@ if (FALSE) {
   terra::plot(terra::rast(mapfiles$mapfile[5]))
   # Make maps (~5 s)
   ggplot_maps(mapdt = mapfiles, 
-              xlim =   terra::ext(ud_grid)[1:2], 
-              ylim = terra::ext(ud_grid)[3:4],
               png_args = list(filename = here_fig("simulation", "map-coa.png"), 
                               height = 5, width = 10, units = "in", res = 600))
   
@@ -459,8 +457,6 @@ if (FALSE) {
   terra::plot(terra::rast(mapfiles$mapfile[5]))
   # Make maps
   ggplot_maps(mapdt = mapfiles, 
-              xlim =   terra::ext(ud_grid)[1:2], 
-              ylim = terra::ext(ud_grid)[3:4],
               png_args = list(filename = here_fig("simulation", "map-rsp.png"), 
                               height = 5, width = 10, units = "in", res = 600))
   
