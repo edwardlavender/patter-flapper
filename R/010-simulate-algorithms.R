@@ -101,7 +101,7 @@ moorings <-
   moorings |> 
   mutate(receiver_start = as.Date(min(timeline) - lubridate::days(1)), 
          receiver_end = as.Date(as.Date(max(timeline) + lubridate::days(1))), 
-         receiver_gamma = 1750) |> 
+         receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
 head(moorings)
 
