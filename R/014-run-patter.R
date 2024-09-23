@@ -53,7 +53,26 @@ datasets <- list(detections_by_unit = acoustics_by_unit,
 #### (optional) Testing
 test <- TRUE
 if (test) {
-  iteration <- iteration[1:2L, ]
+  # Visualise time series to pick an example individual with good time series
+  if (FALSE) {
+    nid <- length(unique(iteration$unit_id))
+    png(here_fig("time-series-acdc.png"),
+        height = 10, width = 15, units = "in", res = 600)
+    pp <- par(mfrow = par_mf(nid), oma = c(2, 2, 2, 2), mar = c(1, 1, 1, 1))
+    cl_lapply(unique(iteration$unit_id), function(id) {
+      # id <- 2
+      acc <- datasets$detections_by_unit[[id]]
+      arc <- datasets$archival_by_unit[[id]]
+      plot(arc$timestamp, arc$depth * -1, ylim = c(-250, 0), 
+           xlab = "", ylab = "",
+           type = "l", main = id)
+      points(acc$timestamp, rep(0, nrow(acc)), col = "red")
+    })
+    par(pp)
+    dev.off()
+  }
+  # Select AC/DC/ACDC implementations for an example individual with good time series
+  iteration <- iteration[unit_id == 119 & sensitivity == "best", ]
 } 
 
 #### Estimate coordinates
@@ -68,6 +87,7 @@ lapply_qplot_coord(iteration,
 
 #### Estimate UDs
 # Time trial 
+spatstat.geom::spatstat.options("npixel" = 500)
 lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
                             extract_coord = function(s) s$states,
                             cl = NULL, 
