@@ -351,21 +351,12 @@ terra::plot(ud_grid_ll)
 # Define transition layer (~1 s)
 tm <- actel::transitionLayer(ud_grid_ll, directions = 8L)
 terra::plot(raster::raster(tm))
-# Define (enlarged) dynBBMM base.raster
-# * Define regional raster from how_full
-# * Resample ud_grid onto howe_full for merging
-# * Merge the two datasets (i.e., the full dataset with the smaller, refined one)
-# * Crop an enlarged dataset (e.g., expanded by 20 km)
+# Define dynBBMM base.raster
+# * To enable comparisons, we fit dynBBMM on ud_grid
 tic()
-region <- terra::rast(terra::ext(howe_full), nrow = 500, ncol = 500, crs = terra::crs(bathy))
-region <- terra::resample(howe_full, region)
-bbrast <- terra::resample(ud_grid, region)
-bbrast <- terra::merge(bbrast, region, na.rm = FALSE)
-bbrast <- terra::crop(bbrast, bb + 20e3L)
-bbrast <- bbrast > 0
-bbrast <- terra::classify(bbrast, cbind(0, NA))
-bbrast_ll <- terra::project(bbrast, "EPSG:4326")
+bbrast_ll <- terra::project(ud_grid, "EPSG:4326")
 terra::plot(bbrast_ll)
+# terra::lines(bathy |> terra::project("EPSG:4326", threads = TRUE) |> terra::ext())
 toc()
 # Visual check
 pp <- par(mfrow = c(1, 3))
