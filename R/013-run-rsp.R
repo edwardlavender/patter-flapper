@@ -19,6 +19,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
+library(ggplot2)
 dv::src()
 
 #### Load data 
@@ -72,6 +73,27 @@ lapply_estimate_ud_dbbmm(iteration = iteration,
                          plot = FALSE)
 # (optional) Examine selected UDs
 lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
+
+#### Mapping (~10 x 3 s)
+unique(iteration$er.ad)
+length(unique(iteration$individual_id))
+length(unique(iteration$month_id))
+mapply(c(100, 50, 150), c("best", "restricted", "flexible"), 
+       FUN = function(param, label) {
+         # Define png args 
+         png_args <- 
+           list(filename = here_fig("analysis", glue("map-rsp-{label}.png")), 
+                height = 5, width = 10, units = "in", res = 600)
+         # Collect data and make figure 
+         iteration |> 
+           filter(er.ad == param) |>
+           mutate(mapfile = file.path(folder_ud, "dbbmm", "ud.tif"), 
+                  individual_id = factor(individual_id, levels = sort(unique(individual_id)))) |>
+           select(row = individual_id, column = month_id, mapfile) |>
+           as.data.table() |> 
+           ggplot_maps(png_args = png_args)
+         
+       }) |> invisible()
 
 
 #### End of code.
