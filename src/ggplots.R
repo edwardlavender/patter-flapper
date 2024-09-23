@@ -1,6 +1,7 @@
 ggplot_maps <- function(mapdt,
                         xlim = NULL, 
                         ylim = NULL, 
+                        grid = terra::rast(here_data("spatial", "ud-grid.tif")),
                         coast = qs::qread(here_data("spatial", "coast.qs")), 
                         png_args = NULL) {
   
@@ -21,27 +22,37 @@ ggplot_maps <- function(mapdt,
   # * dTolerance = 100: 3 s for 12 plots (& good approximation of coast)
   coast <- sf::st_simplify(coast, dTolerance = 100) |> sf::st_geometry()
   
+  # Define a blank data.frame
+  # * This is used to handle blank panels (for which we couldn't compute the UD)
+  blank <- as.data.frame(grid, xy = TRUE, na.rm = TRUE) |> as.data.table()
+  colnames(blank) <- c("x", "y", "map_value")
+  blank[, map_value := NA_real_]
+  blank[, col := NA_character_]
+  
   # Build a mapdata data.frame
   # * This includes, for each panel (row/column), the raster coordinates & values
   mapdata <- lapply(split(mapdt, seq_row(mapdt)), function(d) {
-    r <- terra::rast(d$mapfile)
-    # Get map coordinates via as.data.frame() or terra::spatSample() 
-    rdt <- as.data.frame(r, xy = TRUE, na.rm = TRUE) |> as.data.table()
-    colnames(rdt) <- c("x", "y", "map_value")
+    if (file.exists(d$mapfile)) {
+      r <- terra::rast(d$mapfile)
+      # Get map coordinates via as.data.frame() or terra::spatSample() 
+      rdt <- as.data.frame(r, xy = TRUE, na.rm = TRUE) |> as.data.table()
+      colnames(rdt) <- c("x", "y", "map_value")
+      # Define colours
+      # * facet_wrap() forces the same zlim across all plots
+      # * For individual colours, between min and max, we have to:
+      # - Build the col column here
+      # - Use scale_fill_identity()
+      cols <- getOption("terra.pal")
+      ints  <- seq(min(rdt$map_value), max(rdt$map_value), length.out = length(cols))
+      cols <- data.table(int = ints, 
+                         col = cols)
+      rdt[, col := cols$col[findInterval(rdt$map_value, cols$int)]]
+      stopifnot(all(!is.na(rdt$col)))
+    } else {
+      rdt <- copy(blank)
+    }
     # Link data.tables (e.g., row/column)
-    d <- cbind(d, rdt)
-    # Define colours
-    # * facet_wrap() forces the same zlim across all plots
-    # * For individual colours, between min and max, we have to:
-    # - Build the col column here
-    # - Use scale_fill_identity()
-    cols <- getOption("terra.pal")
-    ints  <- seq(min(d$map_value), max(d$map_value), length.out = length(cols))
-    cols <- data.table(int = ints, 
-                       col = cols)
-    d[, col := cols$col[findInterval(d$map_value, cols$int)]]
-    stopifnot(all(!is.na(d$col)))
-    d
+    cbind(d, rdt)
   }) |> rbindlist()
 
   # Build ggplot
