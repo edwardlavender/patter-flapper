@@ -101,7 +101,7 @@ estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, pl
                          file.path(folder_ud, pfile), 
                          overwrite = TRUE)
     }
-    qs::qsave(sim, file.path(folder_ud, dfile))
+    qs::qsave(dout, file.path(folder_ud, dfile))
     
   }
   
@@ -183,7 +183,7 @@ estimate_ud_dbbmm <- function(sim, map, bbrast_ll, plot) {
                        file.path(folder_ud, pfile), 
                        overwrite = TRUE)
   }
-  qs::qsave(sim, file.path(folder_ud, dfile))
+  qs::qsave(dout, file.path(folder_ud, dfile))
   nothing()
   
 }
