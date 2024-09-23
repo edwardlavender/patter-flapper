@@ -73,13 +73,23 @@ if (test) {
   }
   # Select AC/DC/ACDC implementations for an example individual with good time series
   iteration <- iteration[unit_id == 119 & sensitivity == "best", ]
+  # Restrict np for speed 
+  # * This must be >= n_record which is 1000L
+  iteration[, np := 1000L]
 } 
 
 #### Estimate coordinates
-# Time trial
-lapply_estimate_coord_patter(iteration = iteration[1, ], datasets = datasets)
 # Implementation
+dirs.create(here_data("output", "log", "analysis"))
+log.txt <- here_data("output", "log", "analysis", "patter-log.txt")
+log.txt <- file(log.txt, open = "wt")
+sink(log.txt)
+sink(log.txt, type = "message")
+Sys.time()
 lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+Sys.time()
+sink()
+sink(type = "message")
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-smo.qs",
