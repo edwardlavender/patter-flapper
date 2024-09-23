@@ -46,19 +46,18 @@ if (test) {
 #### Estimate coordinates
 # Time trial
 lapply_estimate_coord_coa(iteration = iteration[1, ], datasets = datasets)
-# Implementation (~19 s)
+# Implementation (~7 s)
 lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
 # (optional) Examine selected coords
 lapply_qplot_coord(iteration, "coord.qs")
 
 #### Estimate UDs
 # Time trial
-nrow(iteration) * 10 / 60 # mins
 lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
                             extract_coord = NULL,
                             cl = NULL, 
                             plot = FALSE)
-# Implementation 
+# Implementation (~3.78 mins: 500 pixel, 10 cl)
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = NULL,
                             cl = 10L, 
