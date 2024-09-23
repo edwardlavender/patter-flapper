@@ -30,7 +30,7 @@ archival  <- qs::qread(here_data("input", "archival_by_unit.qs")) |> plyr::compa
 ###########################
 #### Analyse resting behaviour
 
-#### Define 'resting' versus 'active' states
+#### Define 'resting' versus 'active' states, as in process-data-mefs
 archival[, fct := paste(individual_id, mmyy)]
 archival[, state := get_mvt_resting(copy(archival), fct = "fct")]
 

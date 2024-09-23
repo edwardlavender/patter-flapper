@@ -242,6 +242,7 @@ acoustics_by_unit <-
   # Retain data for individuals with detections in > two weeks on a total of >= 7 days
   # > Achieved above.
   
+  acc[, unit_id := d$unit_id]
   acc
 
 })
@@ -267,8 +268,28 @@ archival_by_unit <-
   # Retain data for individuals with complete archival time series
   # > Achieved above. 
 
+  arc[, unit_id := d$unit_id]
   arc
+  
+})
 
+#### Build a list of behavioural states
+behaviour_by_unit <- lapply(archival_by_unit, function(d) {
+
+  if (is.null(d)) {
+    return(NULL)
+  }
+  
+  # Get 'low activity'/resting behaviour
+  # * 0 = resting / 1 = active (+ 1)
+  state <- flapper::get_mvt_resting(copy(d)) + 1
+  
+  # Assume the last state (NA) is active
+  state[length(state)] <- 2
+  stopifnot(all(!is.na(state)))
+  
+  as.integer(state)
+  
 })
 
 #### Link units (individuals/months) to data availability
@@ -315,6 +336,8 @@ unitsets |>
 ###########################
 #### Visualise time series
 
+# (optional) TO DO
+
 # Visualise ACPF time series
 
 # Visualise DCPF time series
@@ -330,6 +353,7 @@ unitsets |>
 tic()
 qs::qsave(acoustics_by_unit, here_data("input", "acoustics_by_unit.qs"))
 qs::qsave(archival_by_unit, here_data("input", "archival_by_unit.qs"))
+qs::qsave(behaviour_by_unit, here_data("input", "behaviour_by_unit.qs"))
 qs::qsave(unitsets, here_data("input", "unitsets.qs"))
 toc()
 
