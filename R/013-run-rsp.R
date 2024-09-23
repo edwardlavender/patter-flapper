@@ -25,6 +25,7 @@ dv::src()
 iteration <- qs::qread(here_data("input", "iteration", "rsp.qs"))
 moorings  <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
+pars      <- qs::qread(here_data("input", "pars.qs"))
 
 
 ###########################
@@ -33,7 +34,7 @@ acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 
 #### Set up
 nrow(iteration)
-moorings[, receiver_gamma := 1500]
+moorings[, receiver_gamma := pars$pdetection$receiver_gamma[1]]
 iteration[, file_coord := file.path(folder_coord, "coord.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, moorings = moorings)
 
