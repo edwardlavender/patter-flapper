@@ -48,6 +48,7 @@ library(ggplot2)
 #### Load data 
 map      <- terra::rast(here_data("spatial", "bathy.tif"))
 ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
+ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
 win      <- qs::qread(dv::here_data("spatial", "win.qs"))
 skateids <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 moorings <- qs::qread(here_data("input", "mefs", "moorings.qs")) 
@@ -230,22 +231,27 @@ if (FALSE) {
   #### Define datasets
   datasets <- list(detections_by_unit = detections_by_unit, moorings = NULL)
   
-  #### Estimate coordinates (~10 s)
-  iteration <- copy(iteration_coa)
-  iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-  lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
-  # (optional) Examine selected coords
-  lapply_qplot_coord(iteration, "coord.qs")
-  
-  #### Estimate UDs
-  # Implementation (45 s, 500 pixels, sigma = bw.h, cl = (9L))
-  nrow(iteration)
-  lapply_estimate_ud_spatstat(iteration = iteration, 
-                              extract_coord = NULL,
-                              cl = 10L, 
-                              plot = FALSE)
-  # (optional) Examine selected UDs
-  lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+  #### Run algorithm
+  if (FALSE) {
+    
+    #### Estimate coordinates (~2 s)
+    iteration <- copy(iteration_coa)
+    iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+    lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
+    # (optional) Examine selected coords
+    lapply_qplot_coord(iteration, "coord.qs")
+    
+    #### Estimate UDs
+    # Implementation (44 s, 500 pixels, sigma = bw.h, cl = 10L)
+    nrow(iteration)
+    lapply_estimate_ud_spatstat(iteration = iteration, 
+                                extract_coord = NULL,
+                                cl = 10L, 
+                                plot = FALSE)
+    # (optional) Examine selected UDs
+    lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+    
+  }
   
   #### Visualise ME
   # Compute ME 
@@ -253,6 +259,10 @@ if (FALSE) {
     # sim <- iteration[1, ]
     skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
              .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+  })
+  me_null <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+    skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+             .mod = ud_null)
   })
   # Visualise ME ~ delta_t
   it_me <- 
@@ -270,12 +280,50 @@ if (FALSE) {
     ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
     geom_point() + 
     geom_line() + 
+    geom_point(aes(er.ad, me_null)) + 
+    geom_line(aes(er.ad, me_null)) + 
     geom_line(data = it_me_avg, aes(delta_t, me),
               colour = "black", group = 1) 
   
   # > Best guess:       3 days
   # > Restricted value: 2 day
   # > Flexible value:   4 days 
+  
+  ### Visualise maps
+  # Define panel row (path) and column (parameter) labels
+  cols <- c("NA", "3 days", "2 days", "4 days")
+  cols <- factor(cols, levels = cols)
+  rows <- c("Path", "COA[1]", "COA[2]", "COA[3]")
+  rows <- factor(rows, levels = rows)
+  panel <- data.table(row = rows, column = cols)
+  # Define mapfiles for selected algorithm runs 
+  mapfiles_alg <- 
+    iteration |> 
+    mutate(row = unit_id) |>
+    filter(delta_t %in% panel$column) |> 
+    mutate(column = panel$column[match(delta_t, panel$column)]) |>
+    mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |>
+    select(row, column, mapfile) |> 
+    as.data.table()
+  # Define mapfiles for simulated paths
+  mapfiles_path <- 
+    data.table(row = seq_len(n_path), 
+               column = cols[1],
+               mapfile = here_data("input", "simulation", seq_len(n_path), "ud.tif")
+    )
+  # Collect mapfiles (row, column, mapfile)
+  mapfiles <- 
+    rbind(mapfiles_alg, mapfiles_path) |> 
+    arrange(row, column) |> 
+    as.data.table()
+  # Quick visual check of selected map 
+  terra::plot(terra::rast(mapfiles$mapfile[5]))
+  # Make maps (~5 s)
+  ggplot_maps(mapdt = mapfiles, 
+              xlim =   terra::ext(ud_grid)[1:2], 
+              ylim = terra::ext(ud_grid)[3:4],
+              png_args = list(filename = here_fig("simulation", "map-coa.png"), 
+                              height = 5, width = 10, units = "in", res = 600))
   
 }
 
@@ -288,24 +336,17 @@ if (FALSE) {
   
   #### Build iteration dataset
   # Define parameters
-  prsp <- data.table(parameter_id = 1:10L, 
-                     er.ad = c(250 * 0.001, 
-                               250 * 0.005, 
-                               250 * 0.01, 
+  prsp <- data.table(parameter_id = 1:22L, 
+                     er.ad = c(250 * 0.01, 
                                250 * 0.05, # default 
-                               250 * 0.10, 
-                               250 * 0.20, 
-                               250 * 0.40, 
-                               250 * 0.50, 
-                               250 * 1,
-                               250 * 2
-                     ))
+                               250 * seq(0.1, 2, by = 0.1))
+                     )
   # Define dataset
   iteration_rsp <- 
     CJ(unit_id = seq_len(n_path), parameter_id = prsp$parameter_id, dataset = "ac", iter = 1L) |>
     mutate(dataset = "ac", 
            er.ad = prsp$er.ad[match(parameter_id, prsp$parameter_id)], 
-           folder = file.path("data", "output", "simulation", unit_id, "coa"),
+           folder = file.path("data", "output", "simulation", unit_id, "rsp"),
            folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
            folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")
     ) |> 
@@ -320,40 +361,52 @@ if (FALSE) {
   #### Define datasets
   datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
   
-  #### Estimate coordinates (~2 mins)
-  iteration <- copy(iteration_rsp)
-  iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-  lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
-  # (optional) Examine selected coords
-  lapply_qplot_coord(iteration, 
-                     "coord.qs",
-                     extract_coord = function(coord) {
-                       cbind(coord$detections[[1]]$Longitude, 
-                             coord$detections[[1]]$Latitude) |> 
-                         terra::vect(crs = "EPSG:4326") |> 
-                         terra::project("EPSG:32629") |> 
-                         terra::crds() |> 
-                         as.data.frame()
-                     })
-  
-  #### Estimate UDs
-  # Implementation (35 s, 10 cl)
-  lapply_estimate_ud_dbbmm(iteration = iteration, 
-                           cl = 10L, 
-                           plot = FALSE)
-  # (optional) Examine selected UDs
-  lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
+  #### Run algorithm
+  if (FALSE) {
+    
+    #### Estimate coordinates (~2-4 mins)
+    iteration <- copy(iteration_rsp)
+    iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+    lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
+    # (optional) Examine selected coords
+    lapply_qplot_coord(iteration, 
+                       "coord.qs",
+                       extract_coord = function(coord) {
+                         cbind(coord$detections[[1]]$Longitude, 
+                               coord$detections[[1]]$Latitude) |> 
+                           terra::vect(crs = "EPSG:4326") |> 
+                           terra::project("EPSG:32629") |> 
+                           terra::crds() |> 
+                           as.data.frame()
+                       })
+    
+    #### Estimate UDs
+    # Implementation (0.5-1.5 mins, 10 cl)
+    lapply_estimate_ud_dbbmm(iteration = iteration, 
+                             cl = 10L, 
+                             plot = FALSE)
+    # (optional) Examine selected UDs
+    lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
+    
+  }
   
   #### Visualise ME 
   me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
-    # sim <- iteration[1, ]
-    skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
-             .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+    # sim <- iteration[10, ]
+    tryCatch(   
+      skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+               .mod = terra::rast(file.path(sim$folder_ud, "dbbmm", "ud.tif"))), 
+      error = function(e) NA)
+  })
+  me_null <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+      skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+               .mod = ud_null)
   })
   # Visualise ME ~ er.ad
   it_me <- 
     iteration |>
     mutate(me = me, 
+           me_null = me_null,
            er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
     as.data.table()
   it_me_avg <- 
@@ -366,12 +419,50 @@ if (FALSE) {
     ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
     geom_point() + 
     geom_line() + 
+    geom_point(aes(er.ad, me_null)) + 
+    geom_line(aes(er.ad, me_null)) + 
     geom_line(data = it_me_avg, aes(er.ad, me),
               colour = "black", group = 1) 
   
   # > Best guess:       100
-  # > Restricted value: 25
-  # > Flexible value:   250 
+  # > Restricted value: 50
+  # > Flexible value:   150 
+  
+  ### Visualise maps
+  # Define panel row (path) and column (parameter) labels
+  cols <- c("NA", "100", "25", "250")
+  cols <- factor(cols, levels = cols)
+  rows <- c("Path", "RSP[1]", "RSP[2]", "RSP[3]")
+  rows <- factor(rows, levels = rows)
+  panel <- data.table(row = rows, column = cols)
+  # Define mapfiles for selected algorithm runs 
+  mapfiles_alg <- 
+    iteration |> 
+    mutate(row = unit_id) |>
+    filter(er.ad %in% panel$column) |> 
+    mutate(column = panel$column[match(er.ad, panel$column)]) |>
+    mutate(mapfile = file.path(folder_ud, "dbbmm", "ud.tif")) |>
+    select(row, column, mapfile) |> 
+    as.data.table()
+  # Define mapfiles for simulated paths
+  mapfiles_path <- 
+    data.table(row = seq_len(n_path), 
+               column = cols[1],
+               mapfile = here_data("input", "simulation", seq_len(n_path), "ud.tif")
+    )
+  # Collect mapfiles (row, column, mapfile)
+  mapfiles <- 
+    rbind(mapfiles_alg, mapfiles_path) |> 
+    arrange(row, column) |> 
+    as.data.table()
+  # Quick visual check of selected map 
+  terra::plot(terra::rast(mapfiles$mapfile[5]))
+  # Make maps
+  ggplot_maps(mapdt = mapfiles, 
+              xlim =   terra::ext(ud_grid)[1:2], 
+              ylim = terra::ext(ud_grid)[3:4],
+              png_args = list(filename = here_fig("simulation", "map-rsp.png"), 
+                              height = 5, width = 10, units = "in", res = 600))
   
 }
 
