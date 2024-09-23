@@ -25,6 +25,7 @@ dv::src()
 unitsets          <- qs::qread(here_data("input", "unitsets.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
+pars              <- qs::qread(here_data("input", "pars.qs"))
 
 
 ###########################
