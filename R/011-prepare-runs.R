@@ -88,7 +88,7 @@ dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
 
 #### Define parameters (based on simulations)
 parameters <- data.table(parameter_id = 1:3L, 
-                         er.ad = c(100, 25, 250))
+                         er.ad = c(100, 50, 150))
 
 #### Define iteration dataset
 iteration_rsp <- 
