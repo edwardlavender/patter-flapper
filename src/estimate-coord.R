@@ -124,14 +124,20 @@ estimate_coord_patter <- function(sim, map, datasets) {
   if (TRUE) {
     # Use a restricted timeline for testing
     warn("Using a restricted timeline for testing!")
-    # Use the first N observations required to achieve at least two detections at different receivers
-    # This is necessary so that $yobs$ModelObsAcousticContainer is not empty
-    sel <- which(timeline %in% detections$timestamp[detections$receiver_id != detections$receiver_id[1]])
-    sel <- 1:sel[1]
-    timeline <- assemble_timeline(.datasets = plyr::compact(list(detections, archival)),
-                                  .step = "2 mins",
-                                  .trim = TRUE)[sel]
+    sel <- 1:10
+    if (!is.null(detections)) {
+      # Use the first N observations required to achieve at least two detections at different receivers
+      # This is necessary so that $yobs$ModelObsAcousticContainer is not empty
+      detections_timestamps <- lubridate::round_date(detections$timestamp, "2 mins")
+      sel <- which(timeline %in% detections_timestamps[detections$receiver_id != detections$receiver_id[1]])
+      sel <- 1:sel[1]
+      timeline <- assemble_timeline(.datasets = plyr::compact(list(detections, archival)),
+                                    .step = "2 mins",
+                                    .trim = TRUE)
+    }
+    timeline <- timeline[sel]
   }
+  warn(paste("> The timeline is", length(timeline), "steps long."))
   # Movement model
   state       <- "StateXY"
   model_move  <- patter_ModelMove(sim)
