@@ -67,7 +67,7 @@ lapply_qplot_coord(iteration,
 lapply_estimate_ud_dbbmm(iteration = iteration[1, ], 
                          cl = NULL, 
                          plot = FALSE)
-# Implementation (26 mins, 8 cl; 15 mins, 11 cl)
+# Implementation (36 mins, 11 cl)
 lapply_estimate_ud_dbbmm(iteration = iteration, 
                          cl = 11L, 
                          plot = FALSE)
