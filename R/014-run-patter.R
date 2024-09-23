@@ -97,7 +97,6 @@ lapply_qplot_coord(iteration,
 
 #### Estimate UDs
 # Time trial 
-spatstat.geom::spatstat.options("npixel" = 500)
 lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
                             extract_coord = function(s) s$states,
                             cl = NULL, 

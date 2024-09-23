@@ -105,9 +105,6 @@ moorings <-
   as.data.table()
 head(moorings)
 
-#### UD settings
-spatstat.geom::spatstat.options("npixel" = 500)
-
 
 ###########################
 ###########################

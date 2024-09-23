@@ -37,7 +37,7 @@ simplify.owin.trial <- function(sea, win, dmin = 0) {
   
   #### Estimate UD (500 pixels)
   cat("Estimating UD...")
-  spatstat.geom::spatstat.options("npixel" = 500)
+  spatstat.geom::spatstat.options(npixel = 500)
   tic()
   D <- spatstat.explore::density.ppp(X, at = "pixels")
   toc()

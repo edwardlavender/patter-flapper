@@ -52,19 +52,16 @@ lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
 lapply_qplot_coord(iteration, "coord.qs")
 
 #### Estimate UDs
-# Time trial 
-# * 1 iteration         : 162.067 s (500 pixels, sigma = bw.h)
-# * nrow(iterations) ETA: 16 hours (1 cl)
-nrow(iteration) * 162.067 / 60 / 60 
+# Time trial
+nrow(iteration) * 10 / 60 # mins
 lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
                             extract_coord = NULL,
                             cl = NULL, 
                             plot = FALSE)
 # Implementation 
-# * For testing, 11 mins with 50 pixels, sigma = bw.h, cl = 8
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = NULL,
-                            cl = 8L, 
+                            cl = 10L, 
                             plot = FALSE)
 # (optional) Examine selected UDs
 lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
