@@ -1,6 +1,6 @@
 ggplot_maps <- function(mapdt,
                         xlim = NULL, 
-                        ylim = NULL, 
+                        ylim = NULL,
                         grid = terra::rast(here_data("spatial", "ud-grid.tif")),
                         coast = qs::qread(here_data("spatial", "coast.qs")), 
                         png_args = NULL) {
@@ -54,6 +54,14 @@ ggplot_maps <- function(mapdt,
     # Link data.tables (e.g., row/column)
     cbind(d, rdt)
   }) |> rbindlist()
+  
+  # Define map limits
+  if (is.null(xlim)) {
+    xlim <- terra::ext(grid)[1:2]
+  }
+  if (is.null(ylim)) {
+    ylim <- terra::ext(grid)[3:4]
+  }
 
   # Build ggplot
   p <- 
@@ -69,9 +77,9 @@ ggplot_maps <- function(mapdt,
     theme(axis.text = element_blank(), 
           axis.ticks = element_blank(), 
           panel.grid = element_blank(), 
-          strip.text = element_blank(), 
+          # strip.text = element_blank(), 
           legend.position = "none") + 
-    facet_wrap(~row + column, nrow = n_row, ncol = n_col)
+    facet_wrap(~row + column, drop = TRUE, nrow = n_row, ncol = n_col)
   
   # Return ggplot 
   if (!is.null(png)) {
