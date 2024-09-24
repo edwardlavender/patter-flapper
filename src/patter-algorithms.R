@@ -173,11 +173,11 @@ pf_filter_wrapper <- function(sim, args) {
   # Define outputs (fwd, bwd)
   if (args$.direction == "forward") {
     routine <- "fwd"
-    pfile   <- "coord-fwd.qs"
+    # pfile   <- "coord-fwd.qs"
     dfile   <- "data-fwd.qs"
   } else if (args$.direction == "backward") {
     routine <- "bwd"
-    pfile   <- "coord-bwd.qs"
+    # pfile   <- "coord-bwd.qs"
     dfile   <- "data-bwd.qs"
   } else {
     stop("args$.direction is missing!")
@@ -246,10 +246,15 @@ pf_filter_wrapper <- function(sim, args) {
                         n_trial = n_trial_req,
                         time = time)
   
-  # Write outputs
-  if (success) {
-    qs::qsave(pout, file.path(sim$folder_coord, pfile))
-  }
+  # Write particles
+  # * Particles currently exist in memory for smoothing
+  # * Each particles dataset (for a one-month period) is ~314 MB 
+  # * This is too big to write to file
+  # if (success) {
+  #  qs::qsave(pout, file.path(sim$folder_coord, pfile))
+  # }
+  
+  # Write convergence
   qs::qsave(dout, file.path(sim$folder_coord, dfile))
   
   # Return success
@@ -281,6 +286,10 @@ pf_smoother_wrapper <- function(sim) {
                      time = time)
   
   # Write outputs
+  # * Smoother outputs seem to be smaller than those from the filter (13 MB)
+  # * This may be due to more efficient compression due to NAs (?)
+  # * For now, this appears to be manageable. 
+  # * (optional) TO DO: check file sizes across simulations
   qs::qsave(pout, file.path(sim$folder_coord, pfile))
   qs::qsave(dout, file.path(sim$folder_coord, dfile))
   nothing()
