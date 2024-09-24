@@ -51,7 +51,7 @@ datasets <- list(detections_by_unit = acoustics_by_unit,
                  behaviour_by_unit = behaviour_by_unit)
 
 #### (optional) Testing
-test <- TRUE
+test <- FALSE
 if (test) {
   # Visualise time series to pick an example individual with good time series
   if (FALSE) {
@@ -78,22 +78,40 @@ if (test) {
   iteration[, np := 1000L]
 } 
 
+#### Select iterations
+# Start with 'best' implementations 
+iteration <- iteration[sensitivity == "best", ]
+table(table(iteration$unit_id))
+iteration <- iteration[2:.N, ]
+
 #### Estimate coordinates
-# Implementation
-dirs.create(here_data("output", "log", "analysis"))
-log.txt <- here_data("output", "log", "analysis", "patter-log.txt")
-log.txt <- file(log.txt, open = "wt")
-sink(log.txt)
-sink(log.txt, type = "message")
+# Set up log.txt file (on unix only)
+if (on_unix()) {
+  dirs.create(here_data("output", "log", "analysis"))
+  log.txt <- here_data("output", "log", "analysis", "patter-log.txt")
+  log.txt <- file(log.txt, open = "wt")
+  sink(log.txt)
+  sink(log.txt, type = "message")
+}
+# Estimate coordinates 
 Sys.time()
 lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
 Sys.time()
-sink()
-sink(type = "message")
+# Close sink
+if (on_unix()) {
+  sink()
+  sink(type = "message") 
+}
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-smo.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
+
+#### Record (by index)
+iteration[1:12, .(dataset, sensitivity, np)]
+# OK                : 1:5, 7, 
+# Backward failure  : 6 (DC best), 8:10
+# Forward failure   : 11 (ACDC), ...
 
 #### Estimate UDs
 # Time trial 
