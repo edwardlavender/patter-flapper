@@ -121,7 +121,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   #### Initialise particle filter
   # Timeline
   timeline <- patter_timeline(sim$month_id)
-  if (TRUE) {
+  if (FALSE) {
     # Use a restricted timeline for testing
     warn("Using a restricted timeline for testing!")
     sel <- 1:10
