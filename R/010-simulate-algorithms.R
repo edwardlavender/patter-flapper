@@ -567,6 +567,10 @@ lapply_qplot_coord(iteration,
                    "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
+#### Record
+# Up to 48
+# * [crop] cannot create dataset -> out of storage!
+
 #### Estimate UDs
 # We estimate UDs for iterations 1:3 with max number of particles
 # * TO DO, filter iteration! 
