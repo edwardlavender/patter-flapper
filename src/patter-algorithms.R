@@ -208,7 +208,7 @@ pf_filter_wrapper <- function(sim, args) {
   cat("\n... ... (b) Iteratively implementing filter...\n")
   if (!inherits(init, "error")) {
     
-    while (n_trial < 10L) {
+    while (n_trial <= 3L) {
       
       cat(paste0("... ... ... On trial ", n_trial, "...\n"))
       
