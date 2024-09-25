@@ -568,7 +568,9 @@ lapply_qplot_coord(iteration,
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
 #### Record
-# Up to 48
+# Up to 55
+# * BoundsError: attempt to access 250000-element Vector{Float64} at index [250001]
+# - 50, 
 # * [crop] cannot create dataset -> out of storage!
 
 #### Estimate UDs
