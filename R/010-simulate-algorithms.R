@@ -559,16 +559,25 @@ datasets <- list(detections_by_unit = detections_by_unit,
                  behaviour_by_unit = behaviour_by_unit)
 
 #### Estimate coordinates
-# Implementation
+# Evaluate progress between loop restarts
 iteration <- copy(iteration_patter)
-lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+it <- iteration[1:200, ]
+progress <- 
+  lapply(split(it, seq_row(it)), function(d) {
+    # d <- it[1, ]
+    qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
+  }) |> 
+  rbindlist(fill = TRUE)
+# Implementation
+lapply_estimate_coord_patter(iteration = iteration[61:.N, ], datasets = datasets)
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
 #### Record
-# Up to 55
+# * up to 61
+# * For records up to 61, pdata$convergence is included but should be ignored (use success)
 # * BoundsError: attempt to access 250000-element Vector{Float64} at index [250001]
 # - 50, 
 # * [crop] cannot create dataset -> out of storage!
