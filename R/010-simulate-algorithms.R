@@ -89,8 +89,8 @@ ModelObsAcousticLogisTruncPars <-
          receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
 ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                           sigma = pars$pdepth$depth_sigma, 
-                                           depth_deep_eps = pars$pdepth$depth_deep_eps)
+                                           sigma = pars$pdepth$depth_sigma[1], 
+                                           depth_deep_eps = pars$pdepth$depth_deep_eps[1])
 ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
                      ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
 
@@ -117,9 +117,7 @@ if (FALSE) {
   lapply(split(iteration_path, 1:3), function(sim) {
     
     # This code is run three times, generating three paths & corresponding observational datasets
-    # s <- 2; id <- 1 # path 1
-    # s <- 3; id <- 2 # path 2
-    # s <- 4; id <- 3 # path 3
+    # sim <- iteration_path[1, ]
     s <- sim$s; id <- sim$id
     set_seed(s)
     
@@ -158,6 +156,10 @@ if (FALSE) {
     # Check we have simulated detections
     stopifnot(length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L)) > 100)
     table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
+    # Check depth time stamps are not duplicated
+    if (any(duplicated(yobs$ModelObsDepthNormalTrunc[[1]]$timestamp))) {
+      stop("Simulated depth time series contains duplicated time stamps.")
+    }
     
     #### Map path UD 
     # * 13 s 500 pixels 
@@ -561,15 +563,17 @@ datasets <- list(detections_by_unit = detections_by_unit,
 #### Estimate coordinates
 # Evaluate progress between loop restarts
 iteration <- copy(iteration_patter)
-it <- iteration[1:200, ]
-progress <- 
-  lapply(split(it, seq_row(it)), function(d) {
-    # d <- it[1, ]
-    qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
-  }) |> 
-  rbindlist(fill = TRUE)
+if (FALSE) {
+  it <- iteration[1:200, ]
+  progress <- 
+    lapply(split(it, seq_row(it)), function(d) {
+      # d <- it[1, ]
+      qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
+    }) |> 
+    rbindlist(fill = TRUE)
+}
 # Implementation
-lapply_estimate_coord_patter(iteration = iteration[61:.N, ], datasets = datasets)
+lapply_estimate_coord_patter(iteration = iteration[251, ], datasets = datasets)
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-fwd.qs",
