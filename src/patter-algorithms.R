@@ -43,17 +43,20 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
   }
   
   #### Archival datasets
+  # This is only required for real-world data
   if (sim$dataset %in% c("dc", "acdc")) {
-    archival <- assemble_archival(.timeline = timeline, 
-                                  .archival = 
-                                    archival |> 
-                                    rename(obs = "depth") |> 
-                                    mutate(sensor_id = 1L, 
-                                           depth_sigma = sim$depth_sigma, 
-                                           depth_deep_eps = sim$depth_deep_eps) |>
-                                    select("timestamp", "sensor_id", "obs", "depth_sigma", "depth_deep_eps") |> 
-                                    as.data.table()
-    )
+    if (!all(c("timestamp", "sensor_id", "obs", "depth_sigma", "depth_deep_eps") %in% colnames(archival))) {
+      archival <- assemble_archival(.timeline = timeline, 
+                                    .archival = 
+                                      archival |> 
+                                      rename(obs = "depth") |> 
+                                      mutate(sensor_id = 1L, 
+                                             depth_sigma = sim$depth_sigma, 
+                                             depth_deep_eps = sim$depth_deep_eps) |>
+                                      select("timestamp", "sensor_id", "obs", "depth_sigma", "depth_deep_eps") |> 
+                                      as.data.table()
+      )
+    }
   }
   
   #### Return list of algorithm-specific ModelObs strings & corresponding datasets
@@ -189,7 +192,6 @@ pf_filter_wrapper <- function(sim, args) {
   # Initialise variables
   success     <- FALSE
   error       <- NA_character_
-  convergence <- FALSE
   time        <- NA_real_
   n_trial     <- 1L
   n_trial_req <- NA_integer_
@@ -233,7 +235,7 @@ pf_filter_wrapper <- function(sim, args) {
         }
       }
     }
-    success <- !inherits(pout, "error") && pout$convergence
+    success <- !inherits(pout, "error") & pout$convergence
   }
   
   # Collect success statistics
@@ -242,7 +244,6 @@ pf_filter_wrapper <- function(sim, args) {
                         routine = routine, 
                         success = success, 
                         error = error, 
-                        convergence = convergence, 
                         n_trial = n_trial_req,
                         time = time)
   
@@ -282,7 +283,6 @@ pf_smoother_wrapper <- function(sim) {
                      routine = "smo", 
                      success = TRUE, 
                      error = NA_character_, 
-                     convergence = TRUE, 
                      time = time)
   
   # Write outputs

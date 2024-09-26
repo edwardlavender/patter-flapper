@@ -29,7 +29,6 @@ estimate_coord_coa <- function(sim, map, datasets) {
                      routine = "coa", 
                      success = TRUE,
                      error = NA_character_, 
-                     convergence = TRUE, 
                      ntrial = NA_integer_,
                      time = time)
   
@@ -88,7 +87,6 @@ estimate_coord_rsp <- function(sim, map, datasets) {
                      routine = "rsp", 
                      success = success, 
                      error = error, 
-                     convergence = TRUE, 
                      ntrial = NA_integer_,
                      time = time)
   

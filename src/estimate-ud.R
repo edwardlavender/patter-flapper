@@ -88,7 +88,6 @@ estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, pl
                        routine = sigma, 
                        success = success,
                        error = error, 
-                       convergence = success, 
                        ntrial = NA_integer_,
                        time = time)
     
@@ -172,7 +171,6 @@ estimate_ud_dbbmm <- function(sim, map, bbrast_ll, plot) {
                      routine = "dbbmm", 
                      success = success,
                      error = error, 
-                     convergence = success, 
                      ntrial = NA_integer_,
                      time = time)
   
