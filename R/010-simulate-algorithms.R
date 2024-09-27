@@ -111,7 +111,7 @@ head(moorings)
 ###########################
 #### Simulate paths and observations
 
-if (TRUE) {
+if (FALSE) {
   
   iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
   lapply(split(iteration_path, 1:3), function(sim) {
