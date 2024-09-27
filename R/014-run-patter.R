@@ -22,7 +22,9 @@ dv::clear()
 dv::src()
 
 #### Load data 
+pars              <- qs::qread(here_data("input", "pars.qs"))
 map               <- terra::rast(here_data("spatial", "bathy.tif"))
+vmap              <- terra::rast(here_data("spatial", glue("vmap-{pars$pmovement$mobility[1]}.tif")))
 iteration         <- qs::qread(here_data("input", "iteration", "patter.qs"))
 moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
@@ -38,6 +40,7 @@ behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
 julia_connect()
 set_seed()
 set_map(map)
+set_vmap(.vmap = vmap)
 julia_command(ModelMoveFlapper)
 julia_command(ModelObsAcousticContainer)
 julia_command(ModelObsAcousticContainer.logpdf_obs)
@@ -84,7 +87,22 @@ iteration <- iteration[sensitivity == "best", ]
 table(table(iteration$unit_id))
 iteration <- iteration[2:.N, ]
 
+#### TO DO
+# * Time taken to initialise the filter e.g., for index 79 is ridiculous! (39 mins!)
+
+#### Trial convergence solutions
+# TO DO on Eawag MacBook
+# Trial solutions to improve convergence for selected ACDC runs e.g. row 11
+# * More runs, fewer particles (e.g., 100 runs with 10000 particles)
+# * Select 5th depth observation 
+# * Boost bathymetric uncertainty 
+# * Advanced movement model that prevents particle death w/o imposing benthic movement 
+#   (handle this at the likelihood stage, check what is valid with CA/AS)
+
 #### Estimate coordinates
+gc()
+nrow(iteration)
+rm(map, vmap)
 # Set up log.txt file (on unix only)
 if (on_unix()) {
   dirs.create(here_data("output", "log", "analysis"))
@@ -108,10 +126,17 @@ lapply_qplot_coord(iteration,
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
 #### Record (by index)
-iteration[1:12, .(dataset, sensitivity, np)]
-# OK                : 1:5, 7, 
-# Backward failure  : 6 (DC best), 8:10
-# Forward failure   : 11 (ACDC), ...
+# * Currently on row 86...
+iteration[1:20, .(index, dataset, sensitivity, np)]
+# Forward failure   : 11, 23 (DC), 28, 45, 62, 
+# > ACDC unless labelled otherwise
+# Backward failure  : 6 (DC), 8:10 (DCs), 57 (DC), 
+# > ACDC unless labelled otherwise
+# OK                : 1:5, 7, 18, 35, 40 (DC), 52, 69, 74 (DC)
+# > AC unless labelled otherwise 
+
+# * Multiple trials do help convergence, in some instances
+# e.g., 74
 
 #### Estimate UDs
 # Time trial 
