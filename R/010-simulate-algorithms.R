@@ -282,18 +282,18 @@ if (FALSE) {
     ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
     geom_point() + 
     geom_line() + 
-    geom_point(aes(er.ad, me_null)) + 
-    geom_line(aes(er.ad, me_null)) + 
+    geom_point(aes(delta_t, me_null)) + 
+    geom_line(aes(delta_t, me_null)) + 
     geom_line(data = it_me_avg, aes(delta_t, me),
               colour = "black", group = 1) 
   
-  # > Best guess:       3 days
-  # > Restricted value: 2 day
-  # > Flexible value:   4 days 
+  # > Best guess:       4 days
+  # > Restricted value: 3 day
+  # > Flexible value:   5 days 
   
   ### Visualise maps
   # Define panel row (path) and column (parameter) labels
-  cols <- c("NA", "3 days", "2 days", "4 days")
+  cols <- c("NA", "4 days", "3 days", "5 days")
   cols <- factor(cols, levels = cols)
   rows <- c("Path", "COA[1]", "COA[2]", "COA[3]")
   rows <- factor(rows, levels = rows)
