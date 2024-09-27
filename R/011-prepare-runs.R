@@ -58,7 +58,7 @@ iteration_ac <-
 #### Define COA parameters (based on simulations)
 # > We consider a 'best', 'restrictive' and 'flexible' parameter value
 parameters <- data.table(parameter_id = 1:3L, 
-                         delta_t = c("3 days", "2 days", "4 days"))
+                         delta_t = c("4 days", "3 days", "5 days"))
 
 #### Define iteration dataset
 iteration_coa <- 

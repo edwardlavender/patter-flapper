@@ -70,7 +70,7 @@ lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
 unique(iteration$delta_t)
 length(unique(iteration$individual_id))
 length(unique(iteration$month_id))
-mapply(c("3 days", "2 days", "4 days"), c("best", "restricted", "flexible"), 
+mapply(c("4 days", "3 days", "5 days"), c("best", "restricted", "flexible"), 
        FUN = function(param, label) {
          # Define png args 
          png_args <- 
