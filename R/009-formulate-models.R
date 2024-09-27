@@ -24,6 +24,9 @@ library(prettyGraphics)
 library(fvcom.tbx)
 library(truncdist)
 
+#### Load data
+map <- terra::rast(here_data("spatial", "bathy.tif"))
+
 #### Local pars
 yat  <- c(0, 0.25, 0.5, 0.75, 1)
 lwds <- c(1.5, 1, 1)
@@ -299,6 +302,17 @@ pars <- list(pmovement = cbind(pmovement_rest[, .(k1, theta1)], pmovement_active
              pdetection = pdetection, 
              pdepth = pdepth)
 qs::qsave(pars, here_data("input", "pars.qs"))
+
+#### Validity maps for mobility parameters (~6 mins)
+pp <- par(mfrow = c(1, 3))
+cl_lapply(pars$pmovement$mobility, function(mob) {
+  vmap <- spatVmap(.map = map, .mobility = mob, .plot = TRUE)
+  terra::writeRaster(vmap, 
+                     here_data("spatial", glue("vmap-{mob}.tif")), 
+                     overwrite = TRUE)
+  
+})
+par(pp)
 
 
 #### End of code. 
