@@ -581,7 +581,8 @@ if (FALSE) {
 }
 # Implementation
 gc()
-lapply_estimate_coord_patter(iteration = iteration[251, ], datasets = datasets)
+nrow(iteration)
+lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-fwd.qs",
