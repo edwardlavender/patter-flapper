@@ -111,7 +111,7 @@ head(moorings)
 ###########################
 #### Simulate paths and observations
 
-if (FALSE) {
+if (TRUE) {
   
   iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
   lapply(split(iteration_path, 1:3), function(sim) {
@@ -561,8 +561,15 @@ datasets <- list(detections_by_unit = detections_by_unit,
                  behaviour_by_unit = behaviour_by_unit)
 
 #### Estimate coordinates
-# Evaluate progress between loop restarts
+# Set batch & export vmap
+# * We implement the algorithms in batches so that we export vmap once
 iteration <- copy(iteration_patter)
+batch     <- pars$pmovement$mobility[1]
+iteration <- iteration[mobility == batch, ]
+vmap      <- terra::rast(here_data("spatial", glue("vmap-{batch}.tif")))
+set_vmap(.vmap = vmap)
+rm(vmap)
+# Check progress between loop restarts
 if (FALSE) {
   it <- iteration[1:200, ]
   progress <- 
@@ -573,13 +580,14 @@ if (FALSE) {
     rbindlist(fill = TRUE)
 }
 # Implementation
+gc()
 lapply_estimate_coord_patter(iteration = iteration[251, ], datasets = datasets)
 # Examine selected coords 
 lapply_qplot_coord(iteration, 
                    "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
-#### Record
+#### Record progress
 # * up to 61
 # * For records up to 61, pdata$convergence is included but should be ignored (use success)
 # * BoundsError: attempt to access 250000-element Vector{Float64} at index [250001]
