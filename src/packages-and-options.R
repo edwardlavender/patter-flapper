@@ -10,8 +10,13 @@ library(patter)
 library(spatstat)
 library(tictoc)
 
-# terra colour palette
+# terra options
 op <- options(terra.pal = rev(terrain.colors(256)))
+if (Sys.info()["nodename"] == "MCC02XT0AZJGH5") {
+  tmpdir <- "/Volumes/My Book/projects/eawag/patter-flapper/data-raw/temporary"
+  stopifnot(dir.exists(tmpdir))
+  top <- terra::terraOptions(tempdir = tmpdir)
+}
 
 # spatstat options
 # * Use npixel to set the pixel resolution 
