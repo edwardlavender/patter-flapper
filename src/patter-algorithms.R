@@ -14,7 +14,7 @@ patter_ModelMove <- function(sim) {
 }
 
 #' Define the model_obs and yobs inputs for a forward run of the particle filter
-patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archival) {
+patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
   
   #### Acoustics datasets
   if (sim$dataset %in% c("ac", "acdc")) {
@@ -34,12 +34,15 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
     moorings[, receiver_gamma := sim$receiver_gamma]
     # Assemble acoustic data
     acoustics <- assemble_acoustics(.timeline = timeline,
-                                    .acoustics = detections, 
+                                    .detections = detections, 
                                     .moorings = moorings)
     # Assemble container data
-    containers <- assemble_acoustics_containers(.acoustics = acoustics,
-                                                .direction = "forward",
-                                                .mobility = sim$mobility)
+    # max(c(ymax(bathy) - ymin(bathy), xmax(bathy) - xmin(bathy)))
+    # Note that containers contains a $forward and $backward element that we select later
+    containers <- assemble_acoustics_containers(.timeline  = timeline, 
+                                                .acoustics = acoustics,
+                                                .mobility = sim$mobility, 
+                                                .threshold = 139199)
   }
   
   #### Archival datasets
@@ -61,37 +64,19 @@ patter_ModelObs_forward <- function(sim, timeline, detections, moorings, archiva
   
   #### Return list of algorithm-specific ModelObs strings & corresponding datasets
   if (sim$dataset == "ac") {
-    out <- list(model_obs = c("ModelObsAcousticLogisTrunc", 
-                              "ModelObsAcousticContainer"), 
-                yobs = list(ModelObsAcousticLogisTrunc = acoustics, 
-                            ModelObsAcousticContainer = containers))
+    out <- list(ModelObsAcousticLogisTrunc = acoustics, 
+                ModelObsAcousticContainer = containers)
   } else if (sim$dataset == "dc") {
-    out <- list(model_obs = "ModelObsDepthNormalTrunc", 
-                yobs = list(ModelObsDepthNormalTrunc = archival))
+    out <- list(ModelObsDepthNormalTrunc = archival)
   } else if (sim$dataset == "acdc") {
-    out <- list(model_obs = c("ModelObsAcousticLogisTrunc", 
-                              "ModelObsAcousticContainer", 
-                              "ModelObsDepthNormalTrunc"), 
-                yobs = list(ModelObsAcousticLogisTrunc = acoustics,
-                            ModelObsAcousticContainer = containers, 
-                            ModelObsDepthNormalTrunc = archival))
+    out <- list(ModelObsAcousticLogisTrunc = acoustics,
+                ModelObsAcousticContainer = containers, 
+                ModelObsDepthNormalTrunc = archival)
   }
   
   out
   
 }
-
-#' Update the model_obs and yobs inputs for a backward run of the particle filter
-patter_ModelObs_backward <- function(sim, model_obs) {
-  if (sim$dataset %in% c("ac", "acdc")) {
-    # Update container dataset (which is direction-dependent)
-    model_obs$yobs$ModelObsAcousticContainer <- 
-      assemble_acoustics_containers(.acoustics = model_obs$yobs$ModelObsAcousticLogisTrunc,
-                                    .direction = "backward",
-                                    .mobility = sim$mobility)
-  }
-  model_obs
-} 
 
 #' Define the number of particles to use for ACPF/DCPF/ACDCPF runs
 patter_np <- function(sim) {
@@ -103,71 +88,6 @@ patter_np <- function(sim) {
     np <- 1e5L
   }
   np
-}
-
-#' Initialise the particle filter
-#' * This code is extracted from pf_filter()
-#' * This enables more efficient iterative implementations of the actual filter
-pf_filter_init <- function(.map,
-                           .timeline,
-                           .state = "StateXY", .xinit = NULL, .xinit_pars = list(),
-                           .yobs = list(),
-                           .model_obs,
-                           .model_move = move_xy(),
-                           .n_move = 1e5L,
-                           .n_particle = 1000L,
-                           .n_resample = as.numeric(.n_particle),
-                           .n_record = 1e3L,
-                           .direction = c("forward", "backward"),
-                           .verbose = getOption("patter.verbose")) {
-  
-  #### Initiate
-  cats <- cat_setup(.fun = "pf_filter_init", .verbose = .verbose)
-  on.exit(eval(cats$exit, envir = cats$envir), add = TRUE)
-  
-  #### Check user inputs
-  cats$cat(paste0("... ", call_time(Sys.time(), "%H:%M:%S"), ": Checking user inputs..."))
-  check_inherits(.state, "character")
-  check_inherits(.model_move, "character")
-  .direction <- match.arg(.direction)
-  tzs <- c(tz(.timeline), sapply(.yobs, \(d) tz(d$timestamp)))
-  if (length(unique(tzs)) != 1L) {
-    abort("There is a mismatch between the time zones of `.timeline` and/or `.yobs` `timestamp`s ({str_items(tzs, .quo = '\"')}).",
-          .envir = environment())
-  }
-  
-  #### Set initial state
-  cats$cat(paste0("... ", call_time(Sys.time(), "%H:%M:%S"), ": Setting initial states..."))
-  set_timeline(.timeline)
-  .xinit <- sim_states_init(.map = .map,
-                            .timeline = .timeline,
-                            .direction = .direction,
-                            .datasets = .yobs,
-                            .models = .model_obs,
-                            .pars = .xinit_pars,
-                            .state = .state,
-                            .xinit = .xinit,
-                            .n = .n_particle)
-  set_states_init(.xinit = .xinit, .state = .state)
-  
-  #### Set filter arguments
-  cats$cat(paste0("... ", call_time(Sys.time(), "%H:%M:%S"), ": Setting observations..."))
-  set_yobs_via_datasets(.datasets = .yobs, .model_obs = .model_obs)
-  set_model_move(.model_move)
-  nothing()
-  
-}
-
-#' Run the particle filter
-#' * As above, this code is extracted from pf_filter()
-pf_filter_run <- function(args) {
-  # Run filter
-  pf_obj <- set_pf_filter(.n_move = 100000L,
-                          .n_resample = as.numeric(args$.n_particle),
-                          .n_record = 1000L,
-                          .direction = args$.direction)
-  # Get particles in R
-  pf_particles(.xinit = NULL, .pf_obj = pf_obj)
 }
 
 #' Define a pf_filter() that runs the algorithms for a given simulation
@@ -192,59 +112,27 @@ pf_filter_wrapper <- function(sim, args) {
   # Initialise variables
   success     <- FALSE
   error       <- NA_character_
-  time        <- NA_real_
-  n_trial     <- 1L
-  n_trial_req <- NA_integer_
+  n_trial     <- NA_integer_
   
-  # Initialise filter
-  # * We initialise the filter once, for speed
-  cat("... ... (a) Initialising filter...\n\n")
-  init <- tryCatch(do.call(pf_filter_init, args, quote = TRUE),
-           error = function(e) e)
-  if (inherits(init, "error")) {
-    error <- init$message
-    message(error)
+  # Run filter
+  t1      <- Sys.time()
+  pout    <- tryCatch(do.call(pf_filter, args, quote = TRUE), error = function(e) e)
+  t2      <- Sys.time()
+  time    <- secs(t2, t1)
+  if (!inherits(pout, "error")) {
+    n_trial <- pout$trials
+    success <- pout$convergence
+  } else {
+    error <- pout$message
   }
-  
-  # Iteratively run filter until error/convergence/n_trials is reached
-  cat("\n... ... (b) Iteratively implementing filter...\n")
-  if (!inherits(init, "error")) {
-    
-    while (n_trial <= 3L) {
-      
-      cat(paste0("... ... ... On trial ", n_trial, "...\n"))
-      
-      # Implement the filter
-      t1   <- Sys.time()
-      pout <- tryCatch(pf_filter_run(args), error = function(e) e)
-      t2   <- Sys.time()
-      # Handle errors
-      if (inherits(pout, "error")) {
-        error   <- pout$message
-        message(error)
-        n_trial <- Inf
-      } else {
-        # If convergence failure, try again
-        if (!pout$convergence) {
-          n_trial <- n_trial + 1L
-          # Otherwise, record time & close 
-        } else {
-          time        <- secs(t2, t1)
-          n_trial_req <- n_trial
-          n_trial     <- Inf
-        }
-      }
-    }
-    success <- !inherits(pout, "error") & pout$convergence
-  }
-  
+
   # Collect success statistics
   dout    <- data.table(id = sim$index, 
                         method = "particle", 
                         routine = routine, 
                         success = success, 
                         error = error, 
-                        n_trial = n_trial_req,
+                        n_trial = n_trial,
                         time = time)
   
   # Write particles

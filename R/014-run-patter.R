@@ -42,8 +42,6 @@ set_seed()
 set_map(map)
 set_vmap(.vmap = vmap)
 julia_command(ModelMoveFlapper)
-julia_command(ModelObsAcousticContainer)
-julia_command(ModelObsAcousticContainer.logpdf_obs)
 
 #### Define iterations
 nrow(iteration)

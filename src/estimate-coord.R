@@ -109,15 +109,14 @@ estimate_coord_patter <- function(sim, map, datasets) {
   # See pf_filter_wrapper()
   # See pf_smoother_wrapper()
   
-  #### Define data & parameters
+  #### Define inputs (data, parameters)
   # Parameters are defined by the patter_*() functions below
   detections  <- datasets$detections_by_unit[[sim$unit_id]]
   moorings    <- datasets$moorings
   archival    <- datasets$archival_by_unit[[sim$unit_id]]
   behaviour   <- datasets$behaviour_by_unit[[sim$unit_id]]
-
-  #### Initialise particle filter
-  # Timeline
+  
+  #### Define timeline
   timeline <- patter_timeline(sim$month_id)
   if (FALSE) {
     # Use a restricted timeline for testing
@@ -136,31 +135,40 @@ estimate_coord_patter <- function(sim, map, datasets) {
     timeline <- timeline[sel]
   }
   warn(paste("> The timeline is", length(timeline), "steps long."))
-  # Movement model
+  
+  #### Define movement model
   state       <- "StateXY"
   model_move  <- patter_ModelMove(sim)
   julia_assign("behaviour", behaviour)
   JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
   JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
 
-  # Observation model(s)
-  model_obs <- patter_ModelObs_forward(sim = sim, 
-                                       timeline = timeline, 
-                                       detections = detections,
-                                       moorings = moorings,
-                                       archival = archival)
-  # List arguments
-  args <- list(.map = map,
-               .timeline = timeline,
-               .state = state,
-               .xinit = NULL,
-               .xinit_pars = list(mobility = sim$mobility),
-               .yobs = model_obs$yobs,
-               .model_obs = model_obs$model_obs,
+  #### Define observation model(s)
+  model_obs <- patter_ModelObs(sim = sim, 
+                               timeline = timeline, 
+                               detections = detections,
+                               moorings = moorings,
+                               archival = archival)
+  
+  yobs_fwd <- yobs_bwd <- model_obs
+  if (rlang::has_name(model_obs, "ModelObsAcousticContainer")) {
+    yobs_fwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$forward
+    yobs_bwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$backward
+  }
+  
+  #### List filter arguments
+  # Set arguments to reduce computation time 
+  args <- list(.timeline   = timeline,
+               .state      = state,
+               .xinit      = NULL,
+               .yobs       = yobs_fwd,
                .model_move = model_move,
                .n_particle = sim$np, # patter_np(sim),
-               .direction = "forward",
-               .verbose = TRUE)
+               .n_move     = 10000L,
+               .n_record   = 500L,
+               .n_iter     = 1L,
+               .direction  = "forward",
+               .verbose    = TRUE)
   
   #### Implement particle filter
   # Forward filter 
@@ -169,7 +177,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   # Backward filter 
   if (success) {
     cat("\n... (2) Implementing backward filter...\n")
-    args$.yobs      <- patter_ModelObs_backward(sim, model_obs)$yobs
+    args$.yobs      <- yobs_bwd
     args$.direction <- "backward"
     success         <- pf_filter_wrapper(sim = sim, args = args)
   }
