@@ -115,6 +115,9 @@ estimate_coord_patter <- function(sim, map, datasets) {
   moorings    <- datasets$moorings
   archival    <- datasets$archival_by_unit[[sim$unit_id]]
   behaviour   <- datasets$behaviour_by_unit[[sim$unit_id]]
+  # (optional) Trial implementation of depth data only when resting
+  # archival <- archival[which(behaviour == 1L), ]
+  # stopifnot(nrow(archival) > 0L)
   
   #### Define timeline
   timeline <- patter_timeline(sim$month_id)
@@ -165,7 +168,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
                .model_move = model_move,
                .n_particle = sim$np, # patter_np(sim),
                .n_move     = 10000L,
-               .n_record   = 500L,
+               .n_record   = 1000L,
                .n_iter     = 1L,
                .direction  = "forward",
                .verbose    = TRUE)
