@@ -93,6 +93,8 @@ patter_np <- function(sim) {
 #' Define a pf_filter() that runs the algorithms for a given simulation
 pf_filter_wrapper <- function(sim, args) {
   
+  # browser()
+  
   # Define outputs (fwd, bwd)
   if (args$.direction == "forward") {
     routine <- "fwd"
@@ -126,6 +128,22 @@ pf_filter_wrapper <- function(sim, args) {
     error <- pout$message
   }
 
+  # Visualise outputs
+  if (FALSE) {
+    # Depth time series
+    arc <- args$.yobs$ModelObsDepthNormalTrunc
+    plot(arc$timestamp[1:600], arc$obs[1:600] * -1, type = "l")
+    points(pout$states$timestamp, pout$states$map_value * -1, pch = ".", col = scales::alpha("dimgrey", 0.5))
+    lines(arc$timestamp[1:600], arc$obs[1:600] * -1, lwd = 2)
+    # Depth 'error' (depth of individual below the seabed)
+    # > TO DO
+    # Animated maps 
+    m <- terra::rast(here_data("spatial", "bathy.tif"))
+    ani(.sim = sim, .map = m, .moorings = moorings, .start = 1L, .end = 600, .input = args, .output = pout)
+    # Interactive debugging
+    debug_acdc(.map = terra::rast(here_data("spatial", "bathy.tif")), .moorings = moorings, .step = 100, .input = args, .output = pout)
+  }
+  
   # Collect success statistics
   dout    <- data.table(id = sim$index, 
                         method = "particle", 
