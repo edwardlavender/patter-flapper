@@ -64,8 +64,6 @@ julia_connect()
 set_seed()
 set_map(map)
 julia_command(ModelMoveFlapper)
-julia_command(ModelObsAcousticContainer)
-julia_command(ModelObsAcousticContainer.logpdf_obs)
 
 #### Define simulation settings
 # We simulate three paths
@@ -578,6 +576,24 @@ if (FALSE) {
       qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
     }) |> 
     rbindlist(fill = TRUE)
+}
+# (optional) Test convergence
+if (FALSE) {
+  
+  # Define an example iteration dataset for the ACDC algorithm
+  iteration[dataset == "acdc" & sensitivity == "best", ] 
+  iteration[dataset == "acdc" & sensitivity == "best" & iter == 1 & parameter_id == 1L, ]
+  iteration <- iteration[index == 501, ]
+
+  # Update the number of particles & test convergence
+  iteration[, np := 50000]
+  
+  # Run algorithm
+  lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+  
+  # Check outputs
+  qs::qread(file.path(iteration$folder_coord, "data-fwd.qs"))
+    
 }
 # Implementation
 gc()
