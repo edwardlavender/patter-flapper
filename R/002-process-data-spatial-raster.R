@@ -20,6 +20,7 @@ dv::clear()
 
 #### Essential packages
 library(sf)
+library(ggplot2)
 dv::src()
 
 #### Load data
@@ -36,162 +37,172 @@ julia_connect()
 ###########################
 #### Process Howe dataset (base)
 
-# Process base dataset
-howe_full <- run(here_data("spatial", "howe-full.tif"), 
-            overwrite = FALSE, 
-            expr = {
-              # (~33 s)
-              howe <- abs(howe)
-              names(howe) <- terra::varnames(howe) <- "map_value"
-              howe
-            }, 
-            read = terra::rast, 
-            write = terra::writeRaster)
-
-# Visualise full dataset & gaps:
-# * Loch Linnhe
-# * South of Jura
-# * West of Islay/Coll & Tiree
-# * South and Eastern Skye
-# * West and Northern Skye
-terra::plot(howe_full)
-coast |> 
-  terra::simplifyGeom(tolerance = 500) |> 
-  terra::plot(add = TRUE, border = "dimgrey")
-
-# Crop howe 
-howe <- run(here_data("spatial", "howe.tif"), 
-            overwrite = FALSE, 
-            expr = {
-              # ~38 s
-              terra::crop(howe_full, bb)
-            }, 
-            read = terra::rast, 
-            write = terra::writeRaster)
-
-# Visualise cropped dataset & gaps:
-# * Loch Linnhe
-# * North-western Coll
-# * Southern boundary (South Jura)
-plot_howe <- function() {
-  terra::plot(howe)
+if (FALSE) {
+  
+  # Process base dataset
+  howe_full <- run(here_data("spatial", "howe-full.tif"), 
+                   overwrite = FALSE, 
+                   expr = {
+                     # (~33 s)
+                     howe <- abs(howe)
+                     names(howe) <- terra::varnames(howe) <- "map_value"
+                     howe
+                   }, 
+                   read = terra::rast, 
+                   write = terra::writeRaster)
+  
+  # Visualise full dataset & gaps:
+  # * Loch Linnhe
+  # * South of Jura
+  # * West of Islay/Coll & Tiree
+  # * South and Eastern Skye
+  # * West and Northern Skye
+  terra::plot(howe_full)
   coast |> 
     terra::simplifyGeom(tolerance = 500) |> 
     terra::plot(add = TRUE, border = "dimgrey")
-  nothing()
+  
+  # Crop howe 
+  howe <- run(here_data("spatial", "howe.tif"), 
+              overwrite = FALSE, 
+              expr = {
+                # ~38 s
+                terra::crop(howe_full, bb)
+              }, 
+              read = terra::rast, 
+              write = terra::writeRaster)
+  
+  # Visualise cropped dataset & gaps:
+  # * Loch Linnhe
+  # * North-western Coll
+  # * Southern boundary (South Jura)
+  plot_howe <- function() {
+    terra::plot(howe)
+    coast |> 
+      terra::simplifyGeom(tolerance = 500) |> 
+      terra::plot(add = TRUE, border = "dimgrey")
+    nothing()
+  }
+  plot_howe()
+  
 }
-plot_howe()
 
 
 ###########################
 ###########################
 #### Expand Howe dataset
 
-bathy <- howe
-terra:::readAll(bathy)
-
-#### Loch Linnhe (~36 s)
-files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
-                    pattern = "Loch Linnhe Blk.*\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_linnhe <- files
-terra::rast(files[1])
-linnhe <- get_bathy(files = files, 
-                    bathy = bathy, 
-                    coast = coast, 
-                    outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-linnhe.tif"))
-
-#### Loch Etive (~11 s)
-files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
-                    pattern = "Loch Etive.*\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_etive <- files
-terra::rast(files[1])
-etive <- get_bathy(files = files,
-                   bathy = bathy, 
-                   coast = coast, 
-                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-etive.tif"))
-terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
-
-#### Loch Creran (~6 s)
-files <- list.files(here_data_raw("bathymetry", "loch-creran", "datasets"), 
-                    pattern = "Loch Creran.*\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_creran <- files
-terra::rast(files[1])
-creran <- get_bathy(files = files,
-                   bathy = bathy, 
-                   coast = coast, 
-                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-creran.tif"))
-terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
-
-#### Coll and Tiree (~82 s)
-files <- list.files(here_data_raw("bathymetry", "coll-and-tiree", "datasets"), 
-                    pattern = "\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_coll <- files
-terra::rast(files[1])
-coll <- get_bathy(files = files,
+if (FALSE) {
+  
+  bathy <- howe
+  terra:::readAll(bathy)
+  
+  #### Loch Linnhe (~36 s)
+  files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
+                      pattern = "Loch Linnhe Blk.*\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_linnhe <- files
+  terra::rast(files[1])
+  linnhe <- get_bathy(files = files, 
+                      bathy = bathy, 
+                      coast = coast, 
+                      outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-linnhe.tif"))
+  
+  #### Loch Etive (~11 s)
+  files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
+                      pattern = "Loch Etive.*\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_etive <- files
+  terra::rast(files[1])
+  etive <- get_bathy(files = files,
+                     bathy = bathy, 
+                     coast = coast, 
+                     outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-etive.tif"))
+  terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
+  
+  #### Loch Creran (~6 s)
+  files <- list.files(here_data_raw("bathymetry", "loch-creran", "datasets"), 
+                      pattern = "Loch Creran.*\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_creran <- files
+  terra::rast(files[1])
+  creran <- get_bathy(files = files,
+                      bathy = bathy, 
+                      coast = coast, 
+                      outfile = here_data_raw("bathymetry", "temporary", "tiles", "loch-creran.tif"))
+  terra::plot(linnhe, add = TRUE, col = scales::alpha("purple", 0.5))
+  
+  #### Coll and Tiree (~82 s)
+  files <- list.files(here_data_raw("bathymetry", "coll-and-tiree", "datasets"), 
+                      pattern = "\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_coll <- files
+  terra::rast(files[1])
+  coll <- get_bathy(files = files,
                     bathy = bathy, 
                     coast = coast, 
                     outfile = here_data_raw("bathymetry", "temporary", "tiles", "col.tif"))
+  
+  #### Islay (~34 mins)
+  files <- list.files(here_data_raw("bathymetry", "islay", "datasets"), 
+                      pattern = "\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_islay <- files
+  terra::rast(files[1])
+  islay <- get_bathy(files = files,
+                     bathy = bathy, 
+                     coast = coast, 
+                     outfile = here_data_raw("bathymetry", "temporary", "tiles", "islay.tif"))
+  
+  #### Lochgilphead (~89 s)
+  files <- list.files(here_data_raw("bathymetry", "lochgilphead", "datasets"), 
+                      pattern = "\\.bag$", 
+                      full.names = TRUE, recursive = TRUE)
+  files_lochgilphead <- files
+  terra::rast(files[1])
+  lochgilphead <- get_bathy(files = files,
+                            bathy = bathy, 
+                            coast = coast, 
+                            outfile = here_data_raw("bathymetry", "temporary", "tiles", "lochgilphead.tif"))
+  
+  #### Merge datasets (~3 mins?)
+  tic()
+  # Expand datasets
+  bathys <- list(linnhe, etive, creran, coll, islay, lochgilphead)
+  bathys <- lapply(bathys, function(r) {
+    terra::resample(r, bathy, threads = TRUE)
+  })
+  # Merge datasets (~2 mins)
+  bathys <- append(list(bathy), bathys)
+  bathy <- do.call(terra::merge, bathys)
+  # Save dataset
+  terra::writeRaster(bathy, 
+                     here_data_raw("bathymetry", "temporary", "merged-dataset.tif"), 
+                     overwrite = TRUE)
+  toc()
+  
+  #### Record datasets
+  dlinnhe       <- files_linnhe |> sort_bathysets()
+  detive        <- files_etive |> sort_bathysets()
+  dcreran       <- files_creran |> sort_bathysets()
+  dcoll         <- files_coll |> sort_bathysets()
+  dislay        <- files_islay |> sort_bathysets()
+  dlochgilphead <- files_lochgilphead |> sort_bathysets()
+  bathysets <- data.table(
+    Region = c("(Base) Firth of Lorn", 
+               fill(dcoll, "Coll and Tiree"),
+               fill(dislay, "Islay"), 
+               fill(dcreran, "Loch Creran"), 
+               fill(detive, "Loch Etive"), 
+               fill(dlinnhe, "Loch Linnhe"), 
+               fill(dlochgilphead, "Lochgilphead")),
+    Dataset = c("Howe et al. (2014)", dcoll, dislay, dcreran, detive, dlinnhe, dlochgilphead))
+  prettyGraphics::tidy_write(bathysets, here_fig("bathysets.txt"))
+  # rstudioapi::navigateToFile(here_fig("bathysets.txt"))
+  
+} 
 
-#### Islay (~34 mins)
-files <- list.files(here_data_raw("bathymetry", "islay", "datasets"), 
-                    pattern = "\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_islay <- files
-terra::rast(files[1])
-islay <- get_bathy(files = files,
-                   bathy = bathy, 
-                   coast = coast, 
-                   outfile = here_data_raw("bathymetry", "temporary", "tiles", "islay.tif"))
-
-#### Lochgilphead (~89 s)
-files <- list.files(here_data_raw("bathymetry", "lochgilphead", "datasets"), 
-                    pattern = "\\.bag$", 
-                    full.names = TRUE, recursive = TRUE)
-files_lochgilphead <- files
-terra::rast(files[1])
-lochgilphead <- get_bathy(files = files,
-                          bathy = bathy, 
-                          coast = coast, 
-                          outfile = here_data_raw("bathymetry", "temporary", "tiles", "lochgilphead.tif"))
-
-#### Merge datasets (~3 mins?)
-tic()
-# Expand datasets
-bathys <- list(linnhe, etive, creran, coll, islay, lochgilphead)
-bathys <- lapply(bathys, function(r) {
-  terra::resample(r, bathy, threads = TRUE)
-})
-# Merge datasets (~2 mins)
-bathys <- append(list(bathy), bathys)
-bathy <- do.call(terra::merge, bathys)
-# Save dataset
-terra::writeRaster(bathy, 
-                   here_data_raw("bathymetry", "temporary", "merged-dataset.tif"), 
-                   overwrite = TRUE)
-toc()
-
-#### Record datasets
-dlinnhe       <- files_linnhe |> sort_bathysets()
-detive        <- files_etive |> sort_bathysets()
-dcreran       <- files_creran |> sort_bathysets()
-dcoll         <- files_coll |> sort_bathysets()
-dislay        <- files_islay |> sort_bathysets()
-dlochgilphead <- files_lochgilphead |> sort_bathysets()
-bathysets <- data.table(
-  Region = c("(Base) Firth of Lorn", 
-             fill(dcoll, "Coll and Tiree"),
-             fill(dislay, "Islay"), 
-             fill(dcreran, "Loch Creran"), 
-             fill(detive, "Loch Etive"), 
-             fill(dlinnhe, "Loch Linnhe"), 
-             fill(dlochgilphead, "Lochgilphead")),
-  Dataset = c("Howe et al. (2014)", dcoll, dislay, dcreran, detive, dlinnhe, dlochgilphead))
-prettyGraphics::tidy_write(bathysets, here_fig("bathysets.txt"))
-# rstudioapi::navigateToFile(here_fig("bathysets.txt"))
+bathy <- terra::rast(here_data_raw("bathymetry", "temporary", "merged-dataset.tif"))
 
 
 ###########################
@@ -267,6 +278,9 @@ smooth <- terra::rast("data/spatial/spikes.tif")
 spikes <- bathy - smooth
 # terra::plot(spikes > 5)
 
+# Use smoothed bathymetry 
+bathy <- smooth
+
 
 ###########################
 ###########################
@@ -275,6 +289,118 @@ spikes <- bathy - smooth
 # (optional) Compare datasets in overlapping regions
 # (optional) TO DO
 # See old code for outline
+
+
+###########################
+###########################
+#### Aggregation
+
+#### Motivation
+# With a high-resolution bathymetry layer, the initial sampling of locations is slow
+# In addition, convergence is challenging
+# Very large numbers of particles are required to achieve convergence, even in simulations, which is expensive
+# An aggregated bathymetry layer may facilitate convergence and reduce computation time
+# Here, we explore aggregation options and the induced error
+
+#### Record bathy 5 m
+bathy_5m <- terra::deepcopy(bathy)
+rnow     <- terra::res(bathy_5m)
+# terra::writeRaster(bathy_5m, here_data("spatial", "bathy-5m.tif"), overwrite = TRUE)
+
+#### Define aggregation resolution
+# We use a 500 pixel raster for UD estimation
+rnew      <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy)) |> terra::res()
+
+#### Aggregate bathy & compute error in terms of variance in cells 
+# Aggregate bathy
+bathy_agg    <- terra::aggregate(bathy, fact = rnew / rnow, fun = "mean", na.rm = TRUE)
+terra::plot(bathy_agg)
+# Examine SD within each aggregated grid cell
+bathy_agg_sd <- terra::aggregate(bathy, fact = rnew / rnow, fun = "sd", na.rm = TRUE)
+terra::hist(bathy_agg_sd, maxcell = 1e9L, breaks = 1000, xlim = c(0, 50))
+terra::global(bathy_agg_sd, "mean", na.rm = TRUE)
+terra::global(bathy_agg_sd, median, na.rm = TRUE)
+terra::global(bathy_agg_sd, quantile, na.rm = TRUE)
+terra::plot(bathy_agg_sd)
+
+#### Aggregate bathy & compute error in terms of differences in depth
+# Compute aggregation error for different levels of aggregation (~7 mins)
+# c(10, 25, etc.) are potential choices for the resolution of the bathymetry raster
+if (FALSE) {
+  
+  aggerror <- 
+    cl_lapply(list(10, 25, 50, 75, 100, 200, 250), function(rnew) {
+      
+      # Aggregate bathy to selected resolution 
+      # ~4s for 50 m resolution
+      tic()
+      bathy_agg <- terra::aggregate(bathy, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+      toc()
+      
+      # Disaggregate bathy to original resolution 
+      # ~16 s for 50 to 5 m 
+      tic()
+      bathy_disagg <- terra::resample(bathy_agg, bathy_5m, method = "near", threads = TRUE) 
+      toc()
+      
+      # Compute error induced by aggregation
+      bathy_delta <- bathy_disagg - bathy_5m
+      
+      # Visually examine error
+      # * Note there are some v. large errors as not all spikes have been processed
+      # terra::plot(bathy_delta)
+      
+      # Compute error statistics (~30 s)
+      # terra::global(bathy_delta, "mean", na.rm = TRUE)    # 2.275835
+      # terra::global(bathy_delta, median, na.rm = TRUE)    # 0.6148987 
+      # terra::global(bathy_delta, "sd", na.rm = TRUE)      # 10.9404
+      tic()
+      probs  <- seq(0.9, 1, by = 0.01)
+      errors <- terra::global(bathy_delta, quantile, probs = probs, na.rm = TRUE)
+      toc()
+      
+      # Return data.table
+      data.table(rnew = rnew, probs = probs, error = as.numeric(errors[1, ]))
+      
+    }) |> rbindlist()
+  
+  #### Visualise error ~ resolution (by probs quantile)
+  # The error increases slightly with at aggregated resolutions
+  # This is similar except for 0.98 & 0.99 quantiles where the error grows more quickly
+  png(here_fig("bathy-aggregation-error.png"), 
+      height = 8, width = 10, units = "in", res = 600)
+  aggerror |>
+    ggplot(aes(rnew, error)) + 
+    geom_line() + 
+    facet_wrap(probs) |> 
+    print()
+  dev.off()
+  
+  #### Aggregate bathymetry
+  aggerror[rnew == 100, ]
+  # rnew probs      error
+  # <num> <num>      <num>
+  #   1:   100  0.90   8.747966
+  # 2:   100  0.91   9.473255
+  # 3:   100  0.92  10.327118
+  # 4:   100  0.93  11.357324
+  # 5:   100  0.94  12.629799
+  # 6:   100  0.95  14.281601
+  # 7:   100  0.96  16.560842
+  # 8:   100  0.97  20.054390
+  # 9:   100  0.98  26.463852
+  # 10:   100  0.99  53.530594
+  # 11:   100  1.00 349.974457
+  # rnew      <- 100
+  # bathy_agg <- terra::aggregate(bathy, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+  # terra::plot(bathy_agg)
+  
+}
+
+#### Use aggregated bathymetry layer
+bathy        <- terra::deepcopy(bathy_agg)
+names(bathy) <- "map_value"
+bathy
 
 
 ###########################
