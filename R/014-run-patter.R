@@ -52,8 +52,9 @@ datasets <- list(detections_by_unit = acoustics_by_unit,
                  behaviour_by_unit = behaviour_by_unit)
 
 #### (optional) Testing
-test <- FALSE
+test <- TRUE
 if (test) {
+  
   # Visualise time series to pick an example individual with good time series
   if (FALSE) {
     nid <- length(unique(iteration$unit_id))
@@ -72,37 +73,43 @@ if (test) {
     par(pp)
     dev.off()
   }
+  
   # Select AC/DC/ACDC implementations for an example individual with good time series
-  iteration <- iteration[unit_id == 119 & sensitivity == "best", ]
+  iteration <- iteration[unit_id == 119 & sensitivity == "best", ] # fails around ~560
+  # iteration <- iteration[unit_id == 55 & sensitivity == "best", ]  # fails around ~15952s, works with 100,000 particles
+  iteration <- iteration[dataset == "acdc", ]
+  
   # Restrict np for speed 
   # * This must be >= n_record which is 1000L
-  iteration[, np := 1000L]
+  iteration[, np := 50000L]
+  
+  # (optional) Trial adjusted parameters
+  # * Large sigma, large depth_deep_eps -> weak influence of depths
+  # * Large sigma, small depth_deep_eps -> uniform model with truncation
+  # * Small sigma, large depth_deep_eps -> remove truncation
+  iteration[, depth_sigma := 10000]
+  iteration[, depth_deep_eps := 20]
+  curve(dnorm(x, 0, 20), from = 0, to = 350)
+  curve(dnorm(x, 200, 20), from = 0, to = 350)
+  
+  # (optional) Turn off smoothing for convergence trials
+  iteration[, smooth := FALSE, ]
 } 
 
 #### Select iterations
 # Start with 'best' implementations 
 iteration <- iteration[sensitivity == "best", ]
+# Focus on ACDC implementations (hard)
+iteration <- iteration[dataset == "acdc", ]
 table(table(iteration$unit_id))
-iteration <- iteration[2:.N, ]
-
-#### TO DO
-# * Time taken to initialise the filter e.g., for index 79 is ridiculous! (39 mins!)
-
-#### Trial convergence solutions
-# TO DO on Eawag MacBook
-# Trial solutions to improve convergence for selected ACDC runs e.g. row 11
-# * More runs, fewer particles (e.g., 100 runs with 10000 particles)
-# * Select 5th depth observation 
-# * Boost bathymetric uncertainty 
-# * Advanced movement model that prevents particle death w/o imposing benthic movement 
-#   (handle this at the likelihood stage, check what is valid with CA/AS)
+# iteration <- iteration[2:.N, ]
 
 #### Estimate coordinates
 gc()
 nrow(iteration)
 rm(map, vmap)
 # Set up log.txt file (on unix only)
-if (on_unix()) {
+if (FALSE & on_unix()) {
   dirs.create(here_data("output", "log", "analysis"))
   log.txt <- here_data("output", "log", "analysis", "patter-log.txt")
   log.txt <- file(log.txt, open = "wt")
