@@ -32,6 +32,7 @@ rm(list = ls())
 dv::clear()
 
 #### Essential packages
+library(truncdist)
 dv::src()
 
 #### Load data 
@@ -41,45 +42,116 @@ moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
+mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 
 #### Julia connect
 julia_connect()
 set_seed()
 julia_command(ModelMoveFlapper)
+julia_command('Rasters.checkmem!(false);')
 
 
 ###########################
 ###########################
 #### Trials
 
-#### Define ACDC iterations
+#### Define iterations
+# Define ACDC iterations 
 iteration <- iteration[sensitivity == "best" & dataset == "acdc", ]
+# (optional) Select individuals with 'good' time series which probably remained near MPA
+# iteration <- iteration[unit_id %in% c(47, 49, 52, 74, 119), ] 
+# (optional) Focus on individuals with convergence challenges 
+# failures <- c(1, 20, 29, 30, 46, 57, 58, 72, 74, 109, 110, 115, 118, 121, 124)
+# iteration <- iteration[unit_id %in% failures, ]
+iteration
 
 #### Define map 
 map  <- terra::rast(here_data("spatial", "bathy-5m.tif"))
 if (TRUE) {
+  
+  # Visualise map, incl. spikes
+  # terra::plot(map)
+  # terra::plot(map > 100)
+  # terra::sbar(500)
+  
+  # Aggregate bathy onto a ~500 x 500 grid
   rnow <- terra::res(map)
   rnew <- 
-    terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(map)) |> 
+    terra::rast(terra::ext(map), nrow = 500, ncol = 500, crs = terra::crs(map)) |> 
     terra::res()
+  rnew <- c(rnew[2], rnew[1])
   map_agg <- terra::aggregate(map, fact = rnew / rnow, fun = "mean", na.rm = TRUE)
-  terra::plot(map_agg)
+  map_agg
+  
+  # Visualise aggregation
+  # > There are very few spikes around the coastline (good)
+  terra::plot(map_agg > 100)
+  
+  # Change range within aggregated cells
+  map_agg_max <-  terra::aggregate(map, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+  map_agg_min <- terra::aggregate(map, fact = rnew / rnow, fun = "min", na.rm = TRUE)
+  map_agg_rng <- map_agg_max - map_agg_min
+  terra::hist(map_agg_rng)
+  terra::global(map_agg_rng, "sd", na.rm = TRUE)
+  terra::global(map_agg_rng, quantile, probs = seq(0, 1, by = 0.01), na.rm = TRUE)
+  
+  # Check SD within aggregated cells 
   map_agg_sd <- terra::aggregate(map, fact = rnew / rnow, fun = "sd", na.rm = TRUE)
-  terra::global(map_agg_sd, "mean")
+  terra::global(map_agg_sd, "mean", na.rm = TRUE)
+  terra::global(map_agg_sd, quantile, prob = seq(0.95, 1, by = 0.001), na.rm = TRUE)
+  
+  # Visualise SD
+  # * This is high along coastlines (steep relief)
+  terra::plot(map_agg_sd)
+  
+  # Check maximum depth below depth of aggregated cell (+ 20 m)
+  # * The differences are greatest near coastline
+  map_agg_max   <- terra::aggregate(map, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+  map_agg_delta <- map_agg_max - map_agg
+  terra::plot(map_agg_delta)
+  terra::global(map_agg_delta, quantile, prob = seq(0.9, 1, by = 0.001), na.rm = TRUE) # 43.20033 m + 20 m
+  
+  # Use aggregated map
   map <- map_agg
+  
 }
 names(map) <- "map_value"
-set_map(map)
 map
 
+#### Visualise maps
+# Visualise study area
+terra::plot(map)
+points(moorings$receiver_x, moorings$receiver_y)
+terra::sbar(20000) # 20 km
+# Consider restricted region in which to sample initial locations
+bbinit <- matrix(c(681197.1, 6180218,
+                   681197.1, 6280651,
+                  723437.9, 6280651,
+                  723437.9, 6180218), 
+                 nrow = 4, byrow = TRUE) 
+lines(bbinit)
+origin <- terra::crop(map, terra::ext(bbinit))
+# terra::plot(origin)
+
+#### Set maps 
+# (optional) Set restricted origin
+set_map(origin, .as_Raster = TRUE, .as_GeoArray = FALSE)
+# Set wider maps
+set_map(map, .as_Raster = FALSE, .as_GeoArray = TRUE)
+set_vmap(.map = map, .mobility = 1095, .plot = TRUE)
+
 #### Iterate over example individuals and check convergence
-for (i in 1:5) {
+tic()
+# iteration <- iteration[2, ]
+for (i in 1:nrow(iteration)) {
+
+  sim <- iteration[i, ]
   
   print(paste0(rep("-", 50), collapse = ""))
-  print(i)
+  print(paste(i, ":", sim$unit_id))
   
   #### Define individual datasets
-  sim         <- iteration[i, ]
+
   detections  <- acoustics_by_unit[[sim$unit_id]]
   archival    <- archival_by_unit[[sim$unit_id]]
   behaviour   <- behaviour_by_unit[[sim$unit_id]]
@@ -99,7 +171,7 @@ for (i in 1:5) {
   #### Define acoustic observations 
   moorings[, receiver_alpha := sim$receiver_alpha]
   moorings[, receiver_beta := sim$receiver_beta]
-  moorings[, receiver_gamma := sim$receiver_gamma]
+  moorings[, receiver_gamma := 6000]
   acoustics <- assemble_acoustics(.timeline = timeline,
                                   .detections = detections, 
                                   .moorings = moorings)
@@ -108,7 +180,7 @@ for (i in 1:5) {
   containers <- assemble_acoustics_containers(.timeline  = timeline, 
                                               .acoustics = acoustics,
                                               .mobility = sim$mobility, 
-                                              .threshold = 139199)
+                                              .map = map)
   
   #### Define archival observations
   archival <- assemble_archival(.timeline = timeline, 
@@ -121,40 +193,91 @@ for (i in 1:5) {
                                   select("timestamp", "sensor_id", "obs", 
                                          "depth_sigma", "depth_deep_eps") |> 
                                   as.data.table())
-  archival[, depth_sigma := 20]
-  archival[, depth_deep_eps := 20]
-  curve(dnorm(x, 0, 40), from = 0, to = 350)
-  curve(dnorm(x, 200, 40), from = 0, to = 350)
+  # Update parameters, e.g.:
+  # * (20, 20): default
+  # * (35, 20): inflated sigma (20 + 15 for 95 % quantile due to aggregation)
+  # * (35, 500): inflated depth_deep_eps threshold due to aggregation 
+  # * (100, 100): effectively 'uniform' probabilities above seabed depth reflecting unknown pelagic behaviour
+  archival[, depth_sigma := 100]
+  archival[, depth_deep_eps := 350]
+  seabed <- 0
+  seabed <- 100
+  seabed <- 350
+  curve(dtrunc(x, spec = "norm", a = 0, b = 350, mean = seabed, sd = 100), from = 0, to = 350)
   
   #### Collect yobs
-  yobs <- list(ModelObsAcousticLogisTrunc = acoustics,
-               ModelObsAcousticContainer = containers$forward, 
-               ModelObsDepthNormalTrunc = archival)
+  # Define yobs for ACDC
+  alg <- "acdc"
+  yobs_fwd <- list(ModelObsAcousticLogisTrunc = acoustics,
+                   ModelObsAcousticContainer = containers$forward, 
+                   ModelObsDepthNormalTrunc = archival)
+  yobs_bwd <- list(ModelObsAcousticLogisTrunc = acoustics,
+                   ModelObsAcousticContainer = containers$backward, 
+                   ModelObsDepthNormalTrunc = archival)
+  # (optional) Set yobs for AC
+  # alg <- "ac"
+  if (alg == "ac") {
+    yobs_fwd$ModelObsDepthNormalTrunc <- NULL
+    yobs_bwd$ModelObsDepthNormalTrunc <- NULL
+  }
+  # (optional) Set yobs for DC
+  # alg <- "dc"
+  if (alg == "dc") {
+    yobs_fwd$ModelObsAcousticLogisTrunc <- NULL
+    yobs_fwd$ModelObsAcousticContainer  <- NULL
+    yobs_bwd$ModelObsAcousticLogisTrunc <- NULL
+    yobs_bwd$ModelObsAcousticContainer  <- NULL
+  }
   
   #### Collect args 
   args <- list(.timeline   = timeline,
                .state      = state,
                .xinit      = NULL,
-               .yobs       = yobs,
+               .yobs       = yobs_fwd,
                .model_move = model_move,
                .n_particle = 1e5L, 
                .n_move     = 10000L,
+               #.n_resample = as.numeric(500),
                .n_iter     = 1L,
                .direction  = "forward",
                .verbose    = TRUE)
   
   #### Run filter and check convergence
-  pout <- do.call(pf_filter, args, quote = TRUE) 
+  set_seed()
+  fwd <- tryCatch(do.call(pf_filter, args, quote = TRUE), 
+                  error = function(e) e)
+  if (inherits(fwd, "error")) {
+    message(fwd$message)
+  }
+  
+  #### (optional) Run downstream analyses
+  # For an example individual run downstream analyses
+  # Compare maps for AC, DC and ACDC
+  # Visualise the extent to which the incorporation of depth parameters improve AC maps
+  if (FALSE) {
+    
+    # Run backward filter 
+    args$.yobs      <- yobs_bwd
+    args$.direction <- "backward"
+    set_seed()
+    bwd <- do.call(pf_filter, args, quote = TRUE)
+    
+    # Run smoother
+    set_seed()
+    smo <- pf_smoother_two_filter(.n_particle = 500L)
+    
+    # Visualise map for algorithm in fig/trials/
+    png(here_fig("trials", glue("{sim$index}-{alg}.png")), 
+        height = 10, width = 10, units = "in", res = 600)
+    ud <- map_pou(.map = map, .coord = smo$states)$ud
+    points(moorings$receiver_x, moorings$receiver_y)
+    # map_hr_core(.map = ud, .add = TRUE)
+    dev.off()
+  }
   
 }
-
-#### Results (aggregated bathymetry)
-# * Normal depth model (20, 20): 
-# * Normal depth model (40, 20):
-# * Normal depth model (20, 200):
-# * Normal depth model (20, 200):
-# * Uniform depth model (-100, 0):
-# * Uniform depth model (-100, 0):
+toc()
+beepr::beep(10)
 
 
 #### End of code. 
