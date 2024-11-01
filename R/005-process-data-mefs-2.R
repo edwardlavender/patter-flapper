@@ -167,7 +167,22 @@ archival <-
   group_by(individual_id) |> 
   filter(date >= arc_start_date & date <= arc_end_date) |>
   ungroup() |>
+  # For each individual/month, focus on complete time series 
+  # * (e.g., excluding breaks due to recapture events)
+  group_by(individual_id, mmyy) |> 
+  mutate(keep = all(patter_timeline(mmyy[1]) %in% timestamp)) |>
+  ungroup() |> 
+  filter(keep) |>
+  mutate(keep = NULL) |>
   as.data.table()
+# Check for rows
+stopifnot(nrow(archival) > 0L)
+# Additional check for known recapture events (individual_id, mmyy)
+# * Data for these individuals/months should be missing:
+# 28  07-2016
+# 28  08-2016
+archival[individual_id == 28 & mmyy == "07-2016", ]
+archival[individual_id == 28 & mmyy == "08-2016", ]
 # Additional check for NAs
 any(is.na(archival$depth))
 
@@ -280,6 +295,10 @@ behaviour_by_unit <- lapply(archival_by_unit, function(d) {
     return(NULL)
   }
   
+  # archival_by_unit must not contain gaps due to recapture events
+  # otherwise the behaviour vector doesn't match with timeline
+  # This is enforced above
+  
   # Get 'low activity'/resting behaviour
   # * 0 = resting / 1 = active (+ 1)
   state <- flapper::get_mvt_resting(copy(d)) + 1
@@ -330,6 +349,14 @@ unitsets |>
   summarise(n = n()) |> 
   pull(n) |> 
   table()
+# For every individual/month, check the timelines line up:
+lapply(split(unitsets, seq_row(unitsets)), function(sim) {
+  timeline <- patter_timeline(sim$month_id)
+  arc      <- archival_by_unit[[sim$unit_id]]
+  beh      <- behaviour_by_unit[[sim$unit_id]]
+  stopifnot(identical(timeline, arc$timestamp))
+  stopifnot(length(timeline) == length(beh))
+})
 
 
 ###########################
