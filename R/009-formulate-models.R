@@ -7,6 +7,7 @@
 
 #### Prerequisites
 # 1) Current speed analysis (process-data-spatial-fvcom.R)
+# 2) Parameter choices are informed by run-patter-trials.R
 
 
 ###########################
@@ -28,9 +29,21 @@ library(truncdist)
 map <- terra::rast(here_data("spatial", "bathy.tif"))
 
 #### Local pars
-yat  <- c(0, 0.25, 0.5, 0.75, 1)
-lwds <- c(1.5, 1, 1)
-cols <- c("black", "red", "blue")
+# Sensitivity thresholds
+# * Consider inflating/deflating parameters by a constant amount for comparability 
+# * Uncertainty in the movement and the detection probability model is not equal
+# * Different degrees of uncertainty are required
+# * These degrees are for the movement model 
+psensitivity <- 0.5
+pinflate     <- 1 + psensitivity
+pdeflate     <- 1 - psensitivity
+tsensitivity <- 0.1
+tinflate     <- 1 + tsensitivity
+tdeflate     <- 1 - tsensitivity 
+# Graphics
+yat         <- c(0, 0.25, 0.5, 0.75, 1)
+lwds        <- c(1.5, 1, 1)
+cols        <- c("black", "red", "blue")
 
 
 ###########################
@@ -79,9 +92,12 @@ dev.off()
 #### Active
 
 #### Define parameters
-pmovement_active <-  data.table(k2 = c(5, 1, 10), 
-                                theta2 = c(100, 60, 150), 
-                                mobility = c(1095, 990, 1125))
+# pmovement_active <-  data.table(k2 = c(5, 1, 10), 
+#                                 theta2 = c(100, 60, 150), 
+#                                 mobility = c(1095, 990, 1125))
+pmovement_active <-  data.table(k2 = c(5, 5 * pdeflate, 5 * pinflate), 
+                                theta2 = c(100, 100 * pdeflate, 100 * pinflate), 
+                                mobility = c(1095, 1095 * tdeflate, 1095 * tinflate))
 p       <- copy(pmovement_active)
 p$label <- c("Best-guess", "Restrictive", "Flexible")
 p$lwd   <- lwds
@@ -172,9 +188,14 @@ dev.off()
 #### Acoustic observation model 
 
 #### Define parameters
-pdetection <- data.table(receiver_alpha = c(4, 3, 5), 
-                         receiver_beta = c(-0.0094, -0.01, -0.009), 
-                         receiver_gamma = c(1750, 1500, 2000))
+# pdetection <- data.table(receiver_alpha = c(4, 3, 5), 
+#                          receiver_beta = c(-0.0094, -0.01, -0.009), 
+#                          receiver_gamma = c(1750, 1500, 2000))
+pinflate <- 1.25
+pdeflate <- 0.75
+pdetection <- data.table(receiver_alpha = c(4, 4 * pinflate, 4 * pdeflate), 
+                         receiver_beta = c(-0.0094, -0.0094 * pdeflate, -0.0094 * pinflate), 
+                         receiver_gamma = c(3000, 3000 * pinflate, 3000 * pdeflate))
 p       <- copy(pdetection)
 p$label <- c("Best-guess", "Restrictive", "Flexible")
 p$lwd   <- lwds
@@ -184,7 +205,7 @@ p$col   <- cols
 png(here_fig("model-obs-acoustic.png"), 
     height = 4, width = 4, units = "in", res = 600)
 set_par()
-xlim <- c(0, 2000)
+xlim <- c(0, 4000)
 
 #### Plot probability densities 
 for (i in 1:3) {
@@ -195,7 +216,7 @@ for (i in 1:3) {
     print(y[1])
     pretty_plot(x, y,
                 xlab = "", ylab = "",
-                pretty_axis_args = list(axis = list(x = list(at = c(0, 500, 1000, 1500, 2000)), # c(0, 250, 500, 750, 1000, 1250, 1500, 1750)), 
+                pretty_axis_args = list(axis = list(x = list(at = c(0, 1000, 2000, 3000, 4000)), 
                                                     y = list(at = yat))
                 ),
                 xlim = xlim,
@@ -223,9 +244,9 @@ dev.off()
 
 #### Define parameters
 # Make plot for seabed depth (mu) = 50 m and 350 m
-pdepth <- data.frame(mu = 350, 
-                     depth_sigma = c(20, 15, 30), 
-                     depth_deep_eps = c(20, 15, 25))
+pdepth <- data.frame(mu = 200, 
+                     depth_sigma = c(100, 100 * 0.5, 100 * 1.5), 
+                     depth_deep_eps = c(350, 350, 350))
 p       <- copy(pdepth)
 p$label <- c("Best-guess", "Restrictive", "Flexible")
 p$lwd   <- lwds
@@ -235,12 +256,14 @@ p$col   <- cols
 png(here_fig(paste0("model-obs-archival-", p$mu[1], "m.png")), 
     height = 4, width = 4, units = "in", res = 600)
 set_par()
-ylim <- c(p$mu[1] * -1 - max(p$depth_deep_eps) - 20, 0)
+ylim <- c(-350, 0) # c(p$mu[1] * -1 - max(p$depth_deep_eps) - 20, 0)
 
 #### Plot probability densities 
 for (i in 1:3) {
-  x <- seq(0, p$mu[i] + p$depth_deep_eps[i] + 0.1, length.out = 1e5)
-  y <- dtrunc(x, "norm", a = 0, b = p$mu[i] + p$depth_deep_eps[i], mean = p$mu[i], sd = p$depth_sigma[i])
+  
+  ##### Plot likelihood profile
+  x <- seq(0, 350, length.out = 1e5)
+  y <- dtrunc(x, "norm", a = 0, b = 350, mean = p$mu[i], sd = p$depth_sigma[i])
   # y <- dtrunc(x, "cauchy", a = 0, b = p$mu[i] + p$depth_deep_eps[i], location = p$mu[i], scale = 15)
   y <- y / max(y)
   x <- abs(x) * -1
@@ -251,35 +274,44 @@ for (i in 1:3) {
                 xlab = "", ylab = "",
                 pretty_axis_args = list(side = 3:2, 
                                         axis = list(x = list(at = yat), 
-                                                    y = list(at = c()))
+                                                    y = list(at = c(0, -100, -200, -300)))
                 ),
                 xlim = c(0, 1),
                 ylim = ylim,
                 type = "n")
-    z <- p$mu[i] * -1
     
-    # Positive errors & negative errors 
-    a <- 0.001
-    cols <- rainbow(4, alpha = 0.25)
-    fs  <- list(function(x, y) x + y, 
-               function(x, y) x - y)
-    lapply(1:2, 
-           function(i) {
-             f <- fs[[i]]
-             zbathy <- f(z, 10)
-             ztide  <- f(zbathy, 3)
-             zsurge <- f(ztide, 2)
-             ztag   <- f(ztide, 4.77)
-             polygon(c(a, 1, 1, a), c(z, z, zbathy, zbathy), col = cols[1], border = NA)
-             polygon(c(a, 1, 1, a), c(zbathy, zbathy, ztide, ztide), col = cols[2], border = NA)
-             polygon(c(a, 1, 1, a), c(ztide, ztide, zsurge, zsurge), col = cols[3], border = NA)
-             polygon(c(a, 1, 1, a), c(zsurge, zsurge, ztag, ztag), col = cols[4], border = NA)
-             if (i == 1) {
-               polygon(c(a, 1, 1, a), c(ztag, ztag, 0, 0), col = scales::alpha("lightgrey", 0.25), border = NA)
-             }
-           })
-    
+    #### Visualise uncertainty components 
+    # Define helper function 
+    add_uncertainty <- function(mu, sds, cols, alphas = seq(0.8, 0.2, length.out = length(sds))) {
+      # Iteratively add polygons 
+      for (j in length(sds):1) {
+
+        # Accumulate SDs and plot wider polygon (smaller polygons are added later)
+        sigma <- sum(sds[1:j])
+        x <- seq(-1000, 1000, length.out = 1e5)
+        y <- dtrunc(x, "norm", a = 0, b = 350, mean = mu, sd = sigma)
+        y <- y / max(y)
+        x <- abs(x) * -1
+        polygon(x = c(y, rev(y)), y = c(x, rep(0, length(x))), 
+                col = scales::alpha(cols[j], alphas[j]), 
+                border = NA)
+      }
+    }
+    # Define uncertainties 
+    zbathy <- 10 / 2        # bathy data are ± 10 m (95 % of data is within ± 2 SD of mean = ± 10/2 m of mean)
+    ztide  <- 3 / 2         # tides are ± 3 m
+    zsurge <- 2 / 2         # surges are ± 2 m
+    ztag   <- 4.77 / 2      # tag accuracy is ± 4.77 m
+    zagg   <- 75            # near-max SD in aggregated bathymetric grid cells (sufficient to cover majority of cells)
+    # Collate uncertainties & colours
+    sds  <- c(zbathy, ztide, zsurge, ztag, zagg) 
+    cols <- rainbow(5, alpha = 0.25)
+    sum(sds)
+    # Add rect
+    rect(xleft = 0, xright = 1, ybottom = p$mu[i] * -1, ytop = 0, col = scales::alpha("grey", 0.2), border = NA)
+    add_uncertainty(mu = p$mu[i], sds = sds, cols = cols)
     # Seabed depth
+    a <- 0.001; z <- p$mu[i] * -1
     lines(c(a, 1), c(z, z), lty = 3, col = "dimgrey")
   }
   lines(y, x, lwd = p$lwd[i], col = p$col[i])
