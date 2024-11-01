@@ -309,11 +309,11 @@ rnow     <- terra::res(bathy_5m)
 
 #### Aggregate bathymetry 
 # Define desired resolution
-rnew <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy)) |> terra::res()
-rnew <- c(rnew[2], rnew[1])
+ud_grid <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy))
+rnew    <- terra::res(ud_grid)
+rnew    <- c(rnew[2], rnew[1])
 # We use a ~500 x 500 pixel raster for UD estimation
 bathy_agg <- terra::aggregate(bathy, fact = rnew / rnow, fun = "mean", na.rm = TRUE)
-bathy_agg
 # Visualise aggregation
 # > There are very few spikes around the coastline (good)
 terra::plot(bathy_agg > 100)
@@ -420,9 +420,11 @@ if (FALSE) {
 }
 
 #### Use aggregated bathymetry layer
+bathy_agg    <- terra::resample(bathy_agg, ud_grid, method = "bilinear", threads = TRUE)
 bathy        <- terra::deepcopy(bathy_agg)
 names(bathy) <- "map_value"
 bathy
+# terra::plot(bathy)
 
 
 ###########################
@@ -483,7 +485,6 @@ if (FALSE) {
 
 #### UD grid
 # UDs are computed using 500 pixels in the x and y direction
-ud_grid <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy))
 ud_grid <- terra::resample(bathy, ud_grid)
 ud_grid <- ud_grid > 0
 ud_grid <- terra::classify(ud_grid, cbind(0, NA))
@@ -513,7 +514,7 @@ terra::plot(bbrast_ll)
 toc()
 # Visual check
 pp <- par(mfrow = c(1, 3))
-terra::plot(howe_full)
+# terra::plot(howe_full)
 terra::plot(ud_grid_ll)
 terra::plot(bbrast_ll)
 par(pp)
