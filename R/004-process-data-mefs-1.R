@@ -34,7 +34,7 @@ coast     <- qreadvect(here_data("spatial", "coast.qs"))
 
 ###########################
 ###########################
-#### Moorings
+#### Electonic tagging & tracking datasets
 
 #### Enforce {patter} requirements
 moorings <- 
@@ -65,9 +65,9 @@ moorings <-
 #### Check validity on `bathy`
 moorings$map_value <- 
   terra::extract(bathy, cbind(moorings$receiver_x, moorings$receiver_y))[, 1]
-# Receiver 2 is in very shallow water (NA)
+# Receiver 2 is in very shallow water (NA on high-resolution bathymetry raster)
 moorings[is.na(map_value), ]
-# Further examinination:
+# Further examination:
 if (FALSE) {
   # Plot receiver positions
   terra::plot(bathy)
@@ -89,19 +89,14 @@ if (FALSE) {
   # There were never any detections at this receiver
   2 %in% MEFS::acoustics$receiver_id 
 }
-
 # Exclude receiver 2
-# > It is incompatible with out bathymetry layer
-moorings <- moorings[receiver_id != 2, ]
+# > It is incompatible with our bathymetry layer
+# > (This is no longer implemented as it is compatible with the aggregated raster)
+# moorings <- moorings[receiver_id != 2, ]
 
-
-
-###########################
-###########################
-#### Validate data
-
+#### Validate datasets
 dlist <- pat_setup_data(.map = bathy, 
-                        .acoustics = acoustics, 
+                        .detections = acoustics, 
                         .moorings = moorings, 
                         .archival = archival)
 
