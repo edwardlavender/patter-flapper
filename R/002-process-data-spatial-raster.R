@@ -324,12 +324,17 @@ bathy_agg_max <-  terra::aggregate(bathy, fact = rnew / rnow, fun = "max", na.rm
 bathy_agg_min <- terra::aggregate(bathy, fact = rnew / rnow, fun = "min", na.rm = TRUE)
 bathy_agg_rng <- bathy_agg_max - bathy_agg_min
 terra::hist(bathy_agg_rng)
-terra::global(bathy_agg_rng, "sd", na.rm = TRUE) # 42.45177
-terra::global(bathy_agg_rng, quantile, probs = seq(0, 1, by = 0.01), na.rm = TRUE)
+terra::global(bathy_agg_rng, "sd", na.rm = TRUE)
+terra::global(bathy_agg_rng, quantile, probs = seq(0, 1, by = 0.01), na.rm = TRUE) 
 # Check SD within aggregated cells 
+# > The max SD reaches ~152.3439 m but this may be due to spikes
+# > We use a more conservative value half this magnitude (75 m)
+# > This corresponds to ~99.95 percentile & covers the vast majority of cells
 map_agg_sd <- terra::aggregate(bathy, fact = rnew / rnow, fun = "sd", na.rm = TRUE)
 terra::global(map_agg_sd, "mean", na.rm = TRUE)
+terra::global(map_agg_sd, "max", na.rm = TRUE)
 terra::global(map_agg_sd, quantile, prob = seq(0.95, 1, by = 0.001), na.rm = TRUE)
+terra::global(map_agg_sd, quantile, prob = 0.9995, na.rm = TRUE) 
 # Visualise SD
 # * This is high along coastlines (steep relief)
 terra::plot(map_agg_sd)
