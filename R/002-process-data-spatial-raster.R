@@ -273,6 +273,7 @@ if (FALSE) {
 
 # Load smoothed bathymetry into R
 smooth <- terra::rast("data/spatial/spikes.tif")
+names(smooth) <- "map_value"
 
 # Identify spikes
 spikes <- bathy - smooth
@@ -296,8 +297,7 @@ bathy <- smooth
 #### Aggregation
 
 #### Motivation
-# With a high-resolution bathymetry layer, the initial sampling of locations is slow
-# In addition, convergence is challenging
+# With a high-resolution bathymetry layer convergence is challenging
 # Very large numbers of particles are required to achieve convergence, even in simulations, which is expensive
 # An aggregated bathymetry layer may facilitate convergence and reduce computation time
 # Here, we explore aggregation options and the induced error
@@ -307,21 +307,38 @@ bathy_5m <- terra::deepcopy(bathy)
 rnow     <- terra::res(bathy_5m)
 # terra::writeRaster(bathy_5m, here_data("spatial", "bathy-5m.tif"), overwrite = TRUE)
 
-#### Define aggregation resolution
-# We use a 500 pixel raster for UD estimation
-rnew      <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy)) |> terra::res()
+#### Aggregate bathymetry 
+# Define desired resolution
+rnew <- terra::rast(bb, nrow = 500, ncol = 500, crs = terra::crs(bathy)) |> terra::res()
+rnew <- c(rnew[2], rnew[1])
+# We use a ~500 x 500 pixel raster for UD estimation
+bathy_agg <- terra::aggregate(bathy, fact = rnew / rnow, fun = "mean", na.rm = TRUE)
+bathy_agg
+# Visualise aggregation
+# > There are very few spikes around the coastline (good)
+terra::plot(bathy_agg > 100)
 
-#### Aggregate bathy & compute error in terms of variance in cells 
-# Aggregate bathy
-bathy_agg    <- terra::aggregate(bathy, fact = rnew / rnow, fun = "mean", na.rm = TRUE)
-terra::plot(bathy_agg)
-# Examine SD within each aggregated grid cell
-bathy_agg_sd <- terra::aggregate(bathy, fact = rnew / rnow, fun = "sd", na.rm = TRUE)
-terra::hist(bathy_agg_sd, maxcell = 1e9L, breaks = 1000, xlim = c(0, 50))
-terra::global(bathy_agg_sd, "mean", na.rm = TRUE)
-terra::global(bathy_agg_sd, median, na.rm = TRUE)
-terra::global(bathy_agg_sd, quantile, na.rm = TRUE)
-terra::plot(bathy_agg_sd)
+#### Quantify bathymetric variation within aggregated cells
+# Quantify range within aggregated cells
+bathy_agg_max <-  terra::aggregate(bathy, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+bathy_agg_min <- terra::aggregate(bathy, fact = rnew / rnow, fun = "min", na.rm = TRUE)
+bathy_agg_rng <- bathy_agg_max - bathy_agg_min
+terra::hist(bathy_agg_rng)
+terra::global(bathy_agg_rng, "sd", na.rm = TRUE) # 42.45177
+terra::global(bathy_agg_rng, quantile, probs = seq(0, 1, by = 0.01), na.rm = TRUE)
+# Check SD within aggregated cells 
+map_agg_sd <- terra::aggregate(bathy, fact = rnew / rnow, fun = "sd", na.rm = TRUE)
+terra::global(map_agg_sd, "mean", na.rm = TRUE)
+terra::global(map_agg_sd, quantile, prob = seq(0.95, 1, by = 0.001), na.rm = TRUE)
+# Visualise SD
+# * This is high along coastlines (steep relief)
+terra::plot(map_agg_sd)
+# Check maximum depth below depth of aggregated cell (+ 20 m)
+# * The differences are greatest near coastline
+bathy_agg_max   <- terra::aggregate(bathy, fact = rnew / rnow, fun = "max", na.rm = TRUE)
+bathy_agg_delta <- bathy_agg_max - bathy_agg
+terra::plot(bathy_agg_delta)
+terra::global(bathy_agg_delta, quantile, prob = seq(0.9, 1, by = 0.001), na.rm = TRUE)
 
 #### Aggregate bathy & compute error in terms of differences in depth
 # Compute aggregation error for different levels of aggregation (~7 mins)
@@ -417,37 +434,42 @@ if (FALSE) {
 }
 
 # Number of cells
-terra::ncell(bathy)
+terra::ncell(bathy_5m) # 556740000
+terra::ncell(bathy)    # 253500
 
 # Depth range (~2 s)
 if (FALSE) {
   tic()
-  terra::global(bathy, "range", na.rm = TRUE)
+  terra::global(bathy_5m, "range", na.rm = TRUE)
   toc()
   # min     max
   # map_value   0 349.999
 }
 
-# Bathymetric uncertainty ranges from 1-5 m 
-# > We can envelope this within a single parameter for speed (e.g, 5 m)
-ebathy(0)
-ebathy(350)
-
-# The total depth of the individual below the seabed may be ~11 m 
-# > We will increase this a bit to account for additional uncertainties
-# (e.g., multiple datasets)
-ebathy(350) + etag + etide
-
-# Uncertainties for Order 1a surveys and other types
-# https://iho.int/uploads/user/pubs/standards/s-44/S-44_Edition_6.1.0.pdf, page 18
-# * Howe et al. (2014) survey was order 1a (confirmed by John Howe)
-# * Order 1b surveys are the same in terms of TVU
-# * Order 2 surveys are less accurate (± 8 m): 
-# a = 1.0 m
-# b = 0.023
-ebathy(0, .a = 1.0, .b = 0.023)
-ebathy(350, .a = 0.5, .b = 0.023)
-
+# Bathymetric uncertainty for the high-resolution dataset
+if (FALSE) {
+  
+  # Bathymetric uncertainty ranges from 1-5 m 
+  # > We can envelope this within a single parameter for speed (e.g, 5 m)
+  ebathy(0)
+  ebathy(350)
+  
+  # The total depth of the individual below the seabed may be ~11 m 
+  # > We will increase this a bit to account for additional uncertainties
+  # (e.g., multiple datasets)
+  ebathy(350) + etag + etide
+  
+  # Uncertainties for Order 1a surveys and other types
+  # https://iho.int/uploads/user/pubs/standards/s-44/S-44_Edition_6.1.0.pdf, page 18
+  # * Howe et al. (2014) survey was order 1a (confirmed by John Howe)
+  # * Order 1b surveys are the same in terms of TVU
+  # * Order 2 surveys are less accurate (± 8 m): 
+  # a = 1.0 m
+  # b = 0.023
+  ebathy(0, .a = 1.0, .b = 0.023)
+  ebathy(350, .a = 0.5, .b = 0.023)
+  
+}
 
 
 ###########################
@@ -496,11 +518,15 @@ par(pp)
 ###########################
 #### Write datasets
 
-# Size of bathymetry SpatRaster: 4.5 GB
+# Size of full bathymetry SpatRaster: 4.5 GB
 # * This comprises n doubles
 # * Each double is 8 bytes
+terra::ncell(bathy_5m)
+8 * terra::ncell(bathy_5m) / 1e9L
+
+# Size of aggregated bathymetry SpatRaster: 2 MB
 terra::ncell(bathy)
-8 * terra::ncell(bathy) / 1e9L
+8 * terra::ncell(bathy) / 1e6
 
 # Size of UD rasters: < 1 MB
 8 * terra::ncell(ud_grid) / 1e9L
