@@ -106,7 +106,7 @@ dlist <- pat_setup_data(.map = bathy,
 #### Save datasets
 
 qs::qsave(skateids, here_data("input", "mefs", "skateids.qs"))
-qs::qsave(dlist$acoustics, here_data("input", "mefs", "acoustics.qs"))
+qs::qsave(dlist$detections, here_data("input", "mefs", "acoustics.qs"))
 qs::qsave(dlist$archival, here_data("input", "mefs", "archival.qs"))
 qs::qsave(dlist$moorings, here_data("input", "mefs", "moorings.qs"))
 
