@@ -1,9 +1,17 @@
-#' ModelMoveFlapper
+#' ModelMoveFlapperRW
 
-move_flapper <- function(mobility = "1095.0", 
-                         dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
-                         dbn_length_active = "truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)", 
-                         dbn_angle = "Uniform(-pi, pi)") {
+patter_ModelMoveRW <- function(sim) {
+  stopifnot(all(c("k1", "theta1", "k2", "theta2", "mobility") %in% colnames(sim)))
+  move_flapper_rw(mobility = sim$mobility, 
+                  dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
+                  dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"),
+                  dbn_angle = "Uniform(-pi, pi)")
+}
+
+move_flapper_rw <- function(mobility = "1095.0", 
+                            dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
+                            dbn_length_active = "truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)", 
+                            dbn_angle = "Uniform(-pi, pi)") {
   julia_check_exists("env")
   glue("ModelMoveFlapper(env, {mobility}, {dbn_length_rest}, {dbn_length_active}, {dbn_angle});")
 }
@@ -16,7 +24,7 @@ move_flapper <- function(mobility = "1095.0",
 # dist = truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)
 # histogram(rand(dist, 100000), bins = 100)
 
-ModelMoveFlapper <- 
+ModelMoveFlapperRW <- 
   '
   struct ModelMoveFlapper{T, U, V, W, X} <: Patter.ModelMove
     map::T
@@ -29,7 +37,7 @@ ModelMoveFlapper <-
 
 #' simulate_step() method
 # This function assumes that the 'behaviour' vector (1, 2) exists in Julia when sourced
-simulate_step.ModelMoveFlapper <- 
+simulate_step.ModelMoveFlapperRW  <- 
   '
   function Patter.simulate_step(state::StateXY, model_move::ModelMoveFlapper, t::Int64, behaviour::Vector{Int64} = behaviour)
   
@@ -53,7 +61,7 @@ simulate_step.ModelMoveFlapper <-
 #' logpdf_step() method
 # This function assumes that the 'behaviour' vector (1, 2) exists in Julia when sourced
 
-logpdf_step.ModelMoveFlapper <- 
+logpdf_step.ModelMoveFlapperRW  <- 
   '
   function Patter.logpdf_step(state_from::StateXY, state_to::StateXY, model_move::ModelMoveFlapper, 
                        t::Int64, length::Float64, angle::Float64, behaviour::Vector{Int64} = behaviour) 
@@ -69,6 +77,14 @@ logpdf_step.ModelMoveFlapper <-
 
 #' ModelMoveFlapperCRW 
 #' (Used to test whether a CRW improves convergence properties)
+
+patter_ModelMoveCRW <- function(sim) {
+  stopifnot(all(c("k1", "theta1", "k2", "theta2", "mobility") %in% colnames(sim)))
+  move_flapper_crw(mobility = sim$mobility, 
+                  dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
+                  dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"),
+                  dbn_angle_delta = "Normal(0.0, 1.2)")
+}
 
 move_flapper_crw <- function(mobility = "1095.0", 
                              dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
@@ -108,8 +124,6 @@ ModelMoveFlapperCRW <-
   end
   '
 
-#' simulate_step() method
-# This function assumes that the 'behaviour' vector (1, 2) exists in Julia when sourced
 simulate_step.ModelMoveFlapperCRW <- 
   '
   function Patter.simulate_step(state::StateXYD, model_move::ModelMoveFlapperCRW, t::Int64, behaviour::Vector{Int64} = behaviour)
@@ -130,3 +144,31 @@ simulate_step.ModelMoveFlapperCRW <-
     StateXYD(map_value, x, y, angle)
   end 
 '
+
+# TO DO
+# logpdf_step.ModelMoveFlapperCRW
+
+#' ModelMoveFlapper (RW or CRW)
+state_flapper                    <- "StateXYD"
+patter_ModelMove                 <- patter_ModelMoveCRW
+move_flapper                     <- move_flapper_crw
+ModelMoveFlapper                 <- ModelMoveFlapperCRW
+simulate_step.ModelMoveFlapper   <- simulate_step.ModelMoveFlapperCRW
+# logpdf_step.ModelMoveFlapper   <- logpdf_step.ModelMoveFlapperCRW
+
+#' Helper routine to set initial model components 
+
+set_model_move_components <- function() {
+  # (optional) State State methods for StateXYD (for CRW)
+  JuliaCall::julia_command(StateXYD)
+  JuliaCall::julia_command(states_init.StateXYD)
+  # Set movement model (RW or CRW)
+  JuliaCall::julia_command(ModelMoveFlapper)
+  nothing()
+}
+
+#' Helper routine to determine if RW or CRW
+
+model_move_is_crw <- function() {
+  "dbn_angle_delta" %in% names(formals(move_flapper))
+}
