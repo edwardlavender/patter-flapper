@@ -305,7 +305,7 @@ bathy <- smooth
 #### Record bathy 5 m
 bathy_5m <- terra::deepcopy(bathy)
 rnow     <- terra::res(bathy_5m)
-# terra::writeRaster(bathy_5m, here_data("spatial", "bathy-5m.tif"), overwrite = TRUE)
+terra::writeRaster(bathy_5m, here_data("spatial", "bathy-5m.tif"), overwrite = TRUE)
 
 #### Aggregate bathymetry 
 # Define desired resolution
