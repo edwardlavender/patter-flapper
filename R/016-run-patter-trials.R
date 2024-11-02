@@ -47,8 +47,8 @@ mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 #### Julia connect
 julia_connect()
 set_seed()
-julia_command(ModelMoveFlapper)
 julia_command('Rasters.checkmem!(false);')
+set_model_move_components()
 
 
 ###########################
@@ -156,7 +156,7 @@ for (i in 1:nrow(iteration)) {
   archival    <- archival_by_unit[[sim$unit_id]]
   behaviour   <- behaviour_by_unit[[sim$unit_id]]
   # xinit     <- NULL
-  xinit       <- qs::qread(here_data("input", "xinit", paste0(sim$unit_id, ".qs")))
+  xinit       <- qs::qread(here_data("input", "xinit", "forward", paste0(sim$unit_id, ".qs")))
   # (optional) Trial implementation of depth data only when resting
   # archival <- archival[which(behaviour == 1L), ]
   
@@ -165,31 +165,22 @@ for (i in 1:nrow(iteration)) {
   stopifnot(length(timeline) == length(behaviour))
   
   #### Define movement model 
-  # Use RW:
-  # state       <- "StateXY"
-  # model_move  <- patter_ModelMove(sim)
-  # julia_assign("behaviour", behaviour)
-  # JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
-  # JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
-  # Use CRW:
-  state <- "StateXYD"
-  model_move <- move_flapper_crw()
+  state      <- state_flapper
+  model_move <- move_flapper()
   julia_assign("behaviour", behaviour)
-  JuliaCall::julia_command(StateXYD)
-  JuliaCall::julia_command(states_init.StateXYD)
-  JuliaCall::julia_command(ModelMoveFlapperCRW)
-  JuliaCall::julia_command(simulate_step.ModelMoveFlapperCRW)
+  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
+  # Visualise movement model realisations 
   paths <- sim_path_walk(.map = map, 
-                .timeline = timeline, 
-                .state = state, 
-                .model_move = model_move,
-                .n_path = 4L, .one_page = TRUE)
+                         .timeline = timeline, 
+                         .state = state, 
+                         .model_move = model_move,
+                         .n_path = 4L, .one_page = TRUE)
+  # Check correlation coefficient
   paths |> 
     group_by(path_id) |> 
     summarise(rho = circular::cor.circular(angle, dplyr::lead(angle))) |> 
     as.data.table() |> 
     suppressWarnings()
-  xinit[, angle := runif(.N) * 2 * pi]
   
   #### Define acoustic observations 
   moorings[, receiver_alpha := sim$receiver_alpha]
