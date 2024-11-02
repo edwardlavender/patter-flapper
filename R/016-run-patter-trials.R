@@ -228,6 +228,16 @@ for (i in 1:nrow(iteration)) {
   yobs_bwd <- list(ModelObsAcousticLogisTrunc = acoustics,
                    ModelObsAcousticContainer = containers$backward, 
                    ModelObsDepthNormalTrunc = archival)
+  # (optional) Define t_resample 
+  t_resample_fwd <- sort(unique(c(which(timeline %in% containers$forward$timestamp), which(timeline %in% acoustics$timestamp[acoustics$obs == 1L]))))
+  t_resample_bwd <- sort(unique(c(which(timeline %in% containers$backward$timestamp), which(timeline %in% acoustics$timestamp[acoustics$obs == 1L]))))
+  if (length(t_resample_fwd) == 0L) {
+    t_resample_fwd <- NULL
+  }
+  if (length(t_resample_bwd) == 0L) {
+    t_resample_bwd <- NULL
+  }
+  
   # (optional) Set yobs for AC
   # alg <- "ac"
   if (alg == "ac") {
@@ -235,8 +245,9 @@ for (i in 1:nrow(iteration)) {
     yobs_bwd$ModelObsDepthNormalTrunc <- NULL
   }
   # (optional) Set yobs for DC
-  alg <- "dc"
+  # alg <- "dc"
   if (alg == "dc") {
+    t_resample_fwd <- t_resample_bwd <- NULL
     yobs_fwd$ModelObsAcousticLogisTrunc <- NULL
     yobs_fwd$ModelObsAcousticContainer  <- NULL
     yobs_bwd$ModelObsAcousticLogisTrunc <- NULL
@@ -244,6 +255,9 @@ for (i in 1:nrow(iteration)) {
   }
   
   #### Collect args 
+  # n_resample     <- as.numeric(500)
+  t_resample_fwd <- NULL
+  n_resample     <- 1e5
   args <- list(.timeline   = timeline,
                .state      = state,
                .xinit      = xinit,
@@ -251,7 +265,8 @@ for (i in 1:nrow(iteration)) {
                .model_move = model_move,
                .n_particle = 1e5L, 
                .n_move     = 10000L,
-               #.n_resample = as.numeric(500),
+               .n_resample = n_resample,
+               .t_resample = t_resample_fwd,
                .n_iter     = 1L,
                .direction  = "forward",
                .verbose    = TRUE)
@@ -271,9 +286,10 @@ for (i in 1:nrow(iteration)) {
   if (FALSE) {
     
     # Run backward filter 
-    # args$.xinit   <- xinit_bwd
-    args$.yobs      <- yobs_bwd
-    args$.direction <- "backward"
+    # args$.xinit      <- xinit_bwd
+    args$.yobs         <- yobs_bwd
+    # args$.t_resample <- t_resample_bwd
+    args$.direction    <- "backward"
     set_seed()
     bwd <- do.call(pf_filter, args, quote = TRUE)
     
