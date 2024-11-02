@@ -67,7 +67,7 @@ unitsets <-
   mutate(timestamp = paste0("01-", month_id), 
          timestamp = as.Date(timestamp, "%d-%m-%Y"), 
          timestamp = as.POSIXct(paste(timestamp, "00:00:00"), tz = "UTC")) |> 
-  select(unit_id, individual_id, timestamp) |> 
+  select(unit_id, individual_id, month_id, timestamp) |> 
   as.data.frame()
 
 #### Prepare recaps
@@ -96,9 +96,11 @@ archival  <- as.data.frame(archival)
 directions <- c("forward", "backward")
 if (FALSE) {
   unlink(here_data("input", "xinit"), recursive = TRUE)
-  dir.create(here_data("input", "xinit", directions[1]), recursive = TRUE)
-  dir.create(here_data("input", "xinit", directions[2]))
 }
+sapply(c("forward", "backward"), function(direction) {
+  folders <- here_data("input", "xinit", rho, direction, unitsets$individual_id, unitsets$month_id)
+  dirs.create(folders)
+}) |> invisible()
 
 #### Define movement model (RW or CRW)
 set_model_move_components()
@@ -117,19 +119,19 @@ lapply(directions, function(direction) {
     print(paste(i, "/", nrow(unitsets)))
     
     #### Define individual data
-    # For direction = "forward", block$timestamp contains the start time
-    # For direction = "backward", we update block$timestamp to the end of the month
-    block <- unitsets[i, ]
+    # For direction = "forward", sim$timestamp contains the start time
+    # For direction = "backward", we update sim$timestamp to the end of the month
+    sim <- unitsets[i, ]
     if (direction == "backward") {
-      block$timestamp <- block$timestamp + months(1) - 120
-      print(block$timestamp)
+      sim$timestamp <- sim$timestamp + months(1) - 120
+      print(sim$timestamp)
     }
     
     #### Identify nearest observations 
     # Positions 
-    precap <- match_ts_nearest_by_key(block, recaps, "individual_id", "timestamp")
-    pdet   <- match_ts_nearest_by_key(block, detections, "individual_id", "timestamp")
-    parc   <- match_ts_nearest_by_key(block, archival, "individual_id", "timestamp")
+    precap <- match_ts_nearest_by_key(sim, recaps, "individual_id", "timestamp")
+    pdet   <- match_ts_nearest_by_key(sim, detections, "individual_id", "timestamp")
+    parc   <- match_ts_nearest_by_key(sim, archival, "individual_id", "timestamp")
     # Corresponding time stamps 
     trecap <- recaps$timestamp[precap]
     tdet   <- detections$timestamp[pdet]
@@ -137,7 +139,7 @@ lapply(directions, function(direction) {
     
     #### Identify nearest known coordinate 
     # Compute time difference before fixed-location observation 
-    gap <- difftime(block$timestamp, c(trecap, tdet), units = "mins")  |> abs() |> as.numeric()
+    gap <- difftime(sim$timestamp, c(trecap, tdet), units = "mins")  |> abs() |> as.numeric()
     # Identify corresponding coordinate from recapture event or acoustic observation
     if (which.min(gap) == 1) {
       gap   <- gap[1]
@@ -206,12 +208,16 @@ lapply(directions, function(direction) {
       cbind(xinit$x, xinit$y) |>
       terra::vect(crs = terra::crs(map)) |>
       terra::buffer(width = radius)
+    # terra::plot(map)
+    # terra::lines(container)
     # Define origin SpatRaster
-    origin <- terra::crop(map, container, mask = TRUE)
+    # * NB: mask = TRUE has a bug: we implement masking in a separate step
+    origin <- terra::crop(map, container, mask = FALSE)
+    origin <- terra::mask(origin, container)
     # terra::plot(origin)
     # Restrict origin by depth 
-    if (block$timestamp == tarc) {
-      depth <- archival$depth[parc] 
+    if (sim$timestamp == tarc) {
+      depth   <- archival$depth[parc] 
       deep    <- origin + 20
       shallow <- origin - 20
       msk <- deep >= depth & shallow <= depth
@@ -219,22 +225,31 @@ lapply(directions, function(direction) {
       origin <- terra::mask(origin, msk, maskvalues = FALSE)
       # terra::plot(origin)
     } else {
-      warn("No depth observation for row {i}!", .environ = environment())
+      warn("No depth observation for row!")
     }
     
     #### Sample initial locations 
-    xinit <- terra::spatSample(origin, size = 1e6L, replace = TRUE, 
+    # Sample locations
+    # NB: as.data.frame(origin, xy = TRUE, na.rm = TRUE may exhaust vector memory)
+    xinit <- terra::spatSample(origin, size = 1e6L, replace = FALSE, 
                                na.rm = TRUE, values = TRUE, xy = TRUE)
+    if (nrow(xinit) == 0L) {
+      terra::plot(map)
+      terra::lines(container)
+      abort("No initial locations for row!")
+    }
+    # Process data.table
     xinit <-
       xinit |> 
       select(map_value, x, y) |> 
       as.data.table()
+    # Add turning angle, if applicable
     if (model_move_is_crw()) {
       xinit[, angle := runif(.N) * 2 * pi]
     }
     
     #### Write xinit to file
-    qs::qsave(xinit, here_data("input", "xinit", direction, paste0(block$unit_id, ".qs")))
+    qs::qsave(xinit, here_data("input", "xinit", rho, direction, sim$individual_id, sim$month_id, "xinit.qs"))
     
     invisible(NULL)
     
@@ -242,7 +257,6 @@ lapply(directions, function(direction) {
   toc()
   
 })
-
 
 
 ###########################
@@ -254,11 +268,11 @@ tic()
 lapply(directions, function(direction) {
   
   # List files 
-  xinits <- list.files(here_data("input", "xinit", direction), full.names = TRUE)
+  xinits <- list.files(here_data("input", "xinit", rho, direction), recursive = TRUE, full.names = TRUE)
   xinits <- gtools::mixedsort(xinits)
   
   # Make figure
-  png(here_fig(glue("xinits-{direction}.png")), 
+  png(here_fig("xinit", glue("xinits-{rho}-{direction}.png")), 
       height = 12, width = 12, units = "in", res = 600)
   pp <- par(mfrow = par_mf(length(xinits)))
   cl_lapply(xinits, function(xinit) {

@@ -82,14 +82,14 @@ patter_ModelMoveCRW <- function(sim) {
   stopifnot(all(c("k1", "theta1", "k2", "theta2", "mobility") %in% colnames(sim)))
   move_flapper_crw(mobility = sim$mobility, 
                   dbn_length_rest = glue::glue("truncated(Cauchy({sim$k1}, {sim$theta1}), lower = 0.0, upper = {sim$mobility})"),
-                  dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"),
-                  dbn_angle_delta = "Normal(0.0, 1.2)")
+                  dbn_length_active = glue::glue("truncated(Cauchy({sim$k2}, {sim$theta2}), lower = 0.0, upper = {sim$mobility})"))
 }
 
+rho <- "1.5"
 move_flapper_crw <- function(mobility = "1095.0", 
                              dbn_length_rest = "truncated(Cauchy(0.0, 5.0), lower = 0.0, upper = 1095.0)", 
                              dbn_length_active = "truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)", 
-                             dbn_angle_delta = "Normal(0.0, 1.2)") {
+                             dbn_angle_delta = glue("Normal(0.0, {rho})")) {
   julia_check_exists("env")
   glue("ModelMoveFlapperCRW(env, {mobility}, {dbn_length_rest}, {dbn_length_active}, {dbn_angle_delta});")
 }

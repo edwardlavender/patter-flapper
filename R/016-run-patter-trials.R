@@ -156,7 +156,7 @@ for (i in 1:nrow(iteration)) {
   archival    <- archival_by_unit[[sim$unit_id]]
   behaviour   <- behaviour_by_unit[[sim$unit_id]]
   # xinit     <- NULL
-  xinit       <- qs::qread(here_data("input", "xinit", "forward", paste0(sim$unit_id, ".qs")))
+  xinit       <- qs::qread(here_data("input", "xinit", rho, "forward", sim$individual_id, sim$month_id, "xinit.qs"))
   # (optional) Trial implementation of depth data only when resting
   # archival <- archival[which(behaviour == 1L), ]
   
@@ -170,6 +170,7 @@ for (i in 1:nrow(iteration)) {
   julia_assign("behaviour", behaviour)
   JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
   # Visualise movement model realisations 
+  print(rho)
   paths <- sim_path_walk(.map = map, 
                          .timeline = timeline, 
                          .state = state, 
