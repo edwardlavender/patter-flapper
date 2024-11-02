@@ -124,25 +124,25 @@ terra::plot(map)
 points(moorings$receiver_x, moorings$receiver_y)
 terra::sbar(20000) # 20 km
 # Consider restricted region in which to sample initial locations
-bbinit <- matrix(c(681197.1, 6180218,
-                   681197.1, 6280651,
-                  723437.9, 6280651,
-                  723437.9, 6180218), 
-                 nrow = 4, byrow = TRUE) 
-lines(bbinit)
-origin <- terra::crop(map, terra::ext(bbinit))
+# bbinit <- matrix(c(681197.1, 6180218,
+#                    681197.1, 6280651,
+#                   723437.9, 6280651,
+#                   723437.9, 6180218), 
+#                  nrow = 4, byrow = TRUE) 
+# lines(bbinit)
+# origin <- terra::crop(map, terra::ext(bbinit))
 # terra::plot(origin)
 
 #### Set maps 
 # (optional) Set restricted origin
-set_map(origin, .as_Raster = TRUE, .as_GeoArray = FALSE)
+# set_map(origin, .as_Raster = TRUE, .as_GeoArray = FALSE)
 # Set wider maps
-set_map(map, .as_Raster = FALSE, .as_GeoArray = TRUE)
-set_vmap(.map = map, .mobility = 1095, .plot = TRUE)
+# set_map(map, .as_Raster = FALSE, .as_GeoArray = TRUE)
+set_map(map)
+# set_vmap(.map = map, .mobility = 1095, .plot = TRUE)
 
 #### Iterate over example individuals and check convergence
 tic()
-# iteration <- iteration[2, ]
 for (i in 1:nrow(iteration)) {
 
   sim <- iteration[i, ]
@@ -155,23 +155,46 @@ for (i in 1:nrow(iteration)) {
   detections  <- acoustics_by_unit[[sim$unit_id]]
   archival    <- archival_by_unit[[sim$unit_id]]
   behaviour   <- behaviour_by_unit[[sim$unit_id]]
+  # xinit     <- NULL
+  xinit       <- qs::qread(here_data("input", "xinit", paste0(sim$unit_id, ".qs")))
   # (optional) Trial implementation of depth data only when resting
   # archival <- archival[which(behaviour == 1L), ]
   
   #### Define timeline
   timeline <- patter_timeline(sim$month_id)
+  stopifnot(length(timeline) == length(behaviour))
   
   #### Define movement model 
-  state       <- "StateXY"
-  model_move  <- patter_ModelMove(sim)
+  # Use RW:
+  # state       <- "StateXY"
+  # model_move  <- patter_ModelMove(sim)
+  # julia_assign("behaviour", behaviour)
+  # JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
+  # JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
+  # Use CRW:
+  state <- "StateXYD"
+  model_move <- move_flapper_crw()
   julia_assign("behaviour", behaviour)
-  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
-  JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
+  JuliaCall::julia_command(StateXYD)
+  JuliaCall::julia_command(states_init.StateXYD)
+  JuliaCall::julia_command(ModelMoveFlapperCRW)
+  JuliaCall::julia_command(simulate_step.ModelMoveFlapperCRW)
+  paths <- sim_path_walk(.map = map, 
+                .timeline = timeline, 
+                .state = state, 
+                .model_move = model_move,
+                .n_path = 4L, .one_page = TRUE)
+  paths |> 
+    group_by(path_id) |> 
+    summarise(rho = circular::cor.circular(angle, dplyr::lead(angle))) |> 
+    as.data.table() |> 
+    suppressWarnings()
+  xinit[, angle := runif(.N) * 2 * pi]
   
   #### Define acoustic observations 
   moorings[, receiver_alpha := sim$receiver_alpha]
   moorings[, receiver_beta := sim$receiver_beta]
-  moorings[, receiver_gamma := 6000]
+  moorings[, receiver_gamma := 3000]
   acoustics <- assemble_acoustics(.timeline = timeline,
                                   .detections = detections, 
                                   .moorings = moorings)
@@ -221,7 +244,7 @@ for (i in 1:nrow(iteration)) {
     yobs_bwd$ModelObsDepthNormalTrunc <- NULL
   }
   # (optional) Set yobs for DC
-  # alg <- "dc"
+  alg <- "dc"
   if (alg == "dc") {
     yobs_fwd$ModelObsAcousticLogisTrunc <- NULL
     yobs_fwd$ModelObsAcousticContainer  <- NULL
@@ -232,7 +255,7 @@ for (i in 1:nrow(iteration)) {
   #### Collect args 
   args <- list(.timeline   = timeline,
                .state      = state,
-               .xinit      = NULL,
+               .xinit      = xinit,
                .yobs       = yobs_fwd,
                .model_move = model_move,
                .n_particle = 1e5L, 
@@ -257,6 +280,7 @@ for (i in 1:nrow(iteration)) {
   if (FALSE) {
     
     # Run backward filter 
+    # args$.xinit   <- xinit_bwd
     args$.yobs      <- yobs_bwd
     args$.direction <- "backward"
     set_seed()
