@@ -171,18 +171,20 @@ for (i in 1:nrow(iteration)) {
   JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
   # Visualise movement model realisations 
   print(rho)
-  paths <- sim_path_walk(.map = map, 
-                         .timeline = timeline, 
-                         .state = state, 
-                         .model_move = model_move,
-                         .n_path = 4L, .one_page = TRUE)
-  # Check correlation coefficient
-  paths |> 
-    group_by(path_id) |> 
-    summarise(rho = circular::cor.circular(angle, dplyr::lead(angle))) |> 
-    as.data.table() |> 
-    suppressWarnings()
-  
+  if (FALSE) {
+    paths <- sim_path_walk(.map = map, 
+                           .timeline = timeline, 
+                           .state = state, 
+                           .model_move = model_move,
+                           .n_path = 4L, .one_page = TRUE)
+    # Check correlation coefficient
+    paths |> 
+      group_by(path_id) |> 
+      summarise(rho = circular::cor.circular(angle, dplyr::lead(angle))) |> 
+      as.data.table() |> 
+      suppressWarnings()
+  }
+
   #### Define acoustic observations 
   moorings[, receiver_alpha := sim$receiver_alpha]
   moorings[, receiver_beta := sim$receiver_beta]
@@ -215,11 +217,13 @@ for (i in 1:nrow(iteration)) {
   # * (100, 100): effectively 'uniform' probabilities above seabed depth reflecting unknown pelagic behaviour
   archival[, depth_sigma := 100]
   archival[, depth_deep_eps := 350]
-  seabed <- 0
-  seabed <- 100
-  seabed <- 350
-  curve(dtrunc(x, spec = "norm", a = 0, b = 350, mean = seabed, sd = 100), from = 0, to = 350)
-  
+  if (FALSE) {
+    # seabed <- 0
+    # seabed <- 100
+    seabed <- 350
+    curve(dtrunc(x, spec = "norm", a = 0, b = 350, mean = seabed, sd = 100), from = 0, to = 350)
+  }
+
   #### Collect yobs
   # Define yobs for ACDC
   alg <- "acdc"
@@ -246,7 +250,7 @@ for (i in 1:nrow(iteration)) {
     yobs_bwd$ModelObsDepthNormalTrunc <- NULL
   }
   # (optional) Set yobs for DC
-  # alg <- "dc"
+  alg <- "dc"
   if (alg == "dc") {
     t_resample_fwd <- t_resample_bwd <- NULL
     yobs_fwd$ModelObsAcousticLogisTrunc <- NULL
@@ -264,7 +268,7 @@ for (i in 1:nrow(iteration)) {
                .xinit      = xinit,
                .yobs       = yobs_fwd,
                .model_move = model_move,
-               .n_particle = 1e5L, 
+               .n_particle = 5000L, 
                .n_move     = 10000L,
                .n_resample = n_resample,
                .t_resample = t_resample_fwd,
@@ -284,16 +288,17 @@ for (i in 1:nrow(iteration)) {
   # For an example individual run downstream analyses
   # Compare maps for AC, DC and ACDC
   # Visualise the extent to which the incorporation of depth parameters improve AC maps
-  if (FALSE) {
-    
+  if (TRUE) {
     # Run backward filter 
-    # args$.xinit      <- xinit_bwd
+    args$.xinit        <- qs::qread(here_data("input", "xinit", rho, "backward", sim$individual_id, sim$month_id, "xinit.qs"))
     args$.yobs         <- yobs_bwd
     # args$.t_resample <- t_resample_bwd
     args$.direction    <- "backward"
     set_seed()
     bwd <- do.call(pf_filter, args, quote = TRUE)
-    
+  }
+  
+  if (FALSE) {
     # Run smoother
     set_seed()
     smo <- pf_smoother_two_filter(.n_particle = 500L)
@@ -306,6 +311,7 @@ for (i in 1:nrow(iteration)) {
     # map_hr_core(.map = ud, .add = TRUE)
     dev.off()
   }
+  
   
 }
 toc()
