@@ -170,7 +170,7 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   as.data.table()
 # Add additional controls
 np <- data.table(dataset = c("ac", "dc", "acdc"), 
-                 np = c(5e4L, 5e5L, 5e6L))
+                 np = c(5e3L, 5e3L, 1e5L))
 iteration_patter[, np := np$np[match(dataset, np$dataset)]]
 iteration_patter[, smooth := TRUE]
 
@@ -178,6 +178,7 @@ iteration_patter[, smooth := TRUE]
 dirs.create(iteration_patter$folder_coord)
 dirs.create(iteration_patter$folder_ud)
 dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
+dirs.create(file.path(iteration_patter$folder_ud, "pou"))
 
 
 ###########################
