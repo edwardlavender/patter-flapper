@@ -24,9 +24,11 @@ library(ggplot2)
 dv::src()
 
 #### Load data
-bb    <- qreadext(here_data("spatial", "bb.qs"))
-coast <- qreadvect(here_data("spatial", "coast.qs"))
-howe  <- terra::rast(here_data_raw("bathymetry", "firth-of-lorn", "EXTRACTED_DEPTH1.tif"))
+bb          <- qreadext(here_data("spatial", "bb.qs"))
+coast       <- qreadvect(here_data("spatial", "coast.qs"))
+howe        <- terra::rast(here_data_raw("bathymetry", "firth-of-lorn", "EXTRACTED_DEPTH1.tif"))
+scotland    <- terra::rast(here_data_raw("bathymetry", "digimap", "scotland", "bathy_scotland_6_arc_sec.tif"))
+westminster <- terra::vect(here_data_raw("coast", "westminster_const_region.shp"))
 
 #### Julia connection
 tic()
@@ -497,27 +499,48 @@ ud_null <- terra::mask(ud_null, ud_grid)
 ud_null <- spatNormalise(ud_null)
 
 #### RSP grid 
-# Define 'water' grid
-# * See guidance in patter-eval
-ud_grid_ll <- terra::project(ud_grid, "EPSG:4326")
+# For RSPs, we use an enlarged bathymetry layer
+# 1) Cut bathymetry layer by coastline (~3 s)
+# westminster <- terra::simplifyGeom(westminster, tolerance = 100)
+tic()
+westminster <- terra::project(westminster, terra::crs(scotland))
+scotland    <- terra::mask(scotland, westminster, inverse = TRUE)
+toc()
+# 2) Define 'water'
+scotland <- abs(scotland)
+scotland <- scotland > 0
+scotland <- terra::classify(scotland, cbind(0, NA))
+# 3) Visual check 
+scotland    <- terra::project(scotland, terra::crs(ud_grid), threads = TRUE)
+westminster <- terra::project(westminster, terra::crs(ud_grid))
+terra::plot(scotland)
+# terra::lines(westminster)
+terra::lines(bb, col = "red")
+bbrsp <- bb + 200000
+terra::lines(bbrsp, col = "red")
+# 4) Crop bathymetry layer to sensible region 
+scotland <- terra::crop(scotland, bbrsp)
+# 5) Resample to match ud_grid 
+scotland_blank <- terra::rast(bbrsp, res = terra::res(ud_grid))
+scotland       <- terra::resample(scotland, scotland_blank)
+# 6) Force ud_grid and the ud_grid for RSPs to match in the overlapping region
+ud_grid_tmp <- terra::deepcopy(ud_grid)
+terra::origin(ud_grid_tmp) <- terra::origin(scotland)
+scotland <- terra::merge(ud_grid_tmp, scotland)
+terra::plot(scotland)
+# 7) Convert to WGS84 for RSPs 
+ud_grid_ll <- terra::project(scotland, "WGS84", threads = TRUE)
 names(ud_grid_ll) <- "layer"
 terra::plot(ud_grid_ll)
-# Define transition layer (~1 s)
+# 8) Define transition layer (~42 s)
+tic()
 tm <- actel::transitionLayer(ud_grid_ll, directions = 8L)
 terra::plot(raster::raster(tm))
-# Define dynBBMM base.raster
-# * To enable comparisons, we fit dynBBMM on ud_grid
-tic()
-bbrast_ll <- terra::project(ud_grid, "EPSG:4326")
+toc()
+# 9) Rename to bbrast_ll (backwards compatibility)
+bbrast_ll <- terra::deepcopy(ud_grid_ll)
 terra::plot(bbrast_ll)
 # terra::lines(bathy |> terra::project("EPSG:4326", threads = TRUE) |> terra::ext())
-toc()
-# Visual check
-pp <- par(mfrow = c(1, 3))
-# terra::plot(howe_full)
-terra::plot(ud_grid_ll)
-terra::plot(bbrast_ll)
-par(pp)
 
 
 ###########################
