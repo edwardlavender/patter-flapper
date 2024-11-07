@@ -50,7 +50,7 @@ if (!patter:::os_linux()) {
 }
 
 #' Estimate particles iteratively
-lapply_estimate_coord_patter <- function(iteration, datasets) {
+lapply_estimate_coord_patter <- function(iteration, datasets, trial = FALSE) {
   
   tictoc::tic()
   on.exit(tictoc::toc(), add = TRUE)
@@ -59,7 +59,8 @@ lapply_estimate_coord_patter <- function(iteration, datasets) {
   iteration_ls <- split(iteration, collapse::seq_row(iteration))
   cl_lapply(iteration_ls, function(sim) {
     estimate_coord_patter(sim = sim, 
-                          datasets = datasets)
+                          datasets = datasets, 
+                          trial = trial)
   })
   
   nothing()

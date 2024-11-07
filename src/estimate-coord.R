@@ -100,7 +100,7 @@ estimate_coord_rsp <- function(sim, map, datasets) {
 }
 
 # Estimate particles
-estimate_coord_patter <- function(sim, datasets) {
+estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   
   #### Initialise
   cat_init(sim$index)
@@ -182,6 +182,9 @@ estimate_coord_patter <- function(sim, datasets) {
   # Forward filter 
   cat("... (1) Implementing forward filter...\n")
   success <- pf_filter_wrapper(sim = sim, args = args)
+  if (trial) {
+    return(success)
+  }
   # Backward filter 
   if (success) {
     cat("\n... (2) Implementing backward filter...\n")
