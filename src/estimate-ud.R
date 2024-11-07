@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 #' h bandwidth estimator
 
 bw.h <- function(X) {
@@ -184,4 +186,6 @@ estimate_ud_dbbmm <- function(sim, map, bbrast_ll, plot) {
   qs::qsave(dout, file.path(folder_ud, dfile))
   nothing()
   
+}
+
 }

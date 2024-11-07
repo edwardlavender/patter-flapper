@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+  
 #' Estimate UDs via spatstat iteratively 
 lapply_estimate_ud_spatstat <- function(iteration, 
                                         extract_coord = NULL, 
@@ -79,5 +81,6 @@ lapply_estimate_ud_dbbmm <- function(iteration,
   
   nothing()
   
-  
+}
+
 }

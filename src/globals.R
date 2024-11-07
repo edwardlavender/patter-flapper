@@ -1,5 +1,10 @@
 #' Internal patter functions
-utils.add::load_internal_functions("patter")
+if (!patter:::os_linux()) {
+  utils.add::load_internal_functions("patter")
+} else {
+  
+}
+
 
 #' glue
 glue <- glue::glue

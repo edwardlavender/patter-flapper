@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 ggplot_maps <- function(mapdt,
                         xlim = NULL, 
                         ylim = NULL,
@@ -90,5 +92,7 @@ ggplot_maps <- function(mapdt,
   } else {
     return(p)
   }
+
+}
 
 }

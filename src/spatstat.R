@@ -1,6 +1,8 @@
 #' simplify.owin.trial()
 
 # Smoothing the window improves UD estimation speed
+if (!patter:::os_linux()) {
+
 # We visualise different window smoothnesses
 # And test how long UD fitting takes with a sample of data
 # This code is based on https://github.com/spatstat/spatstat.explore/issues/4
@@ -53,4 +55,6 @@ simplify.owin.trial <- function(sea, win, dmin = 0) {
 
   win_s
   
+}
+
 }

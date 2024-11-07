@@ -44,12 +44,17 @@ dv::clear()
 dv::src()
 library(spatstat)
 library(ggplot2)
+if (os_linux()) {
+  stopifnot(!all(c("terra", "sf") %in% sort(loadedNamespaces())))
+}
 
 #### Load data 
-map      <- terra::rast(here_data("spatial", "bathy.tif"))
-ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
-ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
-win      <- qs::qread(dv::here_data("spatial", "win.qs"))
+if (!os_linux()) {
+  map      <- terra::rast(here_data("spatial", "bathy.tif"))
+  ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
+  ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
+  win      <- qs::qread(dv::here_data("spatial", "win.qs"))
+} 
 skateids <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 moorings <- qs::qread(here_data("input", "mefs", "moorings.qs")) 
 pars     <- qs::qread(here_data("input", "pars.qs"))
@@ -62,38 +67,15 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 #### Julia set up
 julia_connect()
 set_seed()
-set_map(map)
 set_model_move_components()
 
-#### Define simulation settings
-# We simulate 100 paths
-n_path <- 100L
-# Simulation timeline
+#### Define simulation timeline
+n_path   <- 100L
 timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
                 as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
                 by = "2 mins")
 
-#### Define ModelMove structure to simulate paths
-# We simulate the path using the best-guess parameters
-model_move <- patter_ModelMove(pars$pmovement[1, ])
-
-#### Define ModelObs structures to simulate observations 
-# We simulate parameters using best-guess parameters
-# * These are hard-coded as 20, 20 for the depth observation model
-ModelObsAcousticLogisTruncPars <- 
-  moorings |> 
-  select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
-  mutate(receiver_alpha = pars$pdetection$receiver_alpha[1], 
-         receiver_beta = pars$pdetection$receiver_beta[1], 
-         receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
-  as.data.table()
-ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                           sigma = 20, 
-                                           depth_deep_eps = 20)
-ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
-                     ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
-
-#### Define ancillary datasets for algorithm runs
+#### Define global datasets
 # COA & patter run with simulated acoustic data
 # RSP requires moorings dataset to prepare the actel dataset
 # * Receiver deployment dates must be dates that align with simulation timeline
@@ -120,9 +102,30 @@ if (FALSE) {
 # Run simulation (~50 mins)
 if (FALSE) {
   
-  # Simulate data on high-resolution grid
+  #### Simulate data on high-resolution grid
   map_5m <- terra::rast(here_data("spatial", "bathy-5m.tif"))
   set_map(map_5m)
+  
+  #### Define ModelMove structure to simulate paths
+  # We simulate the path using the best-guess parameters
+  model_move <- patter_ModelMove(pars$pmovement[1, ])
+  
+  #### Define ModelObs structures to simulate observations 
+  # We simulate parameters using best-guess parameters
+  # * These are hard-coded as 20, 20 for the depth observation model
+  ModelObsAcousticLogisTruncPars <- 
+    moorings |> 
+    select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
+    mutate(receiver_alpha = pars$pdetection$receiver_alpha[1], 
+           receiver_beta = pars$pdetection$receiver_beta[1], 
+           receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
+    as.data.table()
+  ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
+                                             sigma = 20, 
+                                             depth_deep_eps = 20)
+  ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
+                       ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
+  
   
   # Iteratively simulate N movement paths 
   tic()
@@ -210,16 +213,17 @@ if (FALSE) {
   }
   toc()
   
+  #### Visualise simulated paths (~33)
+  if (FALSE) 
+    mapfiles <- here_data("input", "simulation", seq_len(n_path), "ud.tif")
+  mapfiles <- data.table(row = rep(1:10, each = 10),
+                         column = rep(1:10, 10), 
+                         mapfile = mapfiles)
+  ggplot_maps(mapdt = mapfiles, 
+              png_args = list(filename = here_fig("simulation", "map-paths.png"), 
+                              height = 12, width = 15, units = "in", res = 600))
+  
 }
-
-#### Visualise simulated paths (~33)
-mapfiles <- here_data("input", "simulation", seq_len(n_path), "ud.tif")
-mapfiles <- data.table(row = rep(1:10, each = 10),
-                       column = rep(1:10, 10), 
-                       mapfile = mapfiles)
-ggplot_maps(mapdt = mapfiles, 
-            png_args = list(filename = here_fig("simulation", "map-paths.png"), 
-                            height = 12, width = 15, units = "in", res = 600))
 
 #### Load simulated datasets
 # Behaviour
@@ -597,9 +601,8 @@ iteration_patter[, month_id := "04-2024"]
 iteration_patter[, folder_xinit := file.path("data", "input", "simulation", unit_id)]
 all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
 all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
-# Implement smoothing for simulations that use the max. number of particles
-iteration_patter[, smooth := FALSE]
-iteration_patter[np == max(np), smooth := TRUE]
+# Implement smoothing for all simulations
+iteration[, smooth := TRUE]
 
 #### Build patter folders
 dirs.create(iteration_patter$folder_coord)
@@ -613,11 +616,13 @@ datasets <- list(detections_by_unit = detections_by_unit[selected_paths],
                  archival_by_unit = archival_by_unit[selected_paths], 
                  behaviour_by_unit = behaviour_by_unit[selected_paths])
 
-#### Estimate coordinates
+#### Initialise coordinate estimation 
+# Define iterations 
+iteration <- copy(iteration_patter)
+# Set map
+set_map(here_data("spatial", "bathy.tif"))
 # Set batch & export vmap
 # * We implement the algorithms in batches so that we export vmap once
-set_map(map)
-iteration <- copy(iteration_patter)
 batch     <- pars$pmovement$mobility[1]
 iteration <- iteration[mobility == batch, ]
 vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
@@ -636,16 +641,20 @@ if (FALSE) {
 # (optional) Test convergence
 if (FALSE) {
   # Test convergence for selected algorithm
-  iteration <- iteration[dataset == "ac" & sensitivity == "best", ] 
-  lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+  iteration_trial <- iteration[dataset == "dc" & sensitivity == "best", ] 
+  iteration_trial[, np := 20000]
+  iteration_trial[, smooth := FALSE]
+  lapply_estimate_coord_patter(iteration = iteration_trial, datasets = datasets)
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
-    
 }
 # Implementation
 gc()
 nrow(iteration)
 lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
 # Examine selected coords 
+if (os_linux()) {
+  stop("Exit server at this point (for convenience).")
+}
 lapply_qplot_coord(iteration, 
                    "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])

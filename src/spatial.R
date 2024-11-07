@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 #' qread/qsave helpers for terra
 qreadvect <- function(...) {
   qs::qread(...) |> terra::vect()
@@ -49,4 +51,6 @@ dist_along_path <- function(.xy, .lonlat = FALSE) {
                           lonlat = .lonlat,
                           sequential = TRUE)
   c(dist[2:length(dist)], NA_real_)
+}
+
 }

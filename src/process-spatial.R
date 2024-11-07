@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 get_bathy <- function(files, bathy, coast, outfile = NULL) {
   
   tictoc::tic()
@@ -77,3 +79,4 @@ get_bathy <- function(files, bathy, coast, outfile = NULL) {
   
 }
 
+}

@@ -100,7 +100,7 @@ estimate_coord_rsp <- function(sim, map, datasets) {
 }
 
 # Estimate particles
-estimate_coord_patter <- function(sim, map, datasets) {
+estimate_coord_patter <- function(sim, datasets) {
   
   #### Initialise
   cat_init(sim$index)

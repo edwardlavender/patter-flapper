@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 #' Convert .acoustics to glatos format
 as_glatos <- function(.acoustics) {
   data.frame(detection_timestamp_utc = .acoustics$timestamp, 
@@ -103,5 +105,4 @@ as_actel <- function(.map, .acoustics, .moorings) {
   
 }
 
-
-
+}

@@ -1,3 +1,5 @@
+if (!patter:::os_linux()) {
+
 #' Set par parameters
 set_par <- function(...) {
   par(mgp = c(3, 0.4, 0), tcl = -0.25, ...)
@@ -45,4 +47,6 @@ lapply_qplot_ud <- function(iteration, ...) {
   })
   par(pp)
   invisible(NULL)
+}
+
 }

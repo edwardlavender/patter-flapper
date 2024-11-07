@@ -1,9 +1,3 @@
-#' Platform wrappers
-
-on_unix <- function() {
-  .Platform$OS.type == "unix"
-}
-
 #' Cat helpers
 
 cat_line <- function() {
