@@ -374,12 +374,11 @@ if (FALSE) {
   
   #### Build iteration dataset
   # Define parameters
-  prsp <- data.table(parameter_id = 1:18L, 
+  prsp <- data.table(parameter_id = 1:25L, 
                      er.ad = c(2.5,  # 250 * 0.01, 
                                12.5, # 250 * 0.05, # default
                                25.0,
-                               75.0, 
-                               seq(100, 1000, by = 50),
+                               seq(50, 1000, by = 50),
                                1250, 
                                1500
                      ))
