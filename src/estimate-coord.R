@@ -16,7 +16,7 @@ estimate_coord_coa <- function(sim, map, datasets) {
   # Run algorithm
   t1    <- Sys.time()
   pout  <- coa(.map = map,
-               .acoustics = detections,
+               .detections = detections,
                .moorings = moorings,
                .delta_t = delta_t,
                .plot_weights = FALSE)
