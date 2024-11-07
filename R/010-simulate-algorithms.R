@@ -602,7 +602,7 @@ iteration_patter[, folder_xinit := file.path("data", "input", "simulation", unit
 all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
 all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
 # Implement smoothing for all simulations
-iteration[, smooth := TRUE]
+iteration_patter[, smooth := TRUE]
 
 #### Build patter folders
 dirs.create(iteration_patter$folder_coord)
@@ -611,10 +611,23 @@ dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 #### Define datasets
 # NB: the detection data is used b/c assemble_acoustics() is called under the hood
-datasets <- list(detections_by_unit = detections_by_unit[selected_paths], 
+datasets <- list(detections_by_unit = copy(detections_by_unit[selected_paths]), 
                  moorings = moorings,
-                 archival_by_unit = archival_by_unit[selected_paths], 
+                 archival_by_unit = copy(archival_by_unit[selected_paths]), 
                  behaviour_by_unit = behaviour_by_unit[selected_paths])
+# (essential) Process archival units for patter_ModelObs()
+for (i in selected_paths) {
+  datasets$archival_by_unit[[i]] <- 
+    datasets$archival_by_unit[[i]] |> 
+    select(timestamp, depth = obs) |> 
+    # Delete parameter columns so they can be added by patter_ModelObs()
+    mutate(depth_sigma = NULL, 
+           depth_deep_eps = NULL) |> 
+    as.data.table()
+  
+}
+head(datasets$archival_by_unit[[1]])
+head(datasets$archival_by_unit[[2]])
 
 #### Initialise coordinate estimation 
 # Define iterations 
@@ -641,9 +654,14 @@ if (FALSE) {
 # (optional) Test convergence
 if (FALSE) {
   # Test convergence for selected algorithm
-  iteration_trial <- iteration[dataset == "dc" & sensitivity == "best", ] 
-  iteration_trial[, np := 20000]
+  # * AC: 5000 particles: success for 1:3
+  # * DC: 5000 particles: success for 1:3
+  # * ACDC: TO DO
+  iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best", ] 
+  iteration_trial[, np := 5000]
   iteration_trial[, smooth := FALSE]
+  iteration_trial
+  # debug(estimate_coord_patter)
   lapply_estimate_coord_patter(iteration = iteration_trial, datasets = datasets)
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
 }

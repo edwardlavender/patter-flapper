@@ -50,6 +50,8 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
                                       select("timestamp", "sensor_id", "obs", "depth_sigma", "depth_deep_eps") |> 
                                       as.data.table()
       )
+    } else {
+      warn("Using `archival` as inputed, including with existing $depth_sigma and $depth_deep_eps columns.")
     }
   }
   

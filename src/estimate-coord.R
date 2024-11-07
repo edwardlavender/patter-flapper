@@ -136,8 +136,8 @@ estimate_coord_patter <- function(sim, datasets) {
                                     .trim = TRUE)
     }
     timeline <- timeline[sel]
+    warn(paste("> The timeline is", length(timeline), "steps long."))
   }
-  warn(paste("> The timeline is", length(timeline), "steps long."))
   
   #### Define initial locations
   # simulation: data/input/simulation/unit_id/xinit-fwd.qs, xinit-bwd.qs
