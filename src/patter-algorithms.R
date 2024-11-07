@@ -71,17 +71,17 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
   
 }
 
-#' Define the number of particles to use for ACPF/DCPF/ACDCPF runs
-patter_np <- function(sim) {
-  if (sim$dataset == "ac") {
-    np <- 1e4L
-  } else if (sim$dataset == "dc") {
-    np <- 1e5L
-  } else if (sim$dataset == "acdc") {
-    np <- 1e5L
-  }
-  np
-}
+# #' Define the number of particles to use for ACPF/DCPF/ACDCPF runs
+# patter_np <- function(sim) {
+#   if (sim$dataset == "ac") {
+#     np <- 1e4L
+#   } else if (sim$dataset == "dc") {
+#     np <- 1e5L
+#   } else if (sim$dataset == "acdc") {
+#     np <- 1e5L
+#   }
+#   np
+# }
 
 #' Define a pf_filter() that runs the algorithms for a given simulation
 pf_filter_wrapper <- function(sim, args) {
