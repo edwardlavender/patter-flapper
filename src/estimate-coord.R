@@ -144,6 +144,10 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   # real      : input/xinit/1.5/individual_id/month_id/xinit-fwd.qs, xinit-bwd.qs
   xinit_fwd <- qs::qread(file.path(sim$folder_xinit, "xinit-fwd.qs"))
   xinit_bwd <- qs::qread(file.path(sim$folder_xinit, "xinit-bwd.qs"))
+  # path      <- qs::qread(here_data("input", "simulation", sim$unit_id, "coord.qs"))
+  # path[c(1, .N), ]
+  # xinit_fwd
+  # xinit_bwd
   
   #### Define movement model
   state       <- state_flapper
