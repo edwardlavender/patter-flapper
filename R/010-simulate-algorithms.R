@@ -66,8 +66,8 @@ set_map(map)
 set_model_move_components()
 
 #### Define simulation settings
-# We simulate three paths
-n_path   <- 3L
+# We simulate 100 paths
+n_path <- 100L
 # Simulation timeline
 timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
                 as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
@@ -109,9 +109,6 @@ head(moorings)
 ###########################
 ###########################
 #### Simulate paths and observations
-
-# Number of datasets
-n_path <- 100L
 
 # (optional) Cleanup
 if (FALSE) {
@@ -214,6 +211,15 @@ if (FALSE) {
   toc()
   
 }
+
+#### Visualise simulated paths (~33)
+mapfiles <- here_data("input", "simulation", seq_len(n_path), "ud.tif")
+mapfiles <- data.table(row = rep(1:10, each = 10),
+                       column = rep(1:10, 10), 
+                       mapfile = mapfiles)
+ggplot_maps(mapdt = mapfiles, 
+            png_args = list(filename = here_fig("simulation", "map-paths.png"), 
+                            height = 12, width = 15, units = "in", res = 600))
 
 #### Load simulated datasets
 # Behaviour
@@ -504,6 +510,10 @@ if (FALSE) {
 ###########################
 ###########################
 #### Patter algorithms
+
+#### Define selected paths
+selected_paths <- 1:3L
+
 
 #### Define unitsets (unit_ids & algorithms)
 unitsets <- 
