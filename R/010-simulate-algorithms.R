@@ -514,10 +514,9 @@ if (FALSE) {
 #### Define selected paths
 selected_paths <- 1:3L
 
-
 #### Define unitsets (unit_ids & algorithms)
 unitsets <- 
-  CJ(unit_id = seq_len(n_path), 
+  CJ(unit_id = selected_paths, 
      dataset = c("ac", "dc", "acdc")) |>
   arrange(unit_id, factor(dataset, c("ac", "dc", "acdc"))) |>
   as.data.table()
@@ -536,8 +535,9 @@ parameters <-
   )
 parameters[, model_obs := seq_len(.N)]
 # Algorithm settings (particles & no. of iters)
-np <- c(10000, 25000, 50000, 100000, 250000)
-ni <- 1:10L
+# NB: only one value used for np now, this is set below
+np <- NA_integer_
+ni <- 1:3L
 # Collect algorithm settings and model parameters
 parameters <- 
   CJ(model_obs = parameters$model_obs, np = np) |> 
@@ -588,12 +588,15 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   as.data.table()
 
 #### Add supporting columns
+# Update np
+nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(5000L, 5000L, 100000L))
+iteration_patter[, np := nplookup$np[match(dataset, nplookup$dataset)]]
 # sim$month_id is required by estimate_coord_patter() to define the timeline
 iteration_patter[, month_id := "04-2024"]
 # xinit folders
 iteration_patter[, folder_xinit := file.path("data", "input", "simulation", unit_id)]
-all(file.exists(file.path(folder_xinit, "xinit-fwd.qs"))) |> stopfinot()
-all(file.exists(file.path(folder_xinit, "xinit-bwd.qs"))) |> stopfinot()
+all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
+all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
 # Implement smoothing for simulations that use the max. number of particles
 iteration_patter[, smooth := FALSE]
 iteration_patter[np == max(np), smooth := TRUE]
@@ -605,18 +608,19 @@ dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 #### Define datasets
 # NB: the detection data is used b/c assemble_acoustics() is called under the hood
-datasets <- list(detections_by_unit = detections_by_unit, 
+datasets <- list(detections_by_unit = detections_by_unit[selected_paths], 
                  moorings = moorings,
-                 archival_by_unit = archival_by_unit, 
-                 behaviour_by_unit = behaviour_by_unit)
+                 archival_by_unit = archival_by_unit[selected_paths], 
+                 behaviour_by_unit = behaviour_by_unit[selected_paths])
 
 #### Estimate coordinates
 # Set batch & export vmap
 # * We implement the algorithms in batches so that we export vmap once
+set_map(map)
 iteration <- copy(iteration_patter)
 batch     <- pars$pmovement$mobility[1]
 iteration <- iteration[mobility == batch, ]
-vmap      <- terra::rast(here_data("spatial", glue("vmap-{batch}.tif")))
+vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
 set_vmap(.vmap = vmap)
 rm(vmap)
 # Check progress between loop restarts
@@ -631,29 +635,10 @@ if (FALSE) {
 }
 # (optional) Test convergence
 if (FALSE) {
-  
-  # Define an example iteration dataset for the ACDC algorithm
-  iteration[dataset == "acdc" & sensitivity == "best", ] 
-  iteration[dataset == "acdc" & sensitivity == "best" & iter == 1 & parameter_id == 1L, ]
-  iteration <- iteration[index == 501, ]
-
-  # Update the number of particles & test convergence
-  iteration[, np := 50000]
-  
-  # Run algorithm
-  #
-  #
-  # TO DO 
-  # Provide initial locations
-  # estimate_coord_patter may need to be revised
-  # initial locations are too big to fit in datasets (for real-world analyses)
-  # so we can read them in from file
-  #
-  #
+  # Test convergence for selected algorithm
+  iteration <- iteration[dataset == "ac" & sensitivity == "best", ] 
   lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
-  
-  # Check outputs
-  qs::qread(file.path(iteration$folder_coord, "data-fwd.qs"))
+  qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
     
 }
 # Implementation
@@ -665,16 +650,8 @@ lapply_qplot_coord(iteration,
                    "coord-fwd.qs",
                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
 
-#### Record progress
-# * up to XXX
-# * BoundsError: attempt to access 250000-element Vector{Float64}:
-# - 
-# * [crop] cannot create dataset -> out of storage!
-
 #### Estimate UDs
 # We estimate UDs for iterations 1:3 with max number of particles
-# * TO DO, filter iteration! 
-# Implementation 
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 lapply_estimate_ud_spatstat(iteration = iteration, 
                             extract_coord = function(s) s$states,
