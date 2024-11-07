@@ -146,11 +146,10 @@ estimate_coord_patter <- function(sim, map, datasets) {
   xinit_bwd <- qs::qread(file.path(folder_xinit, "xinit-bwd.qs"))
   
   #### Define movement model
-  state       <- "StateXY"
+  state       <- state_flapper
   model_move  <- patter_ModelMove(sim)
   julia_assign("behaviour", behaviour)
-  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
-  JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
+  update_model_move_components()
 
   #### Define observation model(s)
   model_obs <- patter_ModelObs(sim = sim, 

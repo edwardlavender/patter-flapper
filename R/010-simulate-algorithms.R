@@ -155,8 +155,7 @@ if (FALSE) {
     
     #### Define movement model
     state <- state_flapper
-    julia_command(simulate_step.ModelMoveFlapper)
-    # julia_command(logpdf_step.ModelMoveFlapper)
+    update_model_move_components()
     
     #### Simulate movement path 
     coord_path <- sim_path_walk(.map = map, 

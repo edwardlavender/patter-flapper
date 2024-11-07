@@ -13,7 +13,7 @@ move_flapper_rw <- function(mobility = "1095.0",
                             dbn_length_active = "truncated(Cauchy(5.0, 100.0), lower = 0.0, upper = 1095.0)", 
                             dbn_angle = "Uniform(-pi, pi)") {
   julia_check_exists("env")
-  glue("ModelMoveFlapper(env, {mobility}, {dbn_length_rest}, {dbn_length_active}, {dbn_angle});")
+  glue("ModelMoveFlapperRW(env, {mobility}, {dbn_length_rest}, {dbn_length_active}, {dbn_angle});")
 }
 
 # Check behaviour of Cauchy distribution matches behaviour in R: yes. 
@@ -26,7 +26,7 @@ move_flapper_rw <- function(mobility = "1095.0",
 
 ModelMoveFlapperRW <- 
   '
-  struct ModelMoveFlapper{T, U, V, W, X} <: Patter.ModelMove
+  struct ModelMoveFlapperRW{T, U, V, W, X} <: Patter.ModelMove
     map::T
     mobility::U
     dbn_length_rest::V
@@ -39,7 +39,7 @@ ModelMoveFlapperRW <-
 # This function assumes that the 'behaviour' vector (1, 2) exists in Julia when sourced
 simulate_step.ModelMoveFlapperRW  <- 
   '
-  function Patter.simulate_step(state::StateXY, model_move::ModelMoveFlapper, t::Int64, behaviour::Vector{Int64} = behaviour)
+  function Patter.simulate_step(state::StateXY, model_move::ModelMoveFlapperRW, t::Int64, behaviour::Vector{Int64} = behaviour)
   
     # Simulate step length, depending on behaviour
     if behaviour[t] == 1
@@ -63,7 +63,7 @@ simulate_step.ModelMoveFlapperRW  <-
 
 logpdf_step.ModelMoveFlapperRW  <- 
   '
-  function Patter.logpdf_step(state_from::StateXY, state_to::StateXY, model_move::ModelMoveFlapper, 
+  function Patter.logpdf_step(state_from::StateXY, state_to::StateXY, model_move::ModelMoveFlapperRW, 
                        t::Int64, length::Float64, angle::Float64, behaviour::Vector{Int64} = behaviour) 
     if behaviour[t] == 1
       length_logpdf = logpdf(model_move.dbn_length_rest, length)
@@ -146,7 +146,27 @@ simulate_step.ModelMoveFlapperCRW <-
 '
 
 # TO DO
-# logpdf_step.ModelMoveFlapperCRW
+logpdf_step.ModelMoveFlapperCRW <- 
+  '
+  function Patter.logpdf_step(state_from::StateXYD, state_to::StateXYD, model_move::ModelMoveFlapperCRW, 
+                              t::Int64, length::Float64, angle::Float64, behaviour::Vector{Int64} = behaviour) 
+                              
+    # Compute logpdf_length                          
+    if behaviour[t] == 1
+      length_logpdf = logpdf(model_move.dbn_length_rest, length)
+    elseif behaviour[t] == 2
+      length_logpdf = logpdf(model_move.dbn_length_active, length)
+    end 
+    
+    # Compute logpdf_angle
+    angle_delta = Patter.abs_angle_difference(angle, state_from.angle)
+    angle_logpdf = logpdf(model_move.dbn_angle_delta, angle_delta)
+    
+    # Return (unnnormalised) density of length & turning angle
+    return length_logpdf + angle_logpdf
+    
+  end 
+  '
 
 #' ModelMoveFlapper (RW or CRW)
 state_flapper                    <- "StateXYD"
@@ -154,7 +174,7 @@ patter_ModelMove                 <- patter_ModelMoveCRW
 move_flapper                     <- move_flapper_crw
 ModelMoveFlapper                 <- ModelMoveFlapperCRW
 simulate_step.ModelMoveFlapper   <- simulate_step.ModelMoveFlapperCRW
-# logpdf_step.ModelMoveFlapper   <- logpdf_step.ModelMoveFlapperCRW
+logpdf_step.ModelMoveFlapper     <- logpdf_step.ModelMoveFlapperCRW
 
 #' Helper routine to set initial model components 
 
@@ -164,6 +184,12 @@ set_model_move_components <- function() {
   JuliaCall::julia_command(states_init.StateXYD)
   # Set movement model (RW or CRW)
   JuliaCall::julia_command(ModelMoveFlapper)
+  nothing()
+}
+
+update_model_move_components <- function() {
+  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
+  JuliaCall::julia_command(logpdf_step.ModelMoveFlapper)
   nothing()
 }
 

@@ -176,7 +176,7 @@ lapply(directions, function(direction) {
           behaviour   <- simulate_behaviour(timeline)
           behaviour   <- simulate_behaviour(timeline)
           julia_assign("behaviour", behaviour)
-          julia_command(simulate_step.ModelMoveFlapper)
+          update_model_move_components()
           
           # Simulate path 
           path <- 

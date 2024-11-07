@@ -168,7 +168,8 @@ for (i in 1:nrow(iteration)) {
   state      <- state_flapper
   model_move <- move_flapper()
   julia_assign("behaviour", behaviour)
-  JuliaCall::julia_command(simulate_step.ModelMoveFlapper)
+  update_model_move_components()
+  
   # Visualise movement model realisations 
   print(rho)
   if (FALSE) {
