@@ -139,6 +139,12 @@ estimate_coord_patter <- function(sim, map, datasets) {
   }
   warn(paste("> The timeline is", length(timeline), "steps long."))
   
+  #### Define initial locations
+  # simulation: data/input/simulation/unit_id/xinit-fwd.qs, xinit-bwd.qs
+  # real      : input/xinit/1.5/individual_id/month_id/xinit-fwd.qs, xinit-bwd.qs
+  xinit_fwd <- qs::qread(file.path(folder_xinit, "xinit-fwd.qs"))
+  xinit_bwd <- qs::qread(file.path(folder_xinit, "xinit-bwd.qs"))
+  
   #### Define movement model
   state       <- "StateXY"
   model_move  <- patter_ModelMove(sim)
@@ -163,7 +169,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   # Set arguments to reduce computation time 
   args <- list(.timeline   = timeline,
                .state      = state,
-               .xinit      = NULL,
+               .xinit      = xinit_fwd,
                .yobs       = yobs_fwd,
                .model_move = model_move,
                .n_particle = sim$np, # patter_np(sim),
@@ -180,6 +186,7 @@ estimate_coord_patter <- function(sim, map, datasets) {
   # Backward filter 
   if (success) {
     cat("\n... (2) Implementing backward filter...\n")
+    args$.xinit     <- xinit_bwd
     args$.yobs      <- yobs_bwd
     args$.direction <- "backward"
     success         <- pf_filter_wrapper(sim = sim, args = args)

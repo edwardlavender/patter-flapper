@@ -580,7 +580,11 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
 
 #### Add supporting columns
 # sim$month_id is required by estimate_coord_patter() to define the timeline
-iteration_patter[, month_id := "042024"]
+iteration_patter[, month_id := "04-2024"]
+# xinit folders
+iteration_patter[, folder_xinit := file.path("data", "input", "simulation", unit_id)]
+all(file.exists(file.path(folder_xinit, "xinit-fwd.qs"))) |> stopfinot()
+all(file.exists(file.path(folder_xinit, "xinit-bwd.qs"))) |> stopfinot()
 # Implement smoothing for simulations that use the max. number of particles
 iteration_patter[, smooth := FALSE]
 iteration_patter[np == max(np), smooth := TRUE]

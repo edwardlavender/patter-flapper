@@ -45,11 +45,15 @@ julia_command(ModelMoveFlapper)
 
 #### Define iterations
 nrow(iteration)
+iteration[, folder_xinit := file.path("data", "input", "xinit", "1.5", individual_id, month_id)]
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, 
                  moorings = moorings,
                  archival_by_unit = archival_by_unit, 
                  behaviour_by_unit = behaviour_by_unit)
+# Checks
+all(file.exists(file.path(iteration$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
+all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
 
 #### (optional) Testing
 test <- TRUE
