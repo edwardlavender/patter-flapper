@@ -401,6 +401,8 @@ if (FALSE) {
     arrange(unit_id, parameter_id) |>
     as.data.table()
   # Build folders
+  # unlink(iteration_rsp$folder_coord, recursive = TRUE)
+  # unlink(iteration_rsp$folder_ud, recursive = TRUE)
   dirs.create(iteration_rsp$folder_coord)
   dirs.create(iteration_rsp$folder_ud)
   dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
