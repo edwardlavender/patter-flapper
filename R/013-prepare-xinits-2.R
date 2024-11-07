@@ -275,7 +275,7 @@ lapply(c("fwd", "bwd"), function(direction) {
   # List files 
   xinits <- list.files(here_data("input", "xinit", rho), recursive = TRUE, full.names = TRUE)
   xinits <- gtools::mixedsort(xinits)
-  xinits <- xinits[stringr::str_detect(direction)]
+  xinits <- xinits[stringr::str_detect(xinits, direction)]
   
   # Make figure
   png(here_fig("xinit", glue("xinits-{rho}-{direction}.png")), 
