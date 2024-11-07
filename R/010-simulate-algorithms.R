@@ -656,14 +656,24 @@ if (FALSE) {
   # Test convergence for selected algorithm
   # * AC: 5000 particles: success for 1:3
   # * DC: 5000 particles: success for 1:3
-  # * ACDC: TO DO
-  iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best", ] 
-  iteration_trial[, np := 5000]
+  # * ACDC: 
+  # - 100,000: 1 (fail), 2 (success), 3 (TO DO), ... 
+  iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
+  iteration_trial[, np := 100000]
   iteration_trial[, smooth := FALSE]
   iteration_trial
   # debug(estimate_coord_patter)
-  lapply_estimate_coord_patter(iteration = iteration_trial, datasets = datasets)
+  lapply_estimate_coord_patter(iteration = 
+                                 iteration_trial, 
+                               datasets = datasets, trial = TRUE)
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
+  # Compare output
+  if (!os_linux()) {
+    here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()
+    map_pou(.map = terra::rast(here_data("input", "spatial", "map.tif")),
+            .coord = file.path(iteration$folder_coord[1], "coord-smo.qs"))
+  }
+
 }
 # Implementation
 gc()
