@@ -249,7 +249,7 @@ lapply(directions, function(direction) {
     }
     
     #### Write xinit to file
-    if (direction == "fwd") {
+    if (direction == "forward") {
       xinit.qs <- "xinit-fwd.qs"
     } else if (direction == "backward") {
       xinit.qs <- "xinit_bwd.qs"
