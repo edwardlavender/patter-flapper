@@ -121,11 +121,10 @@ if (FALSE) {
            receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
     as.data.table()
   ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                             sigma = 20, 
+                                             depth_sigma = 20, 
                                              depth_deep_eps = 20)
   ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
                        ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
-  
   
   # Iteratively simulate N movement paths 
   tic()
@@ -214,8 +213,7 @@ if (FALSE) {
   toc()
   
   #### Visualise simulated paths (~33)
-  if (FALSE) 
-    mapfiles <- here_data("input", "simulation", seq_len(n_path), "ud.tif")
+  mapfiles <- here_data("input", "simulation", seq_len(n_path), "ud.tif")
   mapfiles <- data.table(row = rep(1:10, each = 10),
                          column = rep(1:10, 10), 
                          mapfile = mapfiles)
@@ -657,15 +655,20 @@ if (FALSE) {
   # * AC: 5000 particles: success for 1:3
   # * DC: 5000 particles: success for 1:3
   # * ACDC: 
-  # - 100,000: 1 (fail), 2 (success), 3 (TO DO), ... 
-  iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
-  iteration_trial[, np := 100000]
+  # - 100,000: 1 (fail); 2 (success); 3 (TO DO), ... 
+  # - 200,000: 1 (fail)
+  # - 250,000: 1 (success: 17 mins); 
+  
+  # iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
+  iteration_trial <- iteration[iter == 1L, ]
+  iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
+  iteration_trial[dataset == "acdc", np := 250000] 
   iteration_trial[, smooth := FALSE]
-  iteration_trial
+  # iteration_trial <- iteration_trial[1, ]
   # debug(estimate_coord_patter)
-  lapply_estimate_coord_patter(iteration = 
-                                 iteration_trial, 
-                               datasets = datasets, trial = TRUE)
+  lapply_estimate_coord_patter(iteration = iteration_trial, 
+                               datasets = datasets,
+                               trial = TRUE)
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
   # Compare output
   if (!os_linux()) {
