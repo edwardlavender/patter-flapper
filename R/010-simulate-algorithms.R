@@ -63,7 +63,7 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 julia_connect()
 set_seed()
 set_map(map)
-julia_command(ModelMoveFlapper)
+set_model_move_components()
 
 #### Define simulation settings
 # We simulate three paths
@@ -79,6 +79,7 @@ model_move <- patter_ModelMove(pars$pmovement[1, ])
 
 #### Define ModelObs structures to simulate observations 
 # We simulate parameters using best-guess parameters
+# * These are hard-coded as 20, 20 for the depth observation model
 ModelObsAcousticLogisTruncPars <- 
   moorings |> 
   select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
@@ -87,8 +88,8 @@ ModelObsAcousticLogisTruncPars <-
          receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
 ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                           sigma = pars$pdepth$depth_sigma[1], 
-                                           depth_deep_eps = pars$pdepth$depth_deep_eps[1])
+                                           sigma = 20, 
+                                           depth_deep_eps = 20)
 ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
                      ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
 
@@ -109,24 +110,43 @@ head(moorings)
 ###########################
 #### Simulate paths and observations
 
+# Number of datasets
+n_path <- 100L
+
+# (optional) Cleanup
+if (FALSE) {
+  unlink(here_data("input", "simulation"), recursive = TRUE)
+  dir.create(here_data("input", "simulation"))
+  dirs.create(here_data("input", "simulation", seq_len(n_path)))
+}
+  
+# Run simulation (~50 mins)
 if (FALSE) {
   
-  iteration_path <- data.table(s = c(2, 3, 4), id = c(1, 2, 3))
-  lapply(split(iteration_path, 1:3), function(sim) {
+  # Simulate data on high-resolution grid
+  map_5m <- terra::rast(here_data("spatial", "bathy-5m.tif"))
+  set_map(map_5m)
+  
+  # Iteratively simulate N movement paths 
+  tic()
+  path_id <- 1L
+  while (path_id <= n_path) {
     
-    # This code is run three times, generating three paths & corresponding observational datasets
-    # sim <- iteration_path[1, ]
-    s <- sim$s; id <- sim$id
-    set_seed(s)
-    
-    #### Simulate initial location
+    print(path_id)
+
+    #### Simulate initial 'tagging' location
     # We sample an initial location from the receiver array 
     # This helps to ensure we generate some detections for the COA/RSP/AC*PF algorithms
     xinit_bb  <- terra::ext(min(moorings$receiver_x), max(moorings$receiver_x), 
                             min(moorings$receiver_y), max(moorings$receiver_y))
     xinit_map <- terra::crop(map, xinit_bb)
-    xinit     <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
-    xinit     <- data.table(map_value = xinit$map_value, x = xinit$x, y = xinit$y)
+    xinit_fwd <- terra::spatSample(xinit_map, size = 1L, xy = TRUE, na.rm = TRUE)
+    xinit_fwd <- data.table(map_value = xinit_fwd$map_value,
+                            x = xinit_fwd$x, 
+                            y = xinit_fwd$y)
+    if (model_move_is_crw()) {
+      xinit_fwd[, angle := runif(.N) * 2 * pi]
+    }
     
     #### Simulate behavioural states 
     # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
@@ -134,26 +154,33 @@ if (FALSE) {
     julia_assign("behaviour", behaviour)
     
     #### Define movement model
+    state <- state_flapper
     julia_command(simulate_step.ModelMoveFlapper)
-    julia_command(logpdf_step.ModelMoveFlapper)
+    # julia_command(logpdf_step.ModelMoveFlapper)
     
     #### Simulate movement path 
     coord_path <- sim_path_walk(.map = map, 
                                 .timeline = timeline, 
-                                .state = "StateXY", 
-                                .xinit = xinit, 
+                                .state = state, 
+                                .xinit = xinit_fwd, 
                                 .model_move = model_move, 
                                 .n_path = 1L, 
-                                .plot = TRUE)
-    points(moorings$receiver_x, moorings$receiver_y)
+                                .plot = FALSE)
+    # points(moorings$receiver_x, moorings$receiver_y)
+    # Record recapture location
+    if (model_move_is_crw()) {
+      xinit_bwd <- coord_path[.N, .(map_value, x, y, angle)]
+    }
     
     #### Simulate observations
     yobs <- sim_observations(.timeline = timeline, 
-                             .model_obs = c("ModelObsAcousticLogisTrunc", "ModelObsDepthNormalTrunc"), 
-                             .model_obs_pars = ModelObsPars)
+                             .model_obs = ModelObsPars)
     # Check we have simulated detections
-    stopifnot(length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L)) > 100)
-    table(yobs$ModelObsAcousticLogisTrunc[[1]]$obs)
+    ndet <- length(which(yobs$ModelObsAcousticLogisTrunc[[1]]$obs == 1L))
+    if (ndet < 100L) {
+      warn(paste(ndet, "detection(s) simulated."))
+      next 
+    }
     # Check depth time stamps are not duplicated
     if (any(duplicated(yobs$ModelObsDepthNormalTrunc[[1]]$timestamp))) {
       stop("Simulated depth time series contains duplicated time stamps.")
@@ -162,26 +189,34 @@ if (FALSE) {
     #### Map path UD 
     # * 13 s 500 pixels 
     stopifnot(spatstat.geom::spatstat.options("npixel") == 500)
-    ud_path <- map_dens(.map = ud_grid, 
-                        .owin = win,
-                        .coord = coord_path[, .(x, y)],
+    ud_path <- map_dens(.map        = ud_grid, 
+                        .owin       = win,
+                        .coord      = coord_path[, .(x, y)],
                         .discretise = TRUE,
-                        sigma = bw.h, 
-                        .fterra = TRUE)
+                        sigma       = bw.h, 
+                        .fterra     = TRUE, 
+                        .plot       = FALSE)
     
     #### Save datasets
-    qs::qsave(behaviour, here_data("input", "simulation", id, "behaviour.qs"))
-    qs::qsave(coord_path, here_data("input", "simulation", id, "coord.qs"))
-    qs::qsave(yobs, here_data("input", "simulation", id, "yobs.qs"))
-    terra::writeRaster(ud_path$ud, here_data("input", "simulation", id, "ud.tif"), 
-                       overwrite = TRUE)
-    beepr::beep(10)
+    here_out <- function(...) {
+      here_data("input", "simulation", path_id, ...)
+    }
+    qs::qsave(xinit_fwd, here_out("xinit-fwd.qs"))
+    qs::qsave(xinit_bwd, here_out("xinit-bwd.qs"))
+    qs::qsave(behaviour, here_out("behaviour.qs"))
+    qs::qsave(coord_path, here_out("coord.qs"))
+    qs::qsave(yobs, here_out("yobs.qs"))
+    terra::writeRaster(ud_path$ud, here_out("ud.tif"), overwrite = TRUE)
+  
+    #### Continue
+    path_id <- path_id + 1L
     
-  })
+  }
+  toc()
   
 }
 
-#### Load datasets
+#### Load simulated datasets
 # Behaviour
 behaviour_by_unit <- lapply(seq_len(n_path), function(path) {
   qs::qread(here_data("input", "simulation", path, "behaviour.qs"))
@@ -232,21 +267,21 @@ if (FALSE) {
   datasets <- list(detections_by_unit = detections_by_unit, moorings = NULL)
   
   #### Run algorithm
+  iteration <- copy(iteration_coa)
   if (FALSE) {
     
-    #### Estimate coordinates (~2 s)
-    iteration <- copy(iteration_coa)
+    #### Estimate coordinates (~2 s for three paths, ~83 s for 100 paths)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
     lapply_qplot_coord(iteration, "coord.qs")
     
     #### Estimate UDs
-    # Implementation (44 s, 500 pixels, sigma = bw.h, cl = 10L)
+    # Implementation (22 mins, 500 pixels, sigma = bw.h, cl = 10L)
     nrow(iteration)
     lapply_estimate_ud_spatstat(iteration = iteration, 
                                 extract_coord = NULL,
-                                cl = 10L, 
+                                cl = 1L, 
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
@@ -256,49 +291,50 @@ if (FALSE) {
   #### Visualise ME
   # Compute ME 
   me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
-    # sim <- iteration[1, ]
-    skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
-             .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif")))
+    tryCatch(
+      skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+               .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif"))), 
+               error = function(e) NA)
   })
+  # Compute ME for null model
   me_null <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
     skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
              .mod = ud_null)
   })
   # Visualise ME ~ delta_t
-  it_me <- 
-    iteration |>
-    mutate(me = me, 
-           delta_t = factor(delta_t, levels = pcoa$delta_t)) |> 
-    as.data.table()
-  it_me_avg <- 
-    it_me |> 
-    group_by(delta_t) |> 
-    summarise(me = mean(.data$me)) |> 
-    as.data.table()
-  it_me |> 
-    as.data.table() |> 
-    ggplot(aes(delta_t, me, colour = factor(unit_id), group = unit_id)) + 
-    geom_point() + 
-    geom_line() + 
-    geom_point(aes(delta_t, me_null)) + 
-    geom_line(aes(delta_t, me_null)) + 
-    geom_line(data = it_me_avg, aes(delta_t, me),
-              colour = "black", group = 1) 
+  iteration |>
+    mutate(unit_id     = factor(unit_id), 
+           delta_t     = factor(delta_t, levels = pcoa$delta_t), 
+           me          = me,
+    ) |> 
+    filter(!is.na(me)) |>
+    group_by(unit_id) |> 
+    # Centre ME to facilitate plotting 
+    mutate(me = me - mean(me)) |>
+    ungroup() |> 
+    as.data.table() |>
+    ggplot() + 
+    geom_point(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) + 
+    geom_line(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) +
+    geom_smooth(aes(as.integer(delta_t_int), me), method = "gam")  + 
+    theme(legend.position = "none")
   
-  # > Best guess:       4 days
-  # > Restricted value: 3 day
-  # > Flexible value:   5 days 
+  # > Best guess:       2 days
+  # > Restricted value: 1 day
+  # > Flexible value:   3 days 
   
   ### Visualise maps
   # Define panel row (path) and column (parameter) labels
-  cols <- c("NA", "4 days", "3 days", "5 days")
+  cols <- c("NA", "2 days", "1 days", "3 days")
   cols <- factor(cols, levels = cols)
   rows <- c("Path", "COA[1]", "COA[2]", "COA[3]")
   rows <- factor(rows, levels = rows)
   panel <- data.table(row = rows, column = cols)
   # Define mapfiles for selected algorithm runs 
+  selected_paths <- 1:3L
   mapfiles_alg <- 
     iteration |> 
+    filter(unit_id %in% selected_paths) |>
     mutate(row = unit_id) |>
     filter(delta_t %in% panel$column) |> 
     mutate(column = panel$column[match(delta_t, panel$column)]) |>
@@ -307,9 +343,9 @@ if (FALSE) {
     as.data.table()
   # Define mapfiles for simulated paths
   mapfiles_path <- 
-    data.table(row = seq_len(n_path), 
+    data.table(row = selected_paths, # n_path
                column = cols[1],
-               mapfile = here_data("input", "simulation", seq_len(n_path), "ud.tif")
+               mapfile = here_data("input", "simulation", selected_paths, "ud.tif")
     )
   # Collect mapfiles (row, column, mapfile)
   mapfiles <- 
@@ -332,13 +368,25 @@ if (FALSE) {
 
 if (FALSE) {
   
+  #
+  # TO DO - RERUN
+  #
+  
   #### Build iteration dataset
   # Define parameters
-  prsp <- data.table(parameter_id = 1:22L, 
-                     er.ad = c(250 * 0.01, 
-                               250 * 0.05, # default 
-                               250 * seq(0.1, 2, by = 0.1))
-                     )
+  prsp <- data.table(parameter_id = 1:18L, 
+                     er.ad = c(2.5,  # 250 * 0.01, 
+                               12.5, # 250 * 0.05, # default
+                               25.0, 
+                               75.0, 
+                               100.0, 
+                               150.0,
+                               200.0, 
+                               250.0, 
+                               seq(300, 1000, by = 100), 
+                               1250, 
+                               1500
+                     ))
   # Define dataset
   iteration_rsp <- 
     CJ(unit_id = seq_len(n_path), parameter_id = prsp$parameter_id, dataset = "ac", iter = 1L) |>
@@ -360,10 +408,10 @@ if (FALSE) {
   datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
   
   #### Run algorithm
+  iteration <- copy(iteration_rsp)
   if (FALSE) {
     
-    #### Estimate coordinates (~2-4 mins)
-    iteration <- copy(iteration_rsp)
+    #### Estimate coordinates (~98 mins)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
@@ -379,7 +427,7 @@ if (FALSE) {
                        })
     
     #### Estimate UDs
-    # Implementation (0.5-1.5 mins, 10 cl)
+    # Implementation (5.8 hr, 10 cl)
     lapply_estimate_ud_dbbmm(iteration = iteration, 
                              cl = 10L, 
                              plot = FALSE)
@@ -390,7 +438,6 @@ if (FALSE) {
   
   #### Visualise ME 
   me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
-    # sim <- iteration[10, ]
     tryCatch(   
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
                .mod = terra::rast(file.path(sim$folder_ud, "dbbmm", "ud.tif"))), 
@@ -401,41 +448,38 @@ if (FALSE) {
                .mod = ud_null)
   })
   # Visualise ME ~ er.ad
-  it_me <- 
-    iteration |>
-    mutate(me = me, 
-           me_null = me_null,
-           er.ad = factor(er.ad, levels = prsp$er.ad)) |> 
-    as.data.table()
-  it_me_avg <- 
-    it_me |> 
-    group_by(er.ad) |> 
-    summarise(me = mean(.data$me)) |> 
-    as.data.table()
-  it_me |> 
-    as.data.table() |> 
-    ggplot(aes(er.ad, me, colour = factor(unit_id), group = unit_id)) + 
-    geom_point() + 
-    geom_line() + 
-    geom_point(aes(er.ad, me_null)) + 
-    geom_line(aes(er.ad, me_null)) + 
-    geom_line(data = it_me_avg, aes(er.ad, me),
-              colour = "black", group = 1) 
+  iteration |>
+    mutate(unit_id   = factor(unit_id), 
+           er.ad     = factor(er.ad, levels = prsp$er.ad), 
+           me        = me) |> 
+    filter(!is.na(me)) |>
+    group_by(unit_id) |> 
+    # Centre ME to facilitate plotting 
+    mutate(me = me - mean(me)) |>
+    ungroup() |> 
+    as.data.table() |>
+    ggplot() + 
+    geom_point(aes(er.ad, me, colour = factor(unit_id), group = factor(unit_id))) + 
+    geom_line(aes(er.ad, me, colour = factor(unit_id), group = factor(unit_id))) +
+    geom_smooth(aes(as.integer(er.ad), me), method = "gam") + 
+    theme(legend.position = "none")
   
-  # > Best guess:       100
-  # > Restricted value: 50
-  # > Flexible value:   150 
+  # > Best guess:       ~500 
+  # > Restricted value: ~250
+  # > Flexible value:   ~750 
   
   ### Visualise maps
   # Define panel row (path) and column (parameter) labels
-  cols <- c("NA", "100", "25", "250")
+  cols <- c("NA", "500", "250", "750")
   cols <- factor(cols, levels = cols)
   rows <- c("Path", "RSP[1]", "RSP[2]", "RSP[3]")
   rows <- factor(rows, levels = rows)
   panel <- data.table(row = rows, column = cols)
   # Define mapfiles for selected algorithm runs 
+  selected_paths <- 1:3L
   mapfiles_alg <- 
-    iteration |> 
+    iteration |>
+    filter(unit_id %in% selected_paths) |>
     mutate(row = unit_id) |>
     filter(er.ad %in% panel$column) |> 
     mutate(column = panel$column[match(er.ad, panel$column)]) |>
@@ -444,9 +488,9 @@ if (FALSE) {
     as.data.table()
   # Define mapfiles for simulated paths
   mapfiles_path <- 
-    data.table(row = seq_len(n_path), 
+    data.table(row = selected_paths, 
                column = cols[1],
-               mapfile = here_data("input", "simulation", seq_len(n_path), "ud.tif")
+               mapfile = here_data("input", "simulation", selected_paths, "ud.tif")
     )
   # Collect mapfiles (row, column, mapfile)
   mapfiles <- 
@@ -589,6 +633,15 @@ if (FALSE) {
   iteration[, np := 50000]
   
   # Run algorithm
+  #
+  #
+  # TO DO 
+  # Provide initial locations
+  # estimate_coord_patter may need to be revised
+  # initial locations are too big to fit in datasets (for real-world analyses)
+  # so we can read them in from file
+  #
+  #
   lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
   
   # Check outputs
