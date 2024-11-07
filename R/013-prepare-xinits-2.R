@@ -98,7 +98,7 @@ if (FALSE) {
   unlink(here_data("input", "xinit"), recursive = TRUE)
 }
 sapply(c("forward", "backward"), function(direction) {
-  folders <- here_data("input", "xinit", rho, direction, unitsets$individual_id, unitsets$month_id)
+  folders <- here_data("input", "xinit", rho, unitsets$individual_id, unitsets$month_id)
   dirs.create(folders)
 }) |> invisible()
 
@@ -249,7 +249,12 @@ lapply(directions, function(direction) {
     }
     
     #### Write xinit to file
-    qs::qsave(xinit, here_data("input", "xinit", rho, direction, sim$individual_id, sim$month_id, "xinit.qs"))
+    if (direction == "fwd") {
+      xinit.qs <- "xinit-fwd.qs"
+    } else if (direction == "backward") {
+      xinit.qs <- "xinit_bwd.qs"
+    }
+    qs::qsave(xinit, here_data("input", "xinit", rho, sim$individual_id, sim$month_id, xinit.qs))
     
     invisible(NULL)
     
@@ -265,11 +270,12 @@ lapply(directions, function(direction) {
 
 #### Iterate over directions & plot xinits (~1.6 mins)
 tic()
-lapply(directions, function(direction) {
+lapply(c("fwd", "bwd"), function(direction) {
   
   # List files 
-  xinits <- list.files(here_data("input", "xinit", rho, direction), recursive = TRUE, full.names = TRUE)
+  xinits <- list.files(here_data("input", "xinit", rho), recursive = TRUE, full.names = TRUE)
   xinits <- gtools::mixedsort(xinits)
+  xinits <- xinits[stringr::str_detect(direction)]
   
   # Make figure
   png(here_fig("xinit", glue("xinits-{rho}-{direction}.png")), 

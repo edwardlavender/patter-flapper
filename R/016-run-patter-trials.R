@@ -156,7 +156,7 @@ for (i in 1:nrow(iteration)) {
   archival    <- archival_by_unit[[sim$unit_id]]
   behaviour   <- behaviour_by_unit[[sim$unit_id]]
   # xinit     <- NULL
-  xinit       <- qs::qread(here_data("input", "xinit", rho, "forward", sim$individual_id, sim$month_id, "xinit.qs"))
+  xinit       <- qs::qread(here_data("input", "xinit", rho, sim$individual_id, sim$month_id, "xinit-fwd.qs"))
   # (optional) Trial implementation of depth data only when resting
   # archival <- archival[which(behaviour == 1L), ]
   
@@ -290,7 +290,7 @@ for (i in 1:nrow(iteration)) {
   # Visualise the extent to which the incorporation of depth parameters improve AC maps
   if (TRUE) {
     # Run backward filter 
-    args$.xinit        <- qs::qread(here_data("input", "xinit", rho, "backward", sim$individual_id, sim$month_id, "xinit.qs"))
+    args$.xinit        <- qs::qread(here_data("input", "xinit", rho, sim$individual_id, sim$month_id, "xinit-fwd.qs"))
     args$.yobs         <- yobs_bwd
     # args$.t_resample <- t_resample_bwd
     args$.direction    <- "backward"
