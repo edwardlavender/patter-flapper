@@ -45,7 +45,7 @@ dv::src()
 library(spatstat)
 library(ggplot2)
 if (patter:::os_linux()) {
-  stopifnot(!all(c("terra", "sf") %in% sort(loadedNamespaces())))
+  stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 
 #### Load data 
