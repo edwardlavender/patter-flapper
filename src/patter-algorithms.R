@@ -171,7 +171,7 @@ pf_smoother_wrapper <- function(sim) {
   
   # Run smoother
   t1      <- Sys.time()
-  pout    <- pf_smoother_two_filter(.n_particle = 1000L,
+  pout    <- pf_smoother_two_filter(.n_particle = 500L,
                                     .verbose = TRUE)
   t2 <- Sys.time()
   
