@@ -62,8 +62,10 @@ all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot
 #### Select iterations
 # Start with 'best' implementations 
 iteration <- iteration[sensitivity == "best", ]
-# Focus on ACDC implementations (hard)
-iteration <- iteration[dataset == "acdc", ]
+# Focus on selecteed implementations
+# * ac or dc: fast
+# * acdc    : hard
+iteration <- iteration[dataset == "ac", ]
 table(table(iteration$unit_id))
 # iteration <- iteration[2:.N, ]
 gc()
