@@ -252,7 +252,7 @@ lapply(directions, function(direction) {
     if (direction == "forward") {
       xinit.qs <- "xinit-fwd.qs"
     } else if (direction == "backward") {
-      xinit.qs <- "xinit_bwd.qs"
+      xinit.qs <- "xinit-bwd.qs"
     }
     qs::qsave(xinit, here_data("input", "xinit", rho, sim$individual_id, sim$month_id, xinit.qs))
     
