@@ -50,8 +50,14 @@ if (!patter:::os_linux()) {
 }
 
 #' Estimate particles iteratively
-lapply_estimate_coord_patter <- function(iteration, datasets, trial = FALSE) {
+lapply_estimate_coord_patter <- function(iteration, 
+                                         datasets, 
+                                         trial = FALSE, 
+                                         log.folder = NULL) {
   
+  # (optional) Open sink
+  log.txt <- open_sink(log.folder)
+  print(Sys.time())
   tictoc::tic()
   on.exit(tictoc::toc(), add = TRUE)
   
@@ -63,6 +69,9 @@ lapply_estimate_coord_patter <- function(iteration, datasets, trial = FALSE) {
                           trial = trial)
   })
   
+  # Close sink
+  print(Sys.time())
+  sink_close(log.txt)
   nothing()
   
 }
