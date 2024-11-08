@@ -22,7 +22,7 @@ dv::clear()
 dv::src()
 
 #### Load data 
-if (!os_linux()) {
+if (!patter:::os_linux()) {
   map <- terra::rast(here_data("spatial", "bathy.tif"))
 }
 pars              <- qs::qread(here_data("input", "pars.qs"))
@@ -38,7 +38,7 @@ behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
 #### Run algorithm 
 
 #### Julia Set up
-if (os_linux()) {
+if (patter:::os_linux()) {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 julia_connect()
