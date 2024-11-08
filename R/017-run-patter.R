@@ -39,7 +39,7 @@ behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
 
 #### Julia Set up
 if (os_linux()) {
-  stopifnot(!all(c("terra", "sf") %in% sort(loadedNamespaces())))
+  stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 julia_connect()
 set_seed()
@@ -71,7 +71,10 @@ nrow(iteration)
 
 #### Estimate coordinates
 # (TO DO) Use log.txt
-lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
+lapply_estimate_coord_patter(iteration = iteration,
+                             datasets = datasets, 
+                             trial = FALSE, 
+                             log.folder = here_data("output", "log", "real", "analysis"))
 
 # Examine selected coords 
 if (on_linux()) {
