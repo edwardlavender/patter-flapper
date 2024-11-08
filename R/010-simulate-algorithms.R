@@ -375,10 +375,6 @@ if (FALSE) {
 
 if (FALSE) {
   
-  #
-  # TO DO - RERUN
-  #
-  
   #### Build iteration dataset
   # Define parameters
   prsp <- data.table(parameter_id = 1:25L, 
@@ -403,19 +399,22 @@ if (FALSE) {
   # Build folders
   # unlink(iteration_rsp$folder_coord, recursive = TRUE)
   # unlink(iteration_rsp$folder_ud, recursive = TRUE)
+  # list.files(iteration_rsp$folder_coord, recursive = TRUE)
+  # list.files(iteration_rsp$folder_ud, recursive = TRUE)
   dirs.create(iteration_rsp$folder_coord)
   dirs.create(iteration_rsp$folder_ud)
   dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
   dirs.create(file.path(iteration_rsp$folder_ud, "dbbmm"))
   
   #### Define datasets
-  datasets <- list(detections_by_unit = detections_by_unit, moorings = copy(moorings))
+  datasets <- list(detections_by_unit = detections_by_unit, 
+                   moorings = copy(moorings))
   
   #### Run algorithm
   iteration <- copy(iteration_rsp)
   if (FALSE) {
     
-    #### Estimate coordinates (~98 mins)
+    #### Estimate coordinates (~89 mins)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
@@ -431,7 +430,7 @@ if (FALSE) {
                        })
     
     #### Estimate UDs
-    # Implementation (5.8 hr, 10 cl)
+    # Implementation (5 hr, 10 cl)
     lapply_estimate_ud_dbbmm(iteration = iteration, 
                              cl = 10L, 
                              plot = FALSE)
