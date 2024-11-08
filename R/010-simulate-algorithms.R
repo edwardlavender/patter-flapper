@@ -44,12 +44,12 @@ dv::clear()
 dv::src()
 library(spatstat)
 library(ggplot2)
-if (os_linux()) {
+if (patter:::os_linux()) {
   stopifnot(!all(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 
 #### Load data 
-if (!os_linux()) {
+if (!patter:::os_linux()) {
   map      <- terra::rast(here_data("spatial", "bathy.tif"))
   ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
   ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
@@ -676,18 +676,20 @@ if (FALSE) {
   # - 250,000: 1 (success: 17 mins); 
   
   # iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
-  iteration_trial <- iteration[iter == 1L, ]
+  iteration_trial <- iteration_patter[iter == 1L, ]
   iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
   iteration_trial[dataset == "acdc", np := 250000] 
   iteration_trial[, smooth := FALSE]
+  iteration_trial <- iteration_trial[dataset == "ac", ]
   # iteration_trial <- iteration_trial[1, ]
   # debug(estimate_coord_patter)
+  nrow(iteration_trial)
   lapply_estimate_coord_patter(iteration = iteration_trial, 
                                datasets = datasets,
                                trial = TRUE)
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
   # Compare output
-  if (!os_linux()) {
+  if (!patter:::os_linux()) {
     here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()
     map_pou(.map = terra::rast(here_data("input", "spatial", "map.tif")),
             .coord = file.path(iteration$folder_coord[1], "coord-smo.qs"))
@@ -699,7 +701,7 @@ gc()
 nrow(iteration)
 lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
 # Examine selected coords 
-if (os_linux()) {
+if (patter:::os_linux()) {
   stop("Exit server at this point (for convenience).")
 }
 lapply_qplot_coord(iteration, 
