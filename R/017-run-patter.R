@@ -70,7 +70,6 @@ gc()
 nrow(iteration)
 
 #### Estimate coordinates
-# (TO DO) Use log.txt
 lapply_estimate_coord_patter(iteration = iteration,
                              datasets = datasets, 
                              trial = FALSE, 
