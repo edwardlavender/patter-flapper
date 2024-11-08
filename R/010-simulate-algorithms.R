@@ -436,7 +436,22 @@ if (FALSE) {
                              plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
-    
+    # Load example maps with different er.ad values
+    ud_500 <- terra::rast("data/output/simulation/1/rsp/ac/13/1/ud/dbbmm/ud.tif")
+    ud_250 <- terra::rast("data/output/simulation/1/rsp/ac/8/1/ud/dbbmm/ud.tif")
+    ud_750 <- terra::rast("data/output/simulation/1/rsp/ac/18/1/ud/dbbmm/ud.tif")
+    # Visualise maps
+    # * Visualise maps in sequence to visualise differences
+    # * Maps are different as expected
+    # * But er.ad parameter has very limited influence on results
+    # * er.ad = 250 produces slightly more restricted map
+    # * er.ad = 750 produces slightly more diffuse map
+    # * ... in which low probability areas are spread out a bit more
+    # * ... but differences are small. 
+    # * There are also tiny changes in the size of the core region
+    terra::plot(ud_250) 
+    terra::plot(ud_500)
+    terra::plot(ud_750) 
   }
   
   #### Visualise ME 
