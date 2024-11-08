@@ -648,6 +648,8 @@ head(datasets$archival_by_unit[[2]])
 iteration <- copy(iteration_patter)
 # Set map
 set_map(here_data("spatial", "bathy.tif"))
+# (optional) Select dataset
+iteration <- iteration[dataset == "ac", ]
 # Set batch & export vmap
 # * We implement the algorithms in batches so that we export vmap once
 batch     <- pars$pmovement$mobility[1]
@@ -655,7 +657,8 @@ iteration <- iteration[mobility == batch, ]
 vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
 set_vmap(.vmap = vmap)
 rm(vmap)
-# Check progress between loop restarts
+
+#### (optional) Check progress between loop restarts
 if (FALSE) {
   it <- iteration[1:200, ]
   progress <- 
@@ -665,7 +668,8 @@ if (FALSE) {
     }) |> 
     rbindlist(fill = TRUE)
 }
-# (optional) Test convergence
+
+#### (optional) Test convergence
 if (FALSE) {
   # Test convergence for selected algorithm
   # * AC: 5000 particles: success for 1:3
@@ -675,19 +679,19 @@ if (FALSE) {
   # - 200,000: 1 (fail)
   # - 250,000: 1 (success: 17 mins); 
   
-  # iteration_trial <- iteration[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
+  # iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
   iteration_trial <- iteration_patter[iter == 1L, ]
   iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
   iteration_trial[dataset == "acdc", np := 250000] 
   iteration_trial[, smooth := FALSE]
-  iteration_trial <- iteration_trial[dataset == "ac", ]
+  iteration_trial <- iteration_trial[dataset == "acdc", ]
   # iteration_trial <- iteration_trial[1, ]
   # debug(estimate_coord_patter)
   nrow(iteration_trial)
   lapply_estimate_coord_patter(iteration = iteration_trial, 
                                datasets = datasets,
-                               trial = TRUE, 
-                               log.folder = here_data("output", "log", "simulation", "trials"))
+                               trial = FALSE, 
+                               log.folder = NULL)# here_data("output", "log", "simulation", "trials"))
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
   # Compare output
   if (!patter:::os_linux()) {
@@ -697,27 +701,32 @@ if (FALSE) {
   }
 
 }
-# Implementation
+
+#### Estimate coords
 gc()
 nrow(iteration)
-lapply_estimate_coord_patter(iteration = iteration, datasets = datasets)
-# Examine selected coords 
-if (patter:::os_linux()) {
-  stop("Exit server at this point (for convenience).")
-}
-lapply_qplot_coord(iteration, 
-                   "coord-fwd.qs",
-                   extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
-
-#### Estimate UDs
-# We estimate UDs for iterations 1:3 with max number of particles
-iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
-lapply_estimate_ud_spatstat(iteration = iteration, 
-                            extract_coord = function(s) s$states,
-                            cl = NULL, 
-                            plot = FALSE)
-# (optional) Examine selected UDs
-lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+head(iteration)
+lapply_estimate_coord_patter(iteration = iteration, 
+                             datasets = datasets, 
+                             trial = FALSE, 
+                             log.folder = here_data("output", "log", "simulation"))
+# # Examine selected coords 
+# if (patter:::os_linux()) {
+#   stop("Exit server at this point (for convenience).")
+# }
+# lapply_qplot_coord(iteration, 
+#                    "coord-fwd.qs",
+#                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
+# 
+# #### Estimate UDs
+# # We estimate UDs for iterations 1:3 with max number of particles
+# iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+# lapply_estimate_ud_spatstat(iteration = iteration, 
+#                             extract_coord = function(s) s$states,
+#                             cl = NULL, 
+#                             plot = FALSE)
+# # (optional) Examine selected UDs
+# lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
 
 
 ###########################
