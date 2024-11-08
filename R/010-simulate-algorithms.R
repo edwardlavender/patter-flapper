@@ -687,7 +687,7 @@ if (FALSE) {
   lapply_estimate_coord_patter(iteration = iteration_trial, 
                                datasets = datasets,
                                trial = TRUE, 
-                               log.folder = here_data("log", "output", "simulation", "trials"))
+                               log.folder = here_data("output", "log", "simulation", "trials"))
   qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
   # Compare output
   if (!patter:::os_linux()) {
