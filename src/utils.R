@@ -24,6 +24,36 @@ dirs.create <- function(paths) {
   invisible(NULL)
 }
 
+#' log.txt
+
+sink_open <- function(log.folder = NULL) {
+  log.txt <- NULL
+  if (!is.null(log.folder)) {
+    # Define file name
+    log.txt <- paste0("log-", as.numeric(Sys.time()), ".txt")
+    # Define full file path & validate 
+    log.txt <- file.path(log.folder, log.txt)
+    stopifnot(!file.exists(log.txt))
+    # Define connection 
+    log.txt <- file(log.txt, open = "wt")
+    # Open sink
+    sink(log.txt, append = TRUE)
+    sink(log.txt, type = "message", append = TRUE)
+    # Print start time
+    print(Sys.time())
+  }
+  invisible(log.txt)
+}
+
+sink_close <- function(log.txt = NULL) {
+  if (!is.null(log.txt)) {
+    print(Sys.time())
+    sink()
+    sink(type = "message")
+  }
+  invisible(NULL)
+}
+
 #' Sort bathymetry datasets
 
 sort_bathysets <- function(x) {
