@@ -6,6 +6,7 @@ if (!patter:::os_linux()) {
   msg     <- patter:::msg
   warn    <- patter:::warn
   abort   <- patter:::abort
+  julia_check_exists <- patter:::julia_check_exists
 }
 
 
