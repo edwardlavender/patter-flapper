@@ -9,6 +9,5 @@ if (!patter:::os_linux()) {
   julia_check_exists <- patter:::julia_check_exists
 }
 
-
 #' glue
 glue <- glue::glue
