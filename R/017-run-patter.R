@@ -76,7 +76,8 @@ nrow(iteration)
 lapply_estimate_coord_patter(iteration = iteration,
                              datasets = datasets, 
                              trial = FALSE, 
-                             log.folder = here_data("output", "log", "real", "analysis"))
+                             log.folder = here_data("output", "log", "real", "analysis"), 
+                             log.txt = NULL)
 
 # Examine selected coords 
 if (on_linux()) {
