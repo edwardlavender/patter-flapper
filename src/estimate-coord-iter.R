@@ -53,10 +53,11 @@ if (!patter:::os_linux()) {
 lapply_estimate_coord_patter <- function(iteration, 
                                          datasets, 
                                          trial = FALSE, 
-                                         log.folder = NULL) {
+                                         log.folder = NULL, 
+                                         log.txt = NULL) {
   
   # (optional) Open sink
-  log.txt <- sink_open(log.folder)
+  log.txt <- sink_open(log.folder = log.folder, log.txt = log.txt)
   on.exit(sink_close(log.txt), add = TRUE)
   
   # Print time 
