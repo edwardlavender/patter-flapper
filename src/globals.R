@@ -2,11 +2,19 @@
 if (!patter:::os_linux()) {
   utils.add::load_internal_functions("patter")
 } else {
-  nothing <- patter:::nothing
+  
+  check_timeline   <- patter:::check_timeline
+  check_named_list <- patter:::check_named_list
+  check_names      <- patter:::check_names
+
+  julia_check_exists <- patter:::julia_check_exists
+  
   msg     <- patter:::msg
   warn    <- patter:::warn
   abort   <- patter:::abort
-  julia_check_exists <- patter:::julia_check_exists
+  
+  nothing <- patter:::nothing
+  
 }
 
 #' glue
