@@ -31,7 +31,7 @@ if (!patter:::os_linux()) {
                  text(.moorings$receiver_x, .moorings$receiver_y, .moorings$receiver_id, cex = 0.5)
                  
                  # Add detection containers
-                 .moorings[, receiver_gamma := 1750]
+                 .moorings[, receiver_gamma := 3000]
                  cbind(.moorings$receiver_x, .moorings$receiver_y) |>
                    terra::vect() |>
                    terra::buffer(width = .moorings$receiver_gamma) |> 
