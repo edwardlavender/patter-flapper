@@ -5,7 +5,7 @@ patter_timeline <- function(mmyy) {
 }
 
 #' Define the model_obs and yobs inputs for a forward run of the particle filter
-patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
+patter_ModelObs <- function(sim, timeline, detections, moorings, archival, xinit_list) {
   
   #### Acoustics datasets
   if (sim$dataset %in% c("ac", "acdc")) {
@@ -30,10 +30,10 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
     # Assemble container data
     # max(c(ymax(bathy) - ymin(bathy), xmax(bathy) - xmin(bathy)))
     # Note that containers contains a $forward and $backward element that we select later
-    containers <- assemble_acoustics_containers(.timeline  = timeline, 
-                                                .acoustics = acoustics,
-                                                .mobility = sim$mobility, 
-                                                .threshold = 139199)
+    acoustics_containers <- assemble_acoustics_containers(.timeline  = timeline, 
+                                                          .acoustics = acoustics,
+                                                          .mobility = sim$mobility, 
+                                                          .threshold = 139199)
   }
   
   #### Archival datasets
@@ -55,16 +55,28 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival) {
     }
   }
   
+  #### Capture locations
+  # xinit_list is a list with forward & backward elements
+  # capture_containers contains a $forward and $backward element that we select later
+  capture_containers <- assemble_capture_containers(.timeline  = timeline, 
+                                                    .xinit     = xinit_list, 
+                                                    .radius    = 500, 
+                                                    .mobility  = sim$mobility, 
+                                                    .threshold = 139199)
+  
   #### Return list of algorithm-specific ModelObs strings & corresponding datasets
   if (sim$dataset == "ac") {
     out <- list(ModelObsAcousticLogisTrunc = acoustics, 
-                ModelObsAcousticContainer = containers)
+                ModelObsAcousticContainer  = acoustics_containers, 
+                ModelObsCaptureContainer   = capture_containers)
   } else if (sim$dataset == "dc") {
-    out <- list(ModelObsDepthNormalTrunc = archival)
+    out <- list(ModelObsDepthNormalTrunc = archival, 
+                ModelObsCaptureContainer = capture_containers)
   } else if (sim$dataset == "acdc") {
     out <- list(ModelObsAcousticLogisTrunc = acoustics,
-                ModelObsAcousticContainer = containers, 
-                ModelObsDepthNormalTrunc = archival)
+                ModelObsAcousticContainer  = acoustics_containers, 
+                ModelObsDepthNormalTrunc   = archival, 
+                ModelObsCaptureContainer   = capture_containers)
   }
   
   out

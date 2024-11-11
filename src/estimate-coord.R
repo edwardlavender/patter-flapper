@@ -115,6 +115,8 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   moorings    <- datasets$moorings
   archival    <- datasets$archival_by_unit[[sim$unit_id]]
   behaviour   <- datasets$behaviour_by_unit[[sim$unit_id]]
+  # (For historical convenience, xinit is read below)
+  # xinit       <- datasets$xinit_by_unit[[sim$unit_id]]
   # (optional) Trial implementation of depth data only when resting
   # archival <- archival[which(behaviour == 1L), ]
   # stopifnot(nrow(archival) > 0L)
@@ -144,10 +146,8 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   # real      : input/xinit/1.5/individual_id/month_id/xinit-fwd.qs, xinit-bwd.qs
   xinit_fwd <- qs::qread(file.path(sim$folder_xinit, "xinit-fwd.qs"))
   xinit_bwd <- qs::qread(file.path(sim$folder_xinit, "xinit-bwd.qs"))
-  # path      <- qs::qread(here_data("input", "simulation", sim$unit_id, "coord.qs"))
-  # path[c(1, .N), ]
-  # xinit_fwd
-  # xinit_bwd
+  xinit_list <- list(forward  = xinit_fwd, 
+                     backward = xinit_bwd)
   
   #### Define movement model
   state       <- state_flapper
@@ -156,17 +156,22 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   update_model_move_components()
 
   #### Define observation model(s)
-  model_obs <- patter_ModelObs(sim = sim, 
-                               timeline = timeline, 
+  model_obs <- patter_ModelObs(sim        = sim, 
+                               timeline   = timeline, 
                                detections = detections,
-                               moorings = moorings,
-                               archival = archival)
+                               moorings   = moorings,
+                               archival   = archival, 
+                               xinit_list = xinit_list)
   
   yobs_fwd <- yobs_bwd <- model_obs
   if (rlang::has_name(model_obs, "ModelObsAcousticContainer")) {
     yobs_fwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$forward
     yobs_bwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$backward
   }
+  yobs_fwd$ModelObsCaptureContainer <- model_obs$ModelObsCaptureContainer$forward
+  yobs_bwd$ModelObsCaptureContainer <- model_obs$ModelObsCaptureContainer$backward
+  stopifnot(!is.null(yobs_fwd$ModelObsCaptureContainer))
+  stopifnot(!is.null(yobs_bwd$ModelObsCaptureContainer))
   
   #### List filter arguments
   # Set arguments to reduce computation time 
