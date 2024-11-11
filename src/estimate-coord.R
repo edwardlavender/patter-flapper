@@ -185,6 +185,7 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
                .n_record   = 1000L,
                .n_iter     = 1L,
                .direction  = "forward",
+               .collect    = FALSE,
                .verbose    = TRUE)
   
   #### Implement particle filter

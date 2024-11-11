@@ -127,8 +127,8 @@ pf_filter_wrapper <- function(sim, args) {
   t2      <- Sys.time()
   time    <- secs(t2, t1)
   if (!inherits(pout, "error")) {
-    n_trial <- pout$trials
-    success <- pout$convergence
+    n_trial <- julia_eval(glue('p{routine}.trials'))
+    success <- julia_eval(glue('p{routine}.convergence'))
   } else {
     error <- pout$message
   }
