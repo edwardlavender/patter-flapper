@@ -45,6 +45,7 @@ julia_connect()
 set_seed()
 set_map(here_data("spatial", "bathy.tif"))
 set_vmap(.vmap = here_data("spatial", glue("vmap-{pars$pmovement$mobility[1]}.tif")))
+set_ModelObsCaptureContainer()
 set_model_move_components()
 
 #### Define iterations

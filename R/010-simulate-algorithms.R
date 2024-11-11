@@ -67,6 +67,7 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 #### Julia set up
 julia_connect()
 set_seed()
+set_ModelObsCaptureContainer()
 set_model_move_components()
 
 #### Define simulation timeline
@@ -241,6 +242,13 @@ archival_by_unit <- lapply(seq_len(n_path), function(path) {
   yobs <- qs::qread(here_data("input", "simulation", path, "yobs.qs"))
   yobs$ModelObsDepthNormalTrunc[[1]]
 })
+# Recapture containers
+# xinit_by_unit <- lapply(seq_len(n_path), function(path) {
+#   list(
+#     forward  = qs::qread(here_data("input", "simulation", path, "xinit-fwd.qs")),
+#     backward = qs::qread(here_data("input", "simulation", path, "xinit-bwd.qs"))
+#   )
+# })
 
 
 ###########################
@@ -649,7 +657,7 @@ iteration <- copy(iteration_patter)
 # Set map
 set_map(here_data("spatial", "bathy.tif"))
 # (optional) Select dataset
-iteration <- iteration[dataset == "ac", ]
+iteration <- iteration[dataset == "acdc", ]
 # Set batch & export vmap
 # * We implement the algorithms in batches so that we export vmap once
 batch     <- pars$pmovement$mobility[1]
@@ -684,15 +692,16 @@ if (FALSE) {
   iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
   iteration_trial[dataset == "acdc", np := 250000] 
   iteration_trial[, smooth := FALSE]
-  iteration_trial <- iteration_trial[dataset == "acdc", ]
-  # iteration_trial <- iteration_trial[1, ]
+  iteration_trial <- iteration_trial[dataset == "ac", ]
+  iteration_trial <- iteration_trial[1, ]
   # debug(estimate_coord_patter)
   nrow(iteration_trial)
   lapply_estimate_coord_patter(iteration = iteration_trial, 
                                datasets = datasets,
                                trial = FALSE, 
                                log.folder = NULL)# here_data("output", "log", "simulation", "trials"))
-  qs::qread(file.path(iteration$folder_coord[1], "data-fwd.qs"))
+  qs::qread(file.path(iteration_trial$folder_coord[1], "data-fwd.qs"))
+  
   # Compare output
   if (!patter:::os_linux()) {
     here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()

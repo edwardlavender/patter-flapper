@@ -48,7 +48,11 @@ mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 julia_connect()
 set_seed()
 julia_command('Rasters.checkmem!(false);')
+# TO DO
+# Incorporate ModelObsCaptureContainer in workflow below
+set_ModelObsCaptureContainer()
 set_model_move_components()
+
 
 
 ###########################
