@@ -57,6 +57,9 @@ lapply_estimate_coord_patter <- function(iteration,
   
   # (optional) Open sink
   log.txt <- sink_open(log.folder)
+  on.exit(sink_close(log.txt), add = TRUE)
+  
+  # Print time 
   print(Sys.time())
   tictoc::tic()
   on.exit(tictoc::toc(), add = TRUE)
@@ -69,9 +72,8 @@ lapply_estimate_coord_patter <- function(iteration,
                           trial = trial)
   })
   
-  # Close sink
+  # Close function
   print(Sys.time())
-  sink_close(log.txt)
   nothing()
   
 }
