@@ -24,6 +24,53 @@ if (FALSE) {
   # > TRUE
 }
 
+#' Estimate UDs using POU
+estimate_ud_pou <- function(sim, extract_coord = NULL, map, plot) {
+  
+  # Initialise
+  cat_init(sim$index)
+  
+  # Define outputs
+  pfile <- "ud.tif"
+  dfile <- "data.qs"
+  
+  # Define data 
+  stopifnot(rlang::has_name(sim, "file_coord"))
+  if (!file.exists(sim$file_coord)) {
+    message("Coordinate file does not exist.")
+    return(nothing())
+  }
+  coord <- qs::qread(sim$file_coord)
+  if (!is.null(extract_coord)) {
+    coord <- extract_coord(coord)
+  }
+  
+  # Run algorithm 
+  t1   <- Sys.time()
+  ud   <- map_pou(.map = map, .coord = coord, .plot = plot)
+  t2   <- Sys.time()
+  time <- secs(t2, t1)
+
+  # Collect success statistics
+  dout <- data.table(id = sim$index, 
+                     method = "pou", 
+                     routine = "pou", 
+                     success = TRUE,
+                     error = NA_character_, 
+                     ntrial = NA_integer_,
+                     time = time)
+  
+    # Write outputs
+    folder_ud <- file.path(sim$folder_ud, "pou")
+    terra::writeRaster(ud$ud, 
+                       file.path(folder_ud, pfile), 
+                       overwrite = TRUE)
+    qs::qsave(dout, file.path(folder_ud, dfile))
+    
+    nothing()
+    
+}
+
 #' Estimate UDs using spatstat
 estimate_ud_spatstat <- function(sim, extract_coord = NULL, map, win, sigmas, plot) {
   
