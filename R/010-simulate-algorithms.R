@@ -120,6 +120,7 @@ if (!patter:::os_linux()) {
 # (optional) Cleanup
 if (FALSE) {
   unlink(here_data("input", "simulation"), recursive = TRUE)
+  list.files(here_data("input", "simulation"), recursive = TRUE)
   dir.create(here_data("input", "simulation"))
   dirs.create(here_data("input", "simulation", seq_len(n_path)))
 }
@@ -186,18 +187,30 @@ if (FALSE) {
     update_model_move_components()
     
     #### Simulate movement path 
-    coord_path <- sim_path_walk(.map = map, 
-                                .timeline = timeline, 
-                                .state = state, 
-                                .xinit = xinit_fwd, 
+    coord_path <- sim_path_walk(.map        = map, 
+                                .timeline   = timeline, 
+                                .state      = state, 
+                                .xinit      = xinit_fwd, 
                                 .model_move = model_move, 
-                                .n_path = 1L, 
-                                .plot = FALSE)
+                                .n_path     = 1L, 
+                                .plot       = FALSE)
+    xinit_bwd <- coord_path[.N, .(map_value, x, y)]
     # points(moorings$receiver_x, moorings$receiver_y)
-    # Record recapture location
+    
+    #### Record capture/recapture locations for filter
+    # We assume the capture/recapture locations are known
+    # Angles are unknown
+    xinit_fwd <- lapply(1:1e5L, function(i) {
+      xinit_fwd
+    }) |> rbindlist()
     if (model_move_is_crw()) {
-      xinit_bwd <- coord_path[.N, .(map_value, x, y, angle)]
-      xinit_bwd[, angle := -angle]
+      xinit_fwd[, angle := runif(.N) * 2 * pi]
+    }
+    xinit_bwd <- lapply(1:1e5L, function(i) {
+      xinit_bwd
+    }) |> rbindlist()
+    if (model_move_is_crw()) {
+      xinit_bwd[, angle := runif(.N) * 2 * pi]
     }
     
     #### Simulate observations
