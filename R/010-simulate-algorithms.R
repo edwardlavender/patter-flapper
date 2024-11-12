@@ -125,7 +125,7 @@ if (FALSE) {
   dirs.create(here_data("input", "simulation", seq_len(n_path)))
 }
   
-# Run simulation (~50 mins)
+# Run simulation (~45 mins)
 if (FALSE) {
   
   #### Simulate data on selected grid
@@ -374,6 +374,12 @@ if (FALSE) {
     arrange(unit_id, parameter_id) |>
     as.data.table()
   # Build folders
+  if (FALSE) {
+    unlink(iteration_coa$folder_coord, recursive = TRUE)
+    unlink(iteration_coa$folder_ud, recursive = TRUE)
+    list.files(iteration_coa$folder_coord, recursive = TRUE)
+    list.files(iteration_coa$folder_ud, recursive = TRUE)
+  }
   dirs.create(iteration_coa$folder_coord)
   dirs.create(iteration_coa$folder_ud)
   dirs.create(file.path(iteration_coa$folder_ud, "spatstat", "h"))
@@ -417,6 +423,8 @@ if (FALSE) {
              .mod = ud_null)
   }) |> unlist() |> as.numeric()
   # Visualise ME ~ delta_t
+  png(here_fig("simulation", "parameterisation-coa.png"), 
+      height = 5, width = 8, units = "in", res = 600)
   iteration |>
     mutate(unit_id     = factor(unit_id), 
            delta_t     = factor(delta_t, levels = pcoa$delta_t), 
@@ -429,10 +437,22 @@ if (FALSE) {
     ungroup() |> 
     as.data.table() |>
     ggplot() + 
-    geom_point(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) + 
-    geom_line(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) +
-    geom_smooth(aes(as.integer(delta_t), me), method = "gam")  + 
-    theme(legend.position = "none")
+    geom_point(aes(delta_t, me, colour = factor(unit_id), 
+                   group = factor(unit_id)), alpha = 0.5, size = 0.8) + 
+    geom_line(aes(delta_t, me, colour = factor(unit_id), 
+                  group = factor(unit_id)), alpha = 0.4, linewidth = 0.5) +
+    geom_smooth(aes(as.integer(delta_t), me), method = "gam", 
+                colour = "black", linewidth = 1.2, fill = "dimgrey")  + 
+    theme(legend.position = "none") + 
+    scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+    xlab(expression(Delta * T)) + 
+    ylab(expression("Relative mean error (" * italic(RME) * ")")) + 
+    theme_classic() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          legend.position = "none")
+  dev.off()
   
   #### Select delta_t
   # > Best guess:       2 days
@@ -528,10 +548,12 @@ if (FALSE) {
     arrange(unit_id, parameter_id) |>
     as.data.table()
   # Build folders
-  # unlink(iteration_rsp$folder_coord, recursive = TRUE)
-  # unlink(iteration_rsp$folder_ud, recursive = TRUE)
-  # list.files(iteration_rsp$folder_coord, recursive = TRUE)
-  # list.files(iteration_rsp$folder_ud, recursive = TRUE)
+  if (FALSE) {
+    unlink(iteration_rsp$folder_coord, recursive = TRUE)
+    unlink(iteration_rsp$folder_ud, recursive = TRUE)
+    list.files(iteration_rsp$folder_coord, recursive = TRUE)
+    list.files(iteration_rsp$folder_ud, recursive = TRUE)
+  }
   dirs.create(iteration_rsp$folder_coord)
   dirs.create(iteration_rsp$folder_ud)
   dirs.create(file.path(iteration_rsp$folder_ud, "spatstat", "h"))
@@ -597,6 +619,8 @@ if (FALSE) {
                .mod = ud_null)
   }) |> unlist() |> as.numeric()
   # Visualise ME ~ er.ad
+  png(here_fig("simulation", "parameterisation-rsp.png"), 
+      height = 5, width = 8, units = "in", res = 600)
   iteration |>
     mutate(unit_id   = factor(unit_id), 
            er.ad     = factor(er.ad, levels = prsp$er.ad), 
@@ -608,10 +632,25 @@ if (FALSE) {
     ungroup() |> 
     as.data.table() |>
     ggplot() + 
-    geom_point(aes(er.ad, me, colour = factor(unit_id), group = factor(unit_id))) + 
-    geom_line(aes(er.ad, me, colour = factor(unit_id), group = factor(unit_id))) +
-    geom_smooth(aes(as.integer(er.ad), me), method = "gam") + 
-    theme(legend.position = "none")
+    geom_point(aes(er.ad, me, colour = factor(unit_id), 
+                   group = factor(unit_id)), alpha = 0.5, size = 0.8) + 
+    geom_line(aes(er.ad, me, colour = factor(unit_id), 
+                  group = factor(unit_id)), alpha = 0.4, linewidth = 0.5) +
+    geom_smooth(aes(as.integer(er.ad), me), method = "gam", 
+                colour = "black", linewidth = 1.2, fill = "dimgrey")  + 
+    theme(legend.position = "none") + 
+    scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+    xlab(expression(er.ad)) + 
+    ylab(expression("Relative mean error (" * italic(RME) * ")")) + 
+    theme_classic() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          axis.title.x = element_text(family = "mono"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          legend.position = "none")
+  dev.off()
+  
+  
   
   # > Best guess:       ~500 
   # > Restricted value: ~250
@@ -772,6 +811,12 @@ all(file.exists(file.path(iteration_patter$folder_xinit, "xinit-bwd.qs"))) |> st
 iteration_patter[, smooth := TRUE]
 
 #### Build patter folders
+if (FALSE) {
+  unlink(iteration_coa$folder_coord, recursive = TRUE)
+  unlink(iteration_coa$folder_ud, recursive = TRUE)
+  list.files(iteration_coa$folder_coord, recursive = TRUE)
+  list.files(iteration_coa$folder_ud, recursive = TRUE)
+}
 dirs.create(iteration_patter$folder_coord)
 dirs.create(iteration_patter$folder_ud)
 dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
