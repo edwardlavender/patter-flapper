@@ -53,7 +53,8 @@ if (!patter:::os_linux()) {
   map      <- terra::rast(here_data("spatial", "bathy.tif"))
   ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
   ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
-  win      <- qs::qread(dv::here_data("spatial", "win.qs"))
+  win      <- qs::qread(here_data("spatial", "win.qs"))
+  mpa      <- qreadvect(here_data("spatial", "mpa.qs"))
 } 
 skateids <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 moorings <- qs::qread(here_data("input", "mefs", "moorings.qs")) 
@@ -71,10 +72,11 @@ set_ModelObsCaptureContainer()
 set_model_move_components()
 
 #### Define simulation timeline
-n_path   <- 100L
-timeline <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
-                as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
-                by = "2 mins")
+n_path         <- 100L
+selected_paths <- 1:3L
+timeline       <- seq(as.POSIXct("2024-04-01 00:00:00", tz = "UTC"), 
+                      as.POSIXct("2024-04-30 23:58:00", tz = "UTC"), 
+                      by = "2 mins")
 
 #### Define global datasets
 # COA & patter run with simulated acoustic data
@@ -87,6 +89,28 @@ moorings <-
          receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
   as.data.table()
 head(moorings)
+
+#### Flag moorings in MPA
+# The moorings_in_mpa dataset is used to compute detection days
+if (!patter:::os_linux()) {
+  
+  # Visualise receivers in MPA
+  terra::plot(map)
+  terra::plot(mpa, "id")
+  points(moorings$receiver_x, moorings$receiver_y, pch = 4)
+  
+  # Identify moorings in MPA 
+  moorings_in_mpa <- 
+    moorings |>
+    mutate(open = terra::extract(mpa, cbind(moorings$receiver_x, moorings$receiver_y))$open, 
+           open = as.character(open)) |>
+    filter(!is.na(open)) |>
+    as.data.table()
+  
+  # All moorings within MPA are in closed zones
+  table(moorings_in_mpa$open)
+  
+}
 
 
 ###########################
@@ -103,9 +127,10 @@ if (FALSE) {
 # Run simulation (~50 mins)
 if (FALSE) {
   
-  #### Simulate data on high-resolution grid
-  map_5m <- terra::rast(here_data("spatial", "bathy-5m.tif"))
-  set_map(map_5m)
+  #### Simulate data on selected grid
+  # map_5m <- terra::rast(here_data("spatial", "bathy-5m.tif"))
+  # set_map(map_5m)
+  set_map(map)
   
   #### Define ModelMove structure to simulate paths
   # We simulate the path using the best-guess parameters
@@ -113,7 +138,7 @@ if (FALSE) {
   
   #### Define ModelObs structures to simulate observations 
   # We simulate parameters using best-guess parameters
-  # * These are hard-coded as 20, 20 for the depth observation model
+  # * These may be hard-coded for the high-resolution grid (20, 20)
   ModelObsAcousticLogisTruncPars <- 
     moorings |> 
     select(sensor_id = "receiver_id", "receiver_x", "receiver_y") |> 
@@ -121,9 +146,12 @@ if (FALSE) {
            receiver_beta = pars$pdetection$receiver_beta[1], 
            receiver_gamma = pars$pdetection$receiver_gamma[1]) |> 
     as.data.table()
+  # ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
+  #                                            depth_sigma = 20, 
+  #                                            depth_deep_eps = 20)
   ModelObsDepthNormalTruncPars <- data.table(sensor_id = 1L, 
-                                             depth_sigma = 20, 
-                                             depth_deep_eps = 20)
+                                             depth_sigma = pars$pdepth$depth_sigma[1], 
+                                             depth_deep_eps = pars$pdepth$depth_deep_eps[1])
   ModelObsPars <- list(ModelObsAcousticLogisTrunc = ModelObsAcousticLogisTruncPars, 
                        ModelObsDepthNormalTrunc = ModelObsDepthNormalTruncPars)
   
@@ -169,6 +197,7 @@ if (FALSE) {
     # Record recapture location
     if (model_move_is_crw()) {
       xinit_bwd <- coord_path[.N, .(map_value, x, y, angle)]
+      xinit_bwd[, angle := -angle]
     }
     
     #### Simulate observations
@@ -219,8 +248,37 @@ if (FALSE) {
                          column = rep(1:10, 10), 
                          mapfile = mapfiles)
   ggplot_maps(mapdt = mapfiles, 
+              png_args = list(filename = here_fig("simulation", "map-paths-full.png"), 
+                              height = 12, width = 15, units = "in", res = 600))
+  
+  #### Visualise selected paths
+  mapfiles <- here_data("input", "simulation", selected_paths, "ud.tif")
+  mapfiles <- data.table(row = c(1, 2, 3),
+                         column = c(1, 1, 1), 
+                         mapfile = mapfiles)
+  ggplot_maps(mapdt = mapfiles, 
               png_args = list(filename = here_fig("simulation", "map-paths.png"), 
                               height = 12, width = 15, units = "in", res = 600))
+  
+  #### Estimate 'true' residency (~10 s)
+  iteration_res <- data.table(unit_id = c(1, 2, 3), 
+                              algorithm = "Path", 
+                              sensitivity = "Best", 
+                              iter = 1L,
+                              file = here_data("input", "simulation", selected_paths, "coord.qs"))
+  residency <- 
+    lapply_estimate_residency_coord(files = iteration_res$file,
+                                    cl = 3L)
+  residency <- 
+    left_join(residency, iteration_res, by = "file") |>
+    mutate(file = NULL) |> 
+    select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+    arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+    as.data.table()
+  qs::qsave(residency, here_data("output", "simulation-residency", "residency-path.qs"))
+  
+  #### Estimate residency from detection days
+  # This is implemented below.
   
 }
 
@@ -249,6 +307,35 @@ archival_by_unit <- lapply(seq_len(n_path), function(path) {
 #     backward = qs::qread(here_data("input", "simulation", path, "xinit-bwd.qs"))
 #   )
 # })
+
+#### Estimate residency from detection days
+if (!patter:::os_linux()) {
+  
+  residency <- lapply(selected_paths, function(path) {
+    
+    # Total number of days in month 
+    ndays <- as.integer(lubridate::days_in_month(timeline[1]))
+    
+    # Compute detection days for receivers in MPA
+    detections_by_unit[[path]] |> 
+      filter(receiver_id %in% moorings_in_mpa$receiver_id) |> 
+      mutate(day = lubridate::day(timestamp)) |> 
+      summarise(time = length(unique(day)) / ndays) |>
+      mutate(unit_id = path, 
+             algorithm = "DD", 
+             sensitivity = "Best",
+             iter = 1L,
+             zone    = "total") |> 
+      select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+      arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+      as.data.table()
+
+  }) |> rbindlist()
+  
+  qs::qsave(residency, 
+            here_data("output", "simulation-residency", "residency-detection-days.qs"))
+  
+}
 
 
 ###########################
@@ -305,17 +392,17 @@ if (FALSE) {
   
   #### Visualise ME
   # Compute ME 
-  me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     tryCatch(
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
                .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif"))), 
                error = function(e) NA)
-  })
+  }) |> unlist() |> as.numeric()
   # Compute ME for null model
-  me_null <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  me_null <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
              .mod = ud_null)
-  })
+  }) |> unlist() |> as.numeric()
   # Visualise ME ~ delta_t
   iteration |>
     mutate(unit_id     = factor(unit_id), 
@@ -331,16 +418,19 @@ if (FALSE) {
     ggplot() + 
     geom_point(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) + 
     geom_line(aes(delta_t, me, colour = factor(unit_id), group = factor(unit_id))) +
-    geom_smooth(aes(as.integer(delta_t_int), me), method = "gam")  + 
+    geom_smooth(aes(as.integer(delta_t), me), method = "gam")  + 
     theme(legend.position = "none")
   
+  #### Select delta_t
   # > Best guess:       2 days
   # > Restricted value: 1 day
   # > Flexible value:   3 days 
+  selected_delta_t <- c("2 days", "1 day", "3 days")
+  stopifnot(all(selected_delta_t %in% iteration$delta_t))
   
   ### Visualise maps
   # Define panel row (path) and column (parameter) labels
-  cols <- c("NA", "2 days", "1 days", "3 days")
+  cols <- c("Path", selected_delta_t)
   cols <- factor(cols, levels = cols)
   rows <- c("Path", "COA[1]", "COA[2]", "COA[3]")
   rows <- factor(rows, levels = rows)
@@ -374,6 +464,26 @@ if (FALSE) {
               png_args = list(filename = here_fig("simulation", "map-coa.png"), 
                               height = 5, width = 10, units = "in", res = 600))
   
+  #### Estimate residency 
+  # Define dataset
+  iteration_res <- 
+    iteration |>
+    filter(unit_id %in% selected_paths) |> 
+    filter(delta_t %in% selected_delta_t) |> 
+    mutate(file = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+    as.data.table()
+  # Compute residency 
+  residency <- lapply_estimate_residency_ud(files = iteration_res$file)
+  # Write output
+  residency <- 
+    left_join(iteration_res, residency, by = "file") |> 
+    mutate(algorithm = "COA", 
+           sensitivity = factor(delta_t, levels = selected_delta_t, labels = c("Best", "AC(-)", "AC(+)"))) |>
+    select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+    arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+    as.data.table()
+  qs::qsave(residency, here_data("output", "simulation-residency", "residency-coa.qs"))
+
 }
 
 
@@ -463,16 +573,16 @@ if (FALSE) {
   }
   
   #### Visualise ME 
-  me <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     tryCatch(   
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
                .mod = terra::rast(file.path(sim$folder_ud, "dbbmm", "ud.tif"))), 
       error = function(e) NA)
-  })
-  me_null <- pbapply::pbsapply(split(iteration, seq_row(iteration)), function(sim) {
+  }) |> unlist() |> as.numeric()
+  me_null <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
                .mod = ud_null)
-  })
+  }) |> unlist() |> as.numeric()
   # Visualise ME ~ er.ad
   iteration |>
     mutate(unit_id   = factor(unit_id), 
@@ -493,10 +603,12 @@ if (FALSE) {
   # > Best guess:       ~500 
   # > Restricted value: ~250
   # > Flexible value:   ~750 
+  selected_er.ad <- c(500, 250, 750)
+  stopifnot(all(selected_er.ad %in% iteration$er.ad))
   
   ### Visualise maps
   # Define panel row (path) and column (parameter) labels
-  cols <- c("NA", "500", "250", "750")
+  cols <- c("Path", selected_er.ad)
   cols <- factor(cols, levels = cols)
   rows <- c("Path", "RSP[1]", "RSP[2]", "RSP[3]")
   rows <- factor(rows, levels = rows)
@@ -529,6 +641,26 @@ if (FALSE) {
   ggplot_maps(mapdt = mapfiles, 
               png_args = list(filename = here_fig("simulation", "map-rsp.png"), 
                               height = 5, width = 10, units = "in", res = 600))
+  
+  #### Estimate residency (~0.5 s)
+  # Define dataset
+  iteration_res <- 
+    iteration |>
+    filter(unit_id %in% selected_paths) |> 
+    filter(er.ad %in% selected_er.ad) |> 
+    mutate(file = file.path(folder_ud, "dbbmm", "ud.tif")) |> 
+    as.data.table()
+  # Compute residency 
+  residency <- lapply_estimate_residency_ud(files = iteration_res$file)
+  # Write output
+  residency <- 
+    left_join(iteration_res, residency, by = "file") |> 
+    mutate(algorithm = "RSP", 
+           sensitivity = factor(er.ad, levels = selected_er.ad, labels = c("Best", "AC(-)", "AC(+)"))) |>
+    select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+    arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+    as.data.table()
+  qs::qsave(residency, here_data("output", "simulation-residency", "residency-rsp.qs"))
   
 }
 
@@ -651,97 +783,327 @@ for (i in selected_paths) {
 head(datasets$archival_by_unit[[1]])
 head(datasets$archival_by_unit[[2]])
 
-#### Initialise coordinate estimation 
-# Define iterations 
+#### Run algorithm
 iteration <- copy(iteration_patter)
-# Set map
-set_map(here_data("spatial", "bathy.tif"))
-# (optional) Select dataset
-iteration <- iteration[dataset == "acdc", ]
-# Set batch & export vmap
-# * We implement the algorithms in batches so that we export vmap once
-batch     <- pars$pmovement$mobility[1]
-iteration <- iteration[mobility == batch, ]
-vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
-set_vmap(.vmap = vmap)
-rm(vmap)
-
-#### (optional) Check progress between loop restarts
 if (FALSE) {
-  it <- iteration[1:200, ]
-  progress <- 
-    lapply(split(it, seq_row(it)), function(d) {
-      # d <- it[1, ]
-      qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
-    }) |> 
-    rbindlist(fill = TRUE)
-}
-
-#### (optional) Test convergence
-if (FALSE) {
-  # Test convergence for selected algorithm
-  # * AC: 5000 particles: success for 1:3
-  # * DC: 5000 particles: success for 1:3
-  # * ACDC: 
-  # - 100,000: 1 (fail); 2 (success); 3 (TO DO), ... 
-  # - 200,000: 1 (fail)
-  # - 250,000: 1 (success: 17 mins); 
   
-  # iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
-  iteration_trial <- iteration_patter[iter == 1L, ]
-  iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
-  iteration_trial[dataset == "acdc", np := 250000] 
-  iteration_trial[, smooth := FALSE]
-  iteration_trial <- iteration_trial[dataset == "ac", ]
-  iteration_trial <- iteration_trial[1, ]
-  # debug(estimate_coord_patter)
-  nrow(iteration_trial)
-  lapply_estimate_coord_patter(iteration = iteration_trial, 
-                               datasets = datasets,
+  #### Initialise coordinate estimation 
+  # Set map
+  set_map(here_data("spatial", "bathy.tif"))
+  # (optional) Select dataset
+  iteration <- iteration[dataset == "acdc", ]
+  # Set batch & export vmap
+  # * We implement the algorithms in batches so that we export vmap once
+  batch     <- pars$pmovement$mobility[1]
+  iteration <- iteration[mobility == batch, ]
+  vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
+  set_vmap(.vmap = vmap)
+  rm(vmap)
+  
+  #### (optional) Check progress between loop restarts
+  if (FALSE) {
+    it <- iteration[1:200, ]
+    progress <- 
+      lapply(split(it, seq_row(it)), function(d) {
+        # d <- it[1, ]
+        qs::qread(file.path(d$folder_coord, "data-fwd.qs"))
+      }) |> 
+      rbindlist(fill = TRUE)
+  }
+  
+  #### (optional) Test convergence
+  if (FALSE) {
+    # Test convergence for selected algorithm
+    # * AC: 5000 particles: success for 1:3
+    # * DC: 5000 particles: success for 1:3
+    # * ACDC: 
+    # - 100,000: 1 (fail); 2 (success); 3 (TO DO), ... 
+    # - 200,000: 1 (fail)
+    # - 250,000: 1 (success: 17 mins); 
+    
+    # iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
+    iteration_trial <- iteration_patter[iter == 1L, ]
+    iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
+    iteration_trial[dataset == "acdc", np := 250000] 
+    iteration_trial[, smooth := FALSE]
+    iteration_trial <- iteration_trial[dataset == "ac", ]
+    iteration_trial <- iteration_trial[1, ]
+    # debug(estimate_coord_patter)
+    nrow(iteration_trial)
+    lapply_estimate_coord_patter(iteration = iteration_trial, 
+                                 datasets = datasets,
+                                 trial = FALSE, 
+                                 log.folder = NULL, #  here_data("output", "log", "simulation", "trials"))
+                                 log.txt = NULL)
+    qs::qread(file.path(iteration_trial$folder_coord[1], "data-fwd.qs"))
+    
+    # Compare output
+    if (!patter:::os_linux()) {
+      here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()
+      map_pou(.map = terra::rast(here_data("input", "spatial", "map.tif")),
+              .coord = file.path(iteration$folder_coord[1], "coord-smo.qs"))
+    }
+    
+  }
+  
+  #### Estimate coords
+  gc()
+  nrow(iteration)
+  head(iteration)
+  lapply_estimate_coord_patter(iteration = iteration, 
+                               datasets = datasets, 
                                trial = FALSE, 
-                               log.folder = NULL)# here_data("output", "log", "simulation", "trials"))
-  qs::qread(file.path(iteration_trial$folder_coord[1], "data-fwd.qs"))
+                               log.folder = here_data("output", "log", "simulation"), 
+                               log.txt = NULL)
+  # Examine selected coords
+  # if (patter:::os_linux()) {
+  #   stop("Exit server at this point (for convenience).")
+  # }
+  # lapply_qplot_coord(iteration,
+  #                    "coord-smo.qs",
+  #                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
   
-  # Compare output
+  #### Estimate UDs using POU (~2 mins)
   if (!patter:::os_linux()) {
-    here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()
-    map_pou(.map = terra::rast(here_data("input", "spatial", "map.tif")),
-            .coord = file.path(iteration$folder_coord[1], "coord-smo.qs"))
+    dirs.create(file.path(iteration$folder_ud, "pou"))
+    iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+    lapply_estimate_ud_pou(iteration = iteration,
+                           extract_coord = function(s) s$states,
+                           cl = 12L,
+                           plot = FALSE)
+    # (optional) Examine selected UDs
+    lapply_qplot_ud(iteration, "pou", "ud.tif")
+    
+    #### Estimate UDs via spatstat (~15 mins)
+    # We estimate UDs for iterations 1:3 with max number of particles
+    iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+    lapply_estimate_ud_spatstat(iteration = iteration,
+                                extract_coord = function(s) s$states,
+                                cl = 12L,
+                                plot = FALSE)
+    # (optional) Examine selected UDs
+    lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
   }
 
 }
-
-#### Estimate coords
-gc()
-nrow(iteration)
-head(iteration)
-lapply_estimate_coord_patter(iteration = iteration, 
-                             datasets = datasets, 
-                             trial = FALSE, 
-                             log.folder = here_data("output", "log", "simulation"))
-# # Examine selected coords 
-# if (patter:::os_linux()) {
-#   stop("Exit server at this point (for convenience).")
-# }
-# lapply_qplot_coord(iteration, 
-#                    "coord-fwd.qs",
-#                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
-# 
-# #### Estimate UDs
-# # We estimate UDs for iterations 1:3 with max number of particles
-# iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
-# lapply_estimate_ud_spatstat(iteration = iteration, 
-#                             extract_coord = function(s) s$states,
-#                             cl = NULL, 
-#                             plot = FALSE)
-# # (optional) Examine selected UDs
-# lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
 
 
 ###########################
 ###########################
 #### Synthesis
 
+###########################
+#### Summary 
+
+# 1. COA performance and sensitivity (above)
+# 2. RSP performance and sensitivity (above)
+# 3. Patter convergence (below)
+# 4. Patter performance and sensitivity (below)
+# 5. Patter residency
+# 6. Residency synthesis 
+
+#### Tidy iteration
+# Copy
+iteration <- copy(iteration_patter)
+# Define grouping variables with tidy labels
+iteration[, unit_id := factor(unit_id)]
+iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
+# Revise 'sensitivity' coding
+iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
+iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
+iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
+iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
+iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
+iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
+iteration[, sensitivity := factor(sensitivity, 
+                                  levels = c("best", 
+                                             "movement-under", "movement-over", 
+                                             "ac-under", "ac-over",
+                                             "dc-under", "dc-over"), 
+                                  labels = c("Best", 
+                                             "Move (-)", "Move (+)", 
+                                             "AC(-)", "AC(+)", 
+                                             "DC(-)", "DC(+)"))]
+
+
+###########################
+#### Patter error check 
+
+# Check for errors on forward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
+}) |> unlist()
+
+# Check for errors on backward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-bwd.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist()
+
+# Check for errors on smoother
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-smo.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist()
+
+
+###########################
+#### Patter convergence  
+
+#### Define convergence
+iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
+  file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+})]
+# Review convergence for ACDC
+iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
+
+#### Visualise convergence
+# Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
+iteration |>
+  group_by(unit_id, dataset, sensitivity) |> 
+  summarise(convergence = length(which(convergence)) / n()) |>
+  as.data.table() |> 
+  ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
+  geom_linerange(linewidth = 1.2) +
+  facet_grid(unit_id ~ sensitivity, 
+             labeller = labeller(sensitivity = label_value)) +
+  labs(
+    x = "Algorithm",
+    y = "Pr(convergence)",
+    colour = "Algorithm"
+  ) +
+  scale_color_brewer(palette = "Dark2") + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  theme_bw() + 
+  theme(panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank())
+
+
+
+###########################
+#### Patter maps
+
+# For each selected path, visualise UDs from patter (~15 s)
+if (FALSE) {
+  
+  cl_lapply(selected_paths, function(path) {
+    
+    #### Define iteration dataset for mapping
+    # path <- selected_paths[1]
+    iteration_map <- iteration[iter == 1L, ]
+    iteration_map <- iteration_map[unit_id == path, ]
+    iteration_map[, key := paste(dataset, sensitivity)]
+    
+    #### Define file paths to ud.tif (POU or spatstat)
+    # Use POU
+    udtype <- "pou"
+    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
+    # Use spatstat
+    # udtype <- "spatstat"
+    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
+    
+    #### Define mapfiles data.table for mapping
+    mapfiles <- CJ(row = levels(iteration_map$dataset), 
+                   column = levels(iteration_map$sensitivity), 
+                   mapfile = NA)
+    mapfiles[, row := factor(row, levels = levels(iteration_map$dataset))]
+    mapfiles[, column := factor(column, levels = levels(iteration_map$sensitivity))]
+    mapfiles[, key := paste(row, column)]
+    mapfiles[, mapfile := iteration_map$mapfile[match(key, iteration_map$key)]]
+    
+    #### Make maps
+    ggplot_maps(mapdt = mapfiles, 
+                png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{path}.png")), 
+                                height = 12, width = 15, units = "in", res = 600))
+    
+  })
+ 
+  # > Manually simulated path maps with patter UD maps outside of R
+   
+}
+
+
+###########################
+#### Patter residency 
+
+#### Compute residency (~40 s, 10 cl)
+iteration_res <- copy(iteration)
+iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
+residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
+                                extract_coord = function(s) s$states, 
+                                cl = 10L)
+# Write output
+residency <- 
+  left_join(iteration_res, residency, by = "file") |> 
+  mutate(algorithm = dataset) |>
+  select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+  arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+  as.data.table()
+qs::qsave(residency, here_data("output", "simulation-residency", "residency-patter.qs"))
+
+
+###########################
+#### Residency synthesis 
+
+#### Combine residency datasets
+residency <- 
+  rbindlist(
+  list(
+    qs::qread(here_data("output", "simulation-residency", "residency-path.qs")),
+    qs::qread(here_data("output", "simulation-residency", "residency-detection-days.qs")),
+    qs::qread(here_data("output", "simulation-residency", "residency-coa.qs")),
+    qs::qread(here_data("output", "simulation-residency", "residency-rsp.qs")),
+    qs::qread(here_data("output", "simulation-residency", "residency-patter.qs"))
+  )
+)
+
+#### Examine structure
+head(residency)
+unique(residency$algorithm)
+unique(residency$sensitivity)
+residency <- 
+  residency |>
+  mutate(sensitivity = factor(sensitivity, 
+                               levels = c("Best", 
+                                          "Move (-)", "Move (+)",
+                                          "AC(-)", "AC(+)", 
+                                          "DC(-)", "DC(+)"))) |>
+  arrange(unit_id, algorithm, sensitivity, iter, zone) |> 
+  as.data.table()
+
+#### Visualise residency within MPA
+# Get true residency
+true_res <- 
+  residency |>
+  filter(zone == "total", algorithm == "Path", sensitivity == "Best") |>
+  select(unit_id, true_time = time)
+# Get null residency
+null_res <- sum(terra::expanse(mpa)) / terra::expanse(ud_grid)[, 2]
+# Plot residency metrics 
+residency |>
+  filter(zone == "total") |>
+  ggplot(aes(algorithm, time)) + 
+  geom_jitter(width = 0.1, shape = 21, stroke = 0.5, 
+              colour = "black", aes(fill = paste(algorithm, sensitivity))) + 
+  geom_hline(data = true_res,
+             aes(yintercept = true_time),
+             colour = "black") +
+  geom_hline(aes(yintercept = null_res), 
+             colour = "dimgrey", 
+             linetype = 3) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  facet_grid(~unit_id, scales = "free_x") + 
+  # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
+  theme_bw() + 
+  theme(panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank())
+
+#### Visualise MPA within fished/unfished areas
+# (optional) TO DO
 
 
 #### End of code. 
