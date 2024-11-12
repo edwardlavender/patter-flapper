@@ -1,8 +1,3 @@
-#' Compute distances
-dist_2d <- function(xy0, xy1) {
-  sqrt((xy0[, 1] - xy1[, 1])^2 + (xy0[, 2] - xy1[, 2])^2)
-}
-
 #' Assemble (re)capture containers
 # * .xinit is a named list of starting coordinates (forward, backward). Each element ia a data.table with one or more rows.
 # * .radius is the min distance from the starting coordinates we must reach.
@@ -70,7 +65,7 @@ assemble_capture_containers <- function(.timeline,
     # (plus the .radius buffer)
     cx     <- mean(cinfo$x)
     cy     <- mean(cinfo$y)
-    radius <- max(dist_2d(cbind(cx, cy), cbind(cinfo$x, cinfo$y)))
+    radius <- max(patter:::dist_2d(cbind(cx, cy), cbind(cinfo$x, cinfo$y, pairwise = TRUE)))
     radius <- radius + .radius
   }
   
