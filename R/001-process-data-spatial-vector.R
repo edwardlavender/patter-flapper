@@ -65,16 +65,44 @@ if (FALSE) {
 ###########################
 #### Process MPA
 
-mpa_open$open   <- TRUE
+# Define open areas
+mpa_open$id     <- seq_len(nrow(mpa_open))
+mpa_open$open   <- "open"
 mpa_open$col    <- scales::alpha("skyblue", 0.5)
-mpa_closed$open <- FALSE
+
+# Define closed areas
+mpa_closed$id   <- max(mpa_open$id) + 1L
+mpa_closed$open <- "closed"
 mpa_closed$col  <- scales::alpha("red", 0.5)
 
+# Define mpa SpatVector
 mpa <- 
   rbind(mpa_open |> select(id, open, col), 
         mpa_closed |> select(id, open, col)) |> 
+  mutate(id = factor(id), 
+         open = factor(open)) |>
   st_transform(crs = crs) |> 
   terra::vect()
+
+# Update MPA ids
+# 1: Sound of Mull
+# 2: South Lismore
+# 3: South-East Mull
+# 4: Ardnackaig (South Crinan)
+# 5: Inverlussa (Jura)
+# 6: Luing 
+# 7: Crinan
+# 8: Scarba 
+# 9: Firth of Lorn (closed)
+mpa$id <- factor(mpa$id, labels = c("Sound of Mull", "South Lismore", "South-East Mull", 
+                                    "Ardnackaig", "Inverlussa", "Luing", 
+                                    "Crinan", "Scarba", "Firth of Lorn"))
+
+# Visual checks
+data.frame(mpa)
+terra::plot(mpa, y = "id", col = 1:9L)
+terra::plot(mpa, col = mpa$col)
+terra::plot(mpa, y = "open", col = c(mpa_open$col[1], mpa_closed$col[1]))
 
 
 ###########################
