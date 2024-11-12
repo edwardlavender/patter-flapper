@@ -875,17 +875,14 @@ if (FALSE) {
     # * AC: 5000 particles: success for 1:3
     # * DC: 5000 particles: success for 1:3
     # * ACDC: 
-    # - 100,000: 1 (fail); 2 (success); 3 (TO DO), ... 
-    # - 200,000: 1 (fail)
-    # - 250,000: 1 (success: 17 mins); 
     
-    # iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
-    iteration_trial <- iteration_patter[iter == 1L, ]
-    iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
-    iteration_trial[dataset == "acdc", np := 250000] 
+    iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
+    # iteration_trial <- iteration_patter[iter == 1L, ]
+    # iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
+    # iteration_trial[dataset == "acdc", np := 250000] 
+    # iteration_trial <- iteration_trial[dataset == "ac", ]
+    # iteration_trial <- iteration_trial[1, ]
     iteration_trial[, smooth := FALSE]
-    iteration_trial <- iteration_trial[dataset == "ac", ]
-    iteration_trial <- iteration_trial[1, ]
     # debug(estimate_coord_patter)
     nrow(iteration_trial)
     lapply_estimate_coord_patter(iteration = iteration_trial, 
