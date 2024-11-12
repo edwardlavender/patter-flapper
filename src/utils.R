@@ -28,35 +28,37 @@ dirs.create <- function(paths) {
 
 dirs.copy <- function(from, to, cl) {
   
-  # Handle duplicates
+  # Assemble data.table and handle duplicates
   folders <- 
     data.table(from = from, to = to) |> 
     group_by(from) |> 
     slice(1L) |> 
     as.data.table()
-  from <- folders$from
-  to   <- folders$to
-  
-  # Define folder list
-  # * Each element is a unique from -> to pairing 
-  folders <- mapply(function(f, t) list(from = f, to = t), from, to, SIMPLIFY = FALSE)
-  names(folders) <- NULL
-  
-  # Validate from folders exist
-  stopifnot(all(dir.exists(from)))
+
+  # Validate `from` folders exist
+  stopifnot(all(dir.exists(folders$from)))
   
   # Iteratively copy folders & contents
-  success <- cl_lapply(folders, .cl = cl, .fun = function(folder) {
-    # Create directory, if required
-    if (!dir.exists(folder$to)) {
-      dir.create(folder$to, recursive = TRUE)
-    }
-    # Copy folder & contents
-    file.copy(folder$from, dirname(file$to), recursive = TRUE, overwrite = TRUE)
-  })
+  success <- 
+    cl_lapply(split(folders, collapse::seq_row(folders)), 
+              .cl = cl, 
+              .fun = function(folder) {
+                # Clean directory, if required
+                # * This is important as old files may inappropriately persist otherwise 
+                if (dir.exists(folder$to)) {
+                  unlink(folder$to, recursive = TRUE)
+                }
+                # Create directory, if required
+                if (!dir.exists(folder$to)) {
+                  dir.create(folder$to, recursive = TRUE)
+                } 
+                # Copy folder & contents
+                file.copy(folder$from, dirname(folder$to), recursive = TRUE, overwrite = TRUE)
+              })
   
   # Return success
-  data.table(from = from, to = to, success = success)
+  folders[, success := unlist(success)]
+  folders
   
 }
 
