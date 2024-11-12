@@ -812,10 +812,10 @@ iteration_patter[, smooth := TRUE]
 
 #### Build patter folders
 if (FALSE) {
-  unlink(iteration_coa$folder_coord, recursive = TRUE)
-  unlink(iteration_coa$folder_ud, recursive = TRUE)
-  list.files(iteration_coa$folder_coord, recursive = TRUE)
-  list.files(iteration_coa$folder_ud, recursive = TRUE)
+  unlink(iteration_patter$folder_coord, recursive = TRUE)
+  unlink(iteration_patter$folder_ud, recursive = TRUE)
+  list.files(iteration_patter$folder_coord, recursive = TRUE)
+  list.files(iteration_patter$folder_ud, recursive = TRUE)
 }
 dirs.create(iteration_patter$folder_coord)
 dirs.create(iteration_patter$folder_ud)
