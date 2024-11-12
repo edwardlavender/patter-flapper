@@ -81,7 +81,7 @@ ggplot_maps <- function(mapdt,
           panel.grid = element_blank(), 
           # strip.text = element_blank(), 
           legend.position = "none") + 
-    facet_wrap(~row + column, drop = TRUE, nrow = n_row, ncol = n_col)
+    facet_grid(row ~ column, drop = TRUE)
   
   # Return ggplot 
   if (!is.null(png)) {
