@@ -52,7 +52,7 @@ dirs.copy <- function(from, to, cl) {
       dir.create(folder$to, recursive = TRUE)
     }
     # Copy folder & contents
-    file.copy(folder$from, dirname(file$to), recursive = TRUE)
+    file.copy(folder$from, dirname(file$to), recursive = TRUE, overwrite = TRUE)
   })
   
   # Return success
