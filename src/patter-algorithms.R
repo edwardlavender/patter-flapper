@@ -32,8 +32,8 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival, xinit
     # Note that containers contains a $forward and $backward element that we select later
     acoustics_containers <- assemble_acoustics_containers(.timeline  = timeline, 
                                                           .acoustics = acoustics,
-                                                          .mobility = sim$mobility, 
-                                                          .threshold = 139199)
+                                                          .mobility  = sim$mobility, 
+                                                          .bbox = qs::qread(here_data("spatial", "bathy-bbox.qs")))
   }
   
   #### Archival datasets
