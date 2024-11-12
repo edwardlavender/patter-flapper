@@ -1,5 +1,41 @@
 if (!patter:::os_linux()) {
   
+#' Estimate UDs via pou iteratively
+lapply_estimate_ud_pou <- function(iteration, 
+                                        extract_coord = NULL, 
+                                        plot = FALSE, 
+                                        cl = 2L) {
+  
+  #### Initialise
+  tictoc::tic()
+  on.exit(tictoc::toc(), add = TRUE)
+  
+  #### Define data & parameters
+  # pou/ folders should exist 
+  stopifnot(dir.exists(file.path(iteration$folder_ud, "pou")))
+  # Define UD function
+  estimate_ud <- function(.xi, .chunkargs) {
+    estimate_ud_pou(sim = .xi, 
+                    extract_coord = extract_coord, 
+                    map = .chunkargs, 
+                    plot = plot)
+  }
+  
+  #### Estimate UDs iteratively
+  cl_lapply(.x = split(iteration, collapse::seq_row(iteration)), 
+            .cl = cl,
+            .chunk = TRUE, 
+            .chunk_fun = function(...) {
+              .chunkargs <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
+              terra:::readAll(.chunkargs)
+              .chunkargs
+            },
+            .fun = estimate_ud)
+  
+  nothing()
+  
+}
+  
 #' Estimate UDs via spatstat iteratively 
 lapply_estimate_ud_spatstat <- function(iteration, 
                                         extract_coord = NULL, 
