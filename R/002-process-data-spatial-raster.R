@@ -428,6 +428,9 @@ names(bathy) <- "map_value"
 bathy
 # terra::plot(bathy)
 
+#### Map bbox
+bathy_bbox <- patter:::map_bbox(bathy)
+
 
 ###########################
 ###########################
@@ -574,8 +577,8 @@ terra::writeRaster(ud_null,
 terra::writeRaster(bbrast_ll,
                    here_data("spatial", "bbrast_ll.tif"), 
                    overwrite = TRUE)
+qs::qsave(bathy_bbox, here_data("spatial", "bathy-bbox.qs"))
 qs::qsave(tm, here_data("spatial", "tm.qs"))
-
 
 toc()
 
