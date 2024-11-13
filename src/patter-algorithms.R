@@ -60,7 +60,7 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival, xinit
   # capture_containers contains a $forward and $backward element that we select later
   capture_containers <- assemble_capture_containers(.timeline  = timeline, 
                                                     .xinit     = xinit_list, 
-                                                    .radius    = 500, 
+                                                    .radius    = sim$mobility, 
                                                     .mobility  = sim$mobility, 
                                                     .threshold = 139199, 
                                                     .as_ModelObsAcousticContainer = TRUE)
