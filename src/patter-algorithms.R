@@ -62,21 +62,38 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival, xinit
                                                     .xinit     = xinit_list, 
                                                     .radius    = 500, 
                                                     .mobility  = sim$mobility, 
-                                                    .threshold = 139199)
-  
+                                                    .threshold = 139199, 
+                                                    .as_ModelObsAcousticContainer = TRUE)
+  # (optional) TO DO
+  # Improve efficiency of capture containers if ModelObsAcousticContainer is also used
+  # We only need capture containers after the last acoustic container (moving forwards in time)
+
   #### Return list of algorithm-specific ModelObs strings & corresponding datasets
+  # Handle containers
+  # * Combine acoustic and capture containers for improved efficiency 
+  # * (<= 3 ModelObs types are MUCH faster than >= 4 types)
+  if (sim$dataset %in% c("ac", "acdc")) {
+    containers <- acoustics_containers
+    for (direction in c("forward", "backward")) {
+      containers[[direction]] <- 
+        rbind(containers[[direction]], capture_containers[[direction]]) |> 
+        arrange(timestamp, sensor_id) |> 
+        as.data.table()
+    }
+  } else {
+    containers <- capture_containers
+  }
+  # Define list
   if (sim$dataset == "ac") {
     out <- list(ModelObsAcousticLogisTrunc = acoustics, 
-                ModelObsAcousticContainer  = acoustics_containers, 
-                ModelObsCaptureContainer   = capture_containers)
+                ModelObsAcousticContainer  = containers)
   } else if (sim$dataset == "dc") {
     out <- list(ModelObsDepthNormalTrunc = archival, 
-                ModelObsCaptureContainer = capture_containers)
+                ModelObsAcousticContainer = containers)
   } else if (sim$dataset == "acdc") {
     out <- list(ModelObsAcousticLogisTrunc = acoustics,
-                ModelObsAcousticContainer  = acoustics_containers, 
-                ModelObsDepthNormalTrunc   = archival, 
-                ModelObsCaptureContainer   = capture_containers)
+                ModelObsAcousticContainer  = containers, 
+                ModelObsDepthNormalTrunc   = archival)
   }
   
   out

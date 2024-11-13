@@ -162,16 +162,14 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
                                moorings   = moorings,
                                archival   = archival, 
                                xinit_list = xinit_list)
-  
+  # Fix ModelObsAcousticContainer elements
+  # * All algorithms contain an 'ModelObsAcousticContainer' element
+  # * Because for speed ModelObsCaptureContainer is also coded as ModelObsAcousticContainer
   yobs_fwd <- yobs_bwd <- model_obs
-  if (rlang::has_name(model_obs, "ModelObsAcousticContainer")) {
-    yobs_fwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$forward
-    yobs_bwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$backward
-  }
-  yobs_fwd$ModelObsCaptureContainer <- model_obs$ModelObsCaptureContainer$forward
-  yobs_bwd$ModelObsCaptureContainer <- model_obs$ModelObsCaptureContainer$backward
-  stopifnot(!is.null(yobs_fwd$ModelObsCaptureContainer))
-  stopifnot(!is.null(yobs_bwd$ModelObsCaptureContainer))
+  yobs_fwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$forward
+  yobs_bwd$ModelObsAcousticContainer <- model_obs$ModelObsAcousticContainer$backward
+  stopifnot(!is.null(yobs_fwd$ModelObsAcousticContainer))
+  stopifnot(!is.null(yobs_bwd$ModelObsAcousticContainer))
   
   #### List filter arguments
   # Set arguments to reduce computation time 

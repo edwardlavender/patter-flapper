@@ -9,7 +9,8 @@ assemble_capture_containers <- function(.timeline,
                                         .xinit = list(), 
                                         .radius,
                                         .mobility,
-                                        .threshold = NULL) {
+                                        .threshold = NULL, 
+                                        .as_ModelObsAcousticContainer = FALSE) {
   
   # Check user inputs
   check_timeline(.timeline)
@@ -19,12 +20,13 @@ assemble_capture_containers <- function(.timeline,
   
   # Assemble containers (forward & backward)
   containers <- lapply(directions, function(.direction) {
-    .assemble_capture_containers(.timeline  = .timeline, 
-                                 .xinit     = .xinit, 
-                                 .radius    = .radius,
-                                 .mobility  = .mobility,
-                                 .threshold = .threshold, 
-                                 .direction = .direction)
+    .assemble_capture_containers(.timeline                     = .timeline, 
+                                 .xinit                        = .xinit, 
+                                 .radius                       = .radius,
+                                 .mobility                     = .mobility,
+                                 .threshold                    = .threshold, 
+                                 .as_ModelObsAcousticContainer = .as_ModelObsAcousticContainer,
+                                 .direction                    = .direction)
   })
   
   # Return containers
@@ -38,6 +40,7 @@ assemble_capture_containers <- function(.timeline,
                                          .radius,
                                          .mobility,
                                          .threshold = NULL,
+                                         .as_ModelObsAcousticContainer = FALSE,
                                          .direction = c("forward", "backward")) {
   
   # Define direction
@@ -79,9 +82,12 @@ assemble_capture_containers <- function(.timeline,
   }
   
   # Build container 
+  # * Use sensor_id = 0L
+  # * If we coerce to ModelObsAcousticContainer format, we can keep the same sensor_id
+  # * This shouldn't be confused for a receiver id (1, ..., n_receiver)
   recap_container <- data.table(timestamp  = .timeline, 
                                 obs        = 1L,
-                                sensor_id  = 1L, 
+                                sensor_id  = 0L, 
                                 capture_x  = cx,
                                 capture_y  = cy,
                                 radius     = radii)
@@ -90,6 +96,11 @@ assemble_capture_containers <- function(.timeline,
   if (!is.null(.threshold)) {
     radius          <- NULL
     recap_container <- recap_container[radius <= .threshold, ]
+  }
+  
+  # Use ModelObsAcousticContainer Format
+  if (.as_ModelObsAcousticContainer) {
+    setnames(recap_container, old = c("capture_x", "capture_y"), new = c("receiver_x", "receiver_y"))
   }
   
   recap_container
@@ -107,7 +118,8 @@ assemble_capture_containers <- function(.timeline,
 #                             .mobility = 500,
 #                             .threshold = 5000)
 
-# Julia source wrapper
-set_ModelObsCaptureContainer <- function() {
-  JuliaCall::julia_source(here::here("Julia", "src", "ModelObsCaptureContainer.jl"))
-}
+# (deprecated) Julia source wrapper
+# * For speed, set_ModelObsCaptureContainer is converted to set_ModelObsAcousticContainer
+# set_ModelObsCaptureContainer <- function() {
+#   JuliaCall::julia_source(here::here("Julia", "src", "ModelObsCaptureContainer.jl"))
+# }
