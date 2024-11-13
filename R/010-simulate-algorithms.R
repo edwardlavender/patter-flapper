@@ -1042,11 +1042,14 @@ sapply(split(iteration, seq_row(iteration)), function(d) {
 iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
   file.exists(file.path(d$folder_coord, "coord-smo.qs"))
 })]
+# Review overall convergence
+table(iteration$convergence)
 # Review convergence for ACDC
 iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
 
 #### Visualise convergence
 # Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
+# This plot is only useful if convergence is not 100 %
 png(here_fig("simulation", "convergence.png"), 
     height = 5, width = 10, units = "in", res = 600)
 iteration |>
