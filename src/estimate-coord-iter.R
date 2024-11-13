@@ -67,7 +67,7 @@ lapply_estimate_coord_patter <- function(iteration,
   
   # Estimate coordinates via estimate_coord_patter()
   iteration_ls <- split(iteration, collapse::seq_row(iteration))
-  cl_lapply(iteration_ls, function(sim) {
+  success <- cl_lapply(iteration_ls, function(sim) {
     estimate_coord_patter(sim = sim, 
                           datasets = datasets, 
                           trial = trial)
@@ -75,6 +75,9 @@ lapply_estimate_coord_patter <- function(iteration,
   
   # Close function
   print(Sys.time())
+  if (trial) {
+    return(unlist(success))
+  }
   nothing()
   
 }

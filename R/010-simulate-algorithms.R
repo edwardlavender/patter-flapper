@@ -827,6 +827,7 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
          folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
          folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")) |>
   distinct() |> 
+  arrange(unit_id, dataset, parameter_id) |>
   mutate(index = row_number()) |>
   dplyr::select("index", 
                 "unit_id",
@@ -841,6 +842,7 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   as.data.table()
 # Check rows (153 -> 444)
 nrow(iteration_patter)
+# View(iteration_patter)
 
 #### Add supporting columns
 # Update np
@@ -872,17 +874,17 @@ datasets <- list(detections_by_unit = copy(detections_by_unit),
                  moorings = moorings,
                  archival_by_unit = copy(archival_by_unit), 
                  behaviour_by_unit = behaviour_by_unit)
-# (essential) Process archival units for patter_ModelObs()
-for (i in selected_paths) {
-  datasets$archival_by_unit[[i]] <- 
-    datasets$archival_by_unit[[i]] |> 
-    select(timestamp, depth = obs) |> 
+# (Essential) Process archival units for patter_ModelObs()
+for (i in seq_len(length(datasets$archival_by_unit))) {
+  datasets$archival_by_unit[[i]] <-
+    datasets$archival_by_unit[[i]] |>
+    select(timestamp, depth = obs) |>
     # Delete parameter columns so they can be added by patter_ModelObs()
-    mutate(depth_sigma = NULL, 
-           depth_deep_eps = NULL) |> 
+    mutate(depth_sigma = NULL,
+           depth_deep_eps = NULL) |>
     as.data.table()
-  
 }
+
 head(datasets$archival_by_unit[[1]])
 head(datasets$archival_by_unit[[2]])
 
@@ -945,19 +947,19 @@ if (TRUE) {
     iteration_trial <- copy(iteration_patter)
     iteration_trial <- iteration_trial[iter == 1L, ]
     iteration_trial <- iteration_trial[sensitivity == "best", ]
-    iteration_trial <- iteration_trial[unit_id == 1, ]
+    # iteration_trial <- iteration_trial[unit_id == 1, ]
     iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
-    # iteration_trial <- iteration_trial[dataset == "ac", ]
+    iteration_trial <- iteration_trial[dataset == "ac", ]
     # iteration_trial <- iteration_trial[1, ]
-    iteration_trial[, np := 5000] 
-    # iteration_trial[, smooth := FALSE]
+    iteration_trial[, np := 5000L] 
+    iteration_trial[, smooth := FALSE]
     # debug(estimate_coord_patter)
     nrow(iteration_trial)
     lapply_estimate_coord_patter(iteration = iteration_trial, 
                                  datasets = datasets,
-                                 trial = FALSE, 
-                                 log.folder = NULL, #  here_data("output", "log", "simulation", "trials"))
-                                 log.txt = NULL)
+                                 trial = TRUE, 
+                                 log.folder = here_data("output", "log", "simulation", "trials"),
+                                 log.txt = "ac.txt")
     qs::qread(file.path(iteration_trial$folder_coord[1], "data-fwd.qs"))
     
     # Compare output
