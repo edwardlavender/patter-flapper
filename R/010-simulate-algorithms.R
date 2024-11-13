@@ -823,19 +823,21 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   
 }) |> 
   rbindlist() |> 
-  mutate(index = row_number(), 
-         folder = file.path("data", "output", "simulation", unit_id, "patter"),
+  mutate(folder = file.path("data", "output", "simulation", unit_id, "patter"),
          folder_coord = file.path(folder, dataset, parameter_id, iter, "coord"), 
          folder_ud = file.path(folder, dataset, parameter_id, iter, "ud")) |>
+  distinct() |> 
+  mutate(index = row_number()) |>
   dplyr::select("index", 
-         "unit_id",
-         "dataset", 
-         "parameter_id", "iter", "sensitivity", 
-         "k1", "k2", "theta1", "theta2", "mobility", 
-         "receiver_alpha", "receiver_beta",
-         "receiver_gamma", "depth_sigma", "depth_deep_eps",
-         "np",
-         "folder_coord", "folder_ud") |>
+                "unit_id",
+                "dataset", 
+                "parameter_id", "iter", "sensitivity", 
+                "k1", "k2", "theta1", "theta2", "mobility", 
+                "receiver_alpha", "receiver_beta",
+                "receiver_gamma", "depth_sigma", "depth_deep_eps",
+                "np",
+                "folder_coord", "folder_ud") |>
+  distinct() |>
   as.data.table()
 # Check rows (153 -> 444)
 nrow(iteration_patter)
@@ -886,13 +888,11 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (FALSE) {
+if (TRUE) {
   
   #### Initialise coordinate estimation 
   # Set map
   set_map(here_data("spatial", "bathy.tif"))
-  # (optional) Select dataset
-  iteration <- iteration[dataset == "acdc", ]
   # Set batch & export vmap
   # * We implement the algorithms in batches so that we export vmap once
   batch     <- pars$pmovement$mobility[1]
@@ -900,6 +900,23 @@ if (FALSE) {
   vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
   set_vmap(.vmap = vmap)
   rm(vmap)
+  # (optional) Select rows/dataset
+  # * batch 1: 390 rows
+  # * batch 2: 27 rows
+  # * batch 3: 27 rows
+  rows <- seq_row(iteration)
+  if (batch == pars$pmovement$mobility[1]) {
+    rows <- 1:50
+    # rows <- 51:100
+    # rows <- 101:150
+    # rows <- 151:200
+    # rows <- 201:250
+    # rows <- 251:300
+    # rows <- 301:350
+    # rows <- 351:390
+    # rows <- 51:100
+  }
+  iteration <- iteration[rows, ]
   
   #### (optional) Check progress between loop restarts
   if (FALSE) {
@@ -919,6 +936,11 @@ if (FALSE) {
     # * AC: 5000 particles: success for 1:3
     # * DC: 5000 particles: success for 1:3
     # * ACDC: 10000 particles: success for 1:3
+    
+    # Approximate wall time per run
+    # * MacBook: 
+    # - 2 mins x 2 (5,000 particles) for filter
+    # - 15 mins (500 particles) for smoother 
     
     # Select dataset of interest
     iteration_trial <- copy(iteration_patter)
@@ -956,8 +978,9 @@ if (FALSE) {
                                datasets = datasets, 
                                trial = FALSE, 
                                log.folder = here_data("output", "log", "simulation"), 
-                               log.txt = NULL)
-  # Examine selected coords
+                               log.txt = glue("{batch}-{min(rows)}.txt"))
+  
+  # Examine selected coords (slow)
   # if (patter:::os_linux()) {
   #   stop("Exit server at this point (for convenience).")
   # }
@@ -965,8 +988,10 @@ if (FALSE) {
   #                    "coord-smo.qs",
   #                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
   
-  #### Estimate UDs using POU (~2 mins)
+  #### Estimate UDs
   if (!patter:::os_linux()) {
+    
+    #### Estimate UDs via POU (~2 mins)
     dirs.create(file.path(iteration$folder_ud, "pou"))
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     lapply_estimate_ud_pou(iteration = iteration,
@@ -977,7 +1002,6 @@ if (FALSE) {
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
     #### Estimate UDs via spatstat (~15 mins)
-    # We estimate UDs for iterations 1:3 with max number of particles
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
@@ -1004,53 +1028,61 @@ if (FALSE) {
 # 5. Patter residency
 # 6. Residency synthesis 
 
-#### Tidy iteration
-# Copy
-iteration <- copy(iteration_patter)
-# Define grouping variables with tidy labels
-iteration[, unit_id := factor(unit_id)]
-iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
-# Revise 'sensitivity' coding
-iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
-iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
-iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
-iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
-iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
-iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
-iteration[, sensitivity := factor(sensitivity, 
-                                  levels = c("best", 
-                                             "movement-under", "movement-over", 
-                                             "ac-under", "ac-over",
-                                             "dc-under", "dc-over"), 
-                                  labels = c("Best", 
-                                             "Move (-)", "Move (+)", 
-                                             "AC(-)", "AC(+)", 
-                                             "DC(-)", "DC(+)"))]
+if (FALSE) {
+  
+  #### Tidy iteration
+  # Copy
+  iteration <- copy(iteration_patter)
+  # Define grouping variables with tidy labels
+  iteration[, unit_id := factor(unit_id)]
+  iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
+  # Revise 'sensitivity' coding
+  iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
+  iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
+  iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
+  iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
+  iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
+  iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
+  iteration[, sensitivity := factor(sensitivity, 
+                                    levels = c("best", 
+                                               "movement-under", "movement-over", 
+                                               "ac-under", "ac-over",
+                                               "dc-under", "dc-over"), 
+                                    labels = c("Best", 
+                                               "Move (-)", "Move (+)", 
+                                               "AC(-)", "AC(+)", 
+                                               "DC(-)", "DC(+)"))] 
+  
+}
 
 
 ###########################
 #### Patter error check 
 
-# Check for errors on forward filter 
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
-}) |> unlist()
-
-# Check for errors on backward filter 
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  file <- file.path(d$folder_coord, "data-bwd.qs")
-  if (file.exists(file)) {
-    qs::qread(file)$error
-  }
-}) |> unlist()
-
-# Check for errors on smoother
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  file <- file.path(d$folder_coord, "data-smo.qs")
-  if (file.exists(file)) {
-    qs::qread(file)$error
-  }
-}) |> unlist()
+if (FALSE) {
+  
+  # Check for errors on forward filter 
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
+  }) |> unlist()
+  
+  # Check for errors on backward filter 
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-bwd.qs")
+    if (file.exists(file)) {
+      qs::qread(file)$error
+    }
+  }) |> unlist()
+  
+  # Check for errors on smoother
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (file.exists(file)) {
+      qs::qread(file)$error
+    }
+  }) |> unlist() 
+  
+}
 
 
 ###########################
@@ -1102,9 +1134,10 @@ if (FALSE) {
 ###########################
 #### Patter maps
 
-# For each selected path, visualise UDs for performance & sensitivity (~15 s)
 if (FALSE) {
   
+  # For each selected path, visualise UDs for performance & sensitivity (~15 s)
+  # > Manually simulated path maps with patter UD maps outside of R
   cl_lapply(selected_paths, function(path) {
     
     #### Define iteration dataset for mapping
@@ -1137,19 +1170,18 @@ if (FALSE) {
     
   })
  
-  # > Manually simulated path maps with patter UD maps outside of R
+  # For each selected path, visualise UDs for repeatability
+  # TO DO
    
 }
-
-# For each selected path, visualise UDs for repeatability
-# TO DO
 
 
 ###########################
 #### Patter residency 
 
-#### Compute residency (~40 s, 10 cl)
 if (FALSE) {
+  
+  # Compute residency (~40 s, 10 cl)
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
   residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
@@ -1163,75 +1195,80 @@ if (FALSE) {
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
   qs::qsave(residency, here_data("output", "simulation-residency", "residency-patter.qs"))
+  
 }
 
 
 ###########################
 #### Residency synthesis 
 
-#### Combine residency datasets
-residency <- 
-  rbindlist(
-  list(
-    qs::qread(here_data("output", "simulation-residency", "residency-path.qs")),
-    qs::qread(here_data("output", "simulation-residency", "residency-detection-days.qs")),
-    qs::qread(here_data("output", "simulation-residency", "residency-coa.qs")),
-    qs::qread(here_data("output", "simulation-residency", "residency-rsp.qs")),
-    qs::qread(here_data("output", "simulation-residency", "residency-patter.qs"))
-  )
-)
-
-#### Examine structure
-head(residency)
-unique(residency$algorithm)
-unique(residency$sensitivity)
-residency <- 
+if (FALSE) {
+  
+  #### Combine residency datasets
+  residency <- 
+    rbindlist(
+      list(
+        qs::qread(here_data("output", "simulation-residency", "residency-path.qs")),
+        qs::qread(here_data("output", "simulation-residency", "residency-detection-days.qs")),
+        qs::qread(here_data("output", "simulation-residency", "residency-coa.qs")),
+        qs::qread(here_data("output", "simulation-residency", "residency-rsp.qs")),
+        qs::qread(here_data("output", "simulation-residency", "residency-patter.qs"))
+      )
+    )
+  
+  #### Examine structure
+  head(residency)
+  unique(residency$algorithm)
+  unique(residency$sensitivity)
+  residency <- 
+    residency |>
+    mutate(sensitivity = factor(sensitivity, 
+                                levels = c("Best", 
+                                           "Move (-)", "Move (+)",
+                                           "AC(-)", "AC(+)", 
+                                           "DC(-)", "DC(+)"))) |>
+    arrange(unit_id, algorithm, sensitivity, iter, zone) |> 
+    as.data.table()
+  
+  #### Visualise residency within MPA
+  png(here_fig("simulation", "residency-mpa.png"), 
+      height = 4, width = 10, units = "in", res = 600)
+  # Get true residency
+  true_res <- 
+    residency |>
+    filter(zone == "total", algorithm == "Path", sensitivity == "Best") |>
+    select(unit_id, true_time = time)
+  # Get null residency
+  null_res <- sum(terra::expanse(mpa)) / terra::expanse(ud_grid)[, 2]
+  # Plot residency metrics 
   residency |>
-  mutate(sensitivity = factor(sensitivity, 
-                               levels = c("Best", 
-                                          "Move (-)", "Move (+)",
-                                          "AC(-)", "AC(+)", 
-                                          "DC(-)", "DC(+)"))) |>
-  arrange(unit_id, algorithm, sensitivity, iter, zone) |> 
-  as.data.table()
-
-#### Visualise residency within MPA
-png(here_fig("simulation", "residency-mpa.png"), 
-    height = 4, width = 10, units = "in", res = 600)
-# Get true residency
-true_res <- 
-  residency |>
-  filter(zone == "total", algorithm == "Path", sensitivity == "Best") |>
-  select(unit_id, true_time = time)
-# Get null residency
-null_res <- sum(terra::expanse(mpa)) / terra::expanse(ud_grid)[, 2]
-# Plot residency metrics 
-residency |>
-  filter(zone == "total") |>
-  ggplot(aes(algorithm, time)) + 
-  geom_jitter(width = 0.1, shape = 21, stroke = 0.5, 
-              colour = "black", 
-              aes(fill = sensitivity)) + 
-  geom_hline(data = true_res,
-             aes(yintercept = true_time),
-             colour = "black") +
-  geom_hline(aes(yintercept = null_res), 
-             colour = "dimgrey", 
-             linetype = 3) + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
-  xlab("Algorithm") + 
-  ylab("Residency proportion") + 
-  facet_grid(~unit_id, scales = "free_x") + 
-  # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
-  theme_bw() + 
-  theme(panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank(), 
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)))
-dev.off()
-
-#### Visualise MPA within fished/unfished areas
-# (optional) TO DO
+    filter(zone == "total") |>
+    ggplot(aes(algorithm, time)) + 
+    geom_jitter(width = 0.1, shape = 21, stroke = 0.5, 
+                colour = "black", 
+                aes(fill = sensitivity)) + 
+    geom_hline(data = true_res,
+               aes(yintercept = true_time),
+               colour = "black") +
+    geom_hline(aes(yintercept = null_res), 
+               colour = "dimgrey", 
+               linetype = 3) + 
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+    xlab("Algorithm") + 
+    ylab("Residency proportion") + 
+    facet_grid(~unit_id, scales = "free_x") + 
+    # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
+    theme_bw() + 
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)))
+  dev.off()
+  
+  #### Visualise MPA within fished/unfished areas
+  # (optional) TO DO
+  
+}
 
 
 #### End of code. 
