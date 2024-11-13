@@ -294,30 +294,7 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
-  qs::qsave(residency, here_data("output", "simulation-residency", "residency-path.qs"))
-  
-  #### Estimate residency under null model
-  study_area <- 
-    terra::expanse(ud_grid)[, 2]
-  residency_null_closed <- 
-    sum(terra::expanse(mpa)[which(mpa$open == "closed")]) / study_area
-  residency_null_open <- 
-    sum(terra::expanse(mpa)[which(mpa$open == "open")]) / study_area
-  residency_null_total <- 
-    sum(terra::expanse(mpa)) / study_area
-  residency_null <- 
-    lapply(seq_len(n_path), function(unit_id) {
-      data.table(unit_id= unit_id, 
-                 algorithm = "Null", 
-                 sensitivity = "Best", 
-                 iter = 1L, 
-                 zone = c("closed", "open", "total"), 
-                 time = c(residency_null_closed, residency_null_open, residency_null_total))
-    }) |> rbindlist()
-  qs::qsave(residency_null, here_data("output", "simulation-residency", "residency-null.qs"))
-  
-  #### Estimate residency from detection days
-  # This is implemented below.
+  qs::qsave(residency, here_data("output", "simulation-summary", "residency-path.qs"))
   
 }
 
@@ -347,8 +324,54 @@ archival_by_unit <- lapply(seq_len(n_path), function(path) {
 #   )
 # })
 
+
+###########################
+###########################
+#### Null model
+
+if (FALSE) {
+  
+  #### Estimate map skill (ME) 
+  me <- cl_lapply(seq_len(n_path), .cl = 10L, .fun = function(unit_id) {
+    skill_me(.obs = terra::rast(here_data("input", "simulation", unit_id, "ud.tif")), 
+             .mod = ud_null)
+  }) |> unlist() |> as.numeric()
+  me <- data.table(unit_id = seq_len(n_path), 
+                   algorithm = "Null", 
+                   sensitivity = "Best", 
+                   iter = 1L, 
+                   me = me)
+  qs::qsave(me, here_data("output", "simulation-summary", "me-null.qs"))
+  
+  #### Estimate residency under null model
+  study_area <- 
+    terra::expanse(ud_grid)[, 2]
+  residency_null_closed <- 
+    sum(terra::expanse(mpa)[which(mpa$open == "closed")]) / study_area
+  residency_null_open <- 
+    sum(terra::expanse(mpa)[which(mpa$open == "open")]) / study_area
+  residency_null_total <- 
+    sum(terra::expanse(mpa)) / study_area
+  residency_null <- 
+    lapply(seq_len(n_path), function(unit_id) {
+      data.table(unit_id = unit_id, 
+                 algorithm = "Null", 
+                 sensitivity = "Best", 
+                 iter = 1L, 
+                 zone = c("closed", "open", "total"), 
+                 time = c(residency_null_closed, residency_null_open, residency_null_total))
+    }) |> rbindlist()
+  qs::qsave(residency_null, here_data("output", "simulation-summary", "residency-null.qs"))
+  
+}
+
+
+###########################
+###########################
+#### Detection days
+
 #### Estimate residency from detection days
-if (!patter:::os_linux()) {
+if (FALSE & !patter:::os_linux()) {
   
   residency <- lapply(seq_len(n_path), function(path) {
     
@@ -368,18 +391,17 @@ if (!patter:::os_linux()) {
       select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
       arrange(unit_id, algorithm, sensitivity, iter, zone) |>
       as.data.table()
-
+    
   }) |> rbindlist()
   
   qs::qsave(residency, 
-            here_data("output", "simulation-residency", "residency-detection-days.qs"))
+            here_data("output", "simulation-summary", "residency-detection-days.qs"))
   
 }
 
-
 ###########################
 ###########################
-#### Run algorithms
+#### COA algorithm
 
 if (FALSE) {
   
@@ -435,8 +457,8 @@ if (FALSE) {
     
   }
   
-  #### Visualise ME
-  # Compute ME 
+  #### Select delta_t
+  # Compute ME
   me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     tryCatch(
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
@@ -479,15 +501,14 @@ if (FALSE) {
           panel.grid.minor = element_blank(), 
           legend.position = "none")
   dev.off()
-  
-  #### Select delta_t
+  # Select delta_t
   # > Best guess:       2 days
   # > Restricted value: 1 day
   # > Flexible value:   3 days 
   selected_delta_t <- c("2 days", "1 day", "3 days")
   stopifnot(all(selected_delta_t %in% iteration$delta_t))
   
-  ### Visualise maps
+  #### Visualise maps for selected_paths
   # Define panel row (path) and column (parameter) labels
   cols <- c("Path", selected_delta_t)
   cols <- factor(cols, levels = cols)
@@ -522,7 +543,19 @@ if (FALSE) {
               png_args = list(filename = here_fig("simulation", "map-coa.png"), 
                               height = 5, width = 10, units = "in", res = 600))
   
-  #### Estimate residency 
+  #### Estimate ME (across all paths)
+  me <- 
+    iteration |> 
+    mutate(algorithm = "COA", 
+           sensitivity = factor(delta_t, levels = selected_delta_t, labels = c("Best", "AC(-)", "AC(+)")), 
+           me = me) |>
+    filter(delta_t %in% selected_delta_t) |> 
+    select(unit_id, algorithm, sensitivity, iter, me) |> 
+    arrange(unit_id, algorithm, sensitivity, iter) |>
+    as.data.table()
+  qs::qsave(me, here_data("output", "simulation-summary", "me-coa.qs"))
+  
+  #### Estimate residency (across all paths)
   # Define dataset
   iteration_res <- 
     iteration |>
@@ -540,14 +573,14 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
-  qs::qsave(residency, here_data("output", "simulation-residency", "residency-coa.qs"))
+  qs::qsave(residency, here_data("output", "simulation-summary", "residency-coa.qs"))
 
 }
 
 
 ###########################
 ###########################
-#### RSP algorithms
+#### RSP algorithm
 
 if (FALSE) {
   
@@ -661,7 +694,8 @@ if (FALSE) {
   # Computation time grows, on average, with er.ad:
   plot(rspinfo$er.ad, rspinfo$time)
   
-  #### Visualise ME 
+  #### Select er.ad
+  # Compute ME
   me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     tryCatch(   
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
@@ -703,14 +737,14 @@ if (FALSE) {
           panel.grid.minor = element_blank(), 
           legend.position = "none")
   dev.off()
-  
+  # Select er.ad
   # > Best guess:       ~500 
   # > Restricted value: ~250
   # > Flexible value:   ~750 
   selected_er.ad <- c(500, 250, 750)
   stopifnot(all(selected_er.ad %in% iteration$er.ad))
   
-  ### Visualise maps
+  #### Visualise maps for selected_paths
   # Define panel row (path) and column (parameter) labels
   cols <- c("Path", selected_er.ad)
   cols <- factor(cols, levels = cols)
@@ -745,7 +779,19 @@ if (FALSE) {
               png_args = list(filename = here_fig("simulation", "map-rsp.png"), 
                               height = 5, width = 10, units = "in", res = 600))
   
-  #### Estimate residency (~0.5 s)
+  #### Estimate ME (across all paths)
+  me <- 
+    iteration |> 
+    mutate(algorithm = "RSP", 
+           sensitivity = factor(er.ad, levels = selected_er.ad, labels = c("Best", "AC(-)", "AC(+)")), 
+           me = me) |>
+    filter(er.ad %in% selected_er.ad) |>
+    select(unit_id, algorithm, sensitivity, iter, me) |> 
+    arrange(unit_id, algorithm, sensitivity, iter) |>
+    as.data.table()
+  qs::qsave(me, here_data("output", "simulation-summary", "me-rsp.qs"))
+  
+  #### Estimate residency (across all paths)
   # Define dataset
   iteration_res <- 
     iteration |>
@@ -763,7 +809,7 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
-  qs::qsave(residency, here_data("output", "simulation-residency", "residency-rsp.qs"))
+  qs::qsave(residency, here_data("output", "simulation-summary", "residency-rsp.qs"))
   
 }
 
@@ -1037,17 +1083,10 @@ if (FALSE) {
 
 ###########################
 ###########################
-#### Synthesis
+#### Patter analysis 
 
 ###########################
-#### Summary 
-
-# 1. COA performance and sensitivity (above)
-# 2. RSP performance and sensitivity (above)
-# 3. Patter convergence (below)
-# 4. Patter performance and sensitivity (below)
-# 5. Patter residency
-# 6. Residency synthesis 
+#### Tidy iteration 
 
 if (FALSE) {
   
@@ -1198,9 +1237,30 @@ if (FALSE) {
 
 
 ###########################
-#### Maps synthesis
+#### Patter ME
 
-# TO DO
+if (FALSE) {
+  
+  # Compute ME
+  me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
+    tryCatch(   
+      skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
+               .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif"))), 
+      error = function(e) NA)
+  }) |> unlist() |> as.numeric()
+  
+  # Collate ME
+  me <-
+    iteration |>
+    mutate(algorithm = dataset,
+           me = me) |>
+    select(unit_id, algorithm, sensitivity, iter, me) |>
+    arrange(unit_id, algorithm, sensitivity, iter) |>
+    as.data.table()
+  
+  qs::qsave(me, here_data("output", "simulation-summary", "me-patter.qs"))
+
+}
 
 
 ###########################
@@ -1221,9 +1281,74 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
-  qs::qsave(residency, here_data("output", "simulation-residency", "residency-patter.qs"))
+  qs::qsave(residency, here_data("output", "simulation-summary", "residency-patter.qs"))
   
 }
+
+
+###########################
+###########################
+#### Synthesis
+
+# TO DO
+# Unify colour scales
+
+###########################
+#### Maps synthesis
+
+#### Combine ME datasets
+skill <- 
+  rbindlist(
+    list(
+      qs::qread(here_data("output", "simulation-summary", "me-null.qs")),
+      qs::qread(here_data("output", "simulation-summary", "me-coa.qs")),
+      qs::qread(here_data("output", "simulation-summary", "me-rsp.qs")),
+      qs::qread(here_data("output", "simulation-summary", "me-patter.qs"))
+    )
+  )
+
+#### Visualise overall map skill (ME ~ algorithm)
+png(here_fig("simulation", "me.png"), 
+    height = 3, width = 6, units = "in", res = 600)
+skill |> 
+  filter(sensitivity == "Best") |>
+  ggplot() + 
+  geom_violin(aes(algorithm, me, fill = algorithm), alpha = 0.3, 
+              scale = "count") +
+  scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+  xlab("Algorithm") + 
+  ylab("Absolute mean error") + 
+  labs(fill = "Algorithm") +
+  theme_bw() +
+  theme(panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10))) 
+dev.off()
+
+#### Visualise map skill sensitivity for selected_paths
+# For Null, COA, RSP  : 1 point per panel
+# For AC, DC, ACDC    : 3 points per panel (three iterations)
+png(here_fig("simulation", "me-sensitivity.png"), 
+    height = 5, width = 12, units = "in", res = 600)
+skill |> 
+  filter(unit_id %in% selected_paths) |> 
+  as.data.table() |>
+  ggplot() + 
+  geom_point(aes(algorithm, me, fill = algorithm), 
+             shape = 21, alpha = 0.75) + 
+  scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+  xlab("Algorithm") + 
+  ylab("Absolute mean error") + 
+  labs(fill = "Algorithm") +
+  facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
+  theme_bw() +
+  theme(panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+dev.off()
 
 
 ###########################
@@ -1235,12 +1360,12 @@ if (FALSE) {
   residency <- 
     rbindlist(
       list(
-        qs::qread(here_data("output", "simulation-residency", "residency-path.qs")),
-        qs::qread(here_data("output", "simulation-residency", "residency-null.qs")),
-        qs::qread(here_data("output", "simulation-residency", "residency-detection-days.qs")),
-        qs::qread(here_data("output", "simulation-residency", "residency-coa.qs")),
-        qs::qread(here_data("output", "simulation-residency", "residency-rsp.qs")),
-        qs::qread(here_data("output", "simulation-residency", "residency-patter.qs"))
+        qs::qread(here_data("output", "simulation-summary", "residency-path.qs")),
+        qs::qread(here_data("output", "simulation-summary", "residency-null.qs")),
+        qs::qread(here_data("output", "simulation-summary", "residency-detection-days.qs")),
+        qs::qread(here_data("output", "simulation-summary", "residency-coa.qs")),
+        qs::qread(here_data("output", "simulation-summary", "residency-rsp.qs")),
+        qs::qread(here_data("output", "simulation-summary", "residency-patter.qs"))
       )
     )
   
