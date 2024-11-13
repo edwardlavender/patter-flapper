@@ -1047,6 +1047,8 @@ iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergenc
 
 #### Visualise convergence
 # Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
+png(here_fig("simulation", "convergence.png"), 
+    height = 5, width = 10, units = "in", res = 600)
 iteration |>
   group_by(unit_id, dataset, sensitivity) |> 
   summarise(convergence = length(which(convergence)) / n()) |>
@@ -1054,18 +1056,22 @@ iteration |>
   ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
   geom_linerange(linewidth = 1.2) +
   facet_grid(unit_id ~ sensitivity, 
-             labeller = labeller(sensitivity = label_value)) +
+             labeller = labeller(sensitivity = label_value), 
+             scales = "free_x") +
   labs(
     x = "Algorithm",
     y = "Pr(convergence)",
     colour = "Algorithm"
   ) +
   scale_color_brewer(palette = "Dark2") + 
-  scale_y_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
   theme_bw() + 
-  theme(panel.grid.minor.y = element_blank(), 
+  theme(panel.spacing.y = unit(1.5, "lines"), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)),
+        panel.grid.minor.y = element_blank(), 
         panel.grid.major.y = element_blank())
-
+dev.off()
 
 
 ###########################
