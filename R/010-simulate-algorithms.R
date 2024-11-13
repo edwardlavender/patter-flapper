@@ -68,8 +68,8 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 #### Julia set up
 julia_connect()
 set_seed()
-set_ModelObsCaptureContainer()
 set_model_move_components()
+# set_ModelObsCaptureContainer()
 
 #### Define simulation timeline
 n_path         <- 100L
@@ -402,7 +402,7 @@ if (FALSE) {
     nrow(iteration)
     lapply_estimate_ud_spatstat(iteration = iteration, 
                                 extract_coord = NULL,
-                                cl = 1L, 
+                                cl = 10L, 
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
@@ -469,7 +469,6 @@ if (FALSE) {
   rows <- factor(rows, levels = rows)
   panel <- data.table(row = rows, column = cols)
   # Define mapfiles for selected algorithm runs 
-  selected_paths <- 1:3L
   mapfiles_alg <- 
     iteration |> 
     filter(unit_id %in% selected_paths) |>
@@ -567,7 +566,7 @@ if (FALSE) {
   iteration <- copy(iteration_rsp)
   if (FALSE) {
     
-    #### Estimate coordinates (~89 mins)
+    #### Estimate coordinates (~1.5 hours)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
@@ -606,6 +605,35 @@ if (FALSE) {
     terra::plot(ud_500)
     terra::plot(ud_750) 
   }
+  
+  #### Check errors & computation time
+  # Larger er.ad reduces mean error (no clear optimum) (see below)
+  # But there are costs:
+  # 1) Errors become more frequent, even with an grid the size of Scotland
+  # 2) Computation time increases
+  # Therefore, in the selection of the 'best' RSP values, we have to be pragmatic:
+  # * Select a sufficiently large value to reduce ME
+  # * But not so large as to impose errors & increased computation time 
+  # * ... with only minimal continued improvement in ME
+  rspinfo <- cl_lapply(split(iteration, seq_row(iteration)), .fun = function(sim) {
+    file <- file.path(sim$folder_ud, "dbbmm", "data.qs")
+    if (file.exists(file)) {
+      out <- qs::qread(file)
+      out[success == FALSE, time := NA_real_]
+      out[, er.ad := sim$er.ad]
+    } else {
+      out <- NULL
+    }
+    return(out)
+  }) |> rbindlist()
+  # We observe errors with er.ad >= 950 m: 
+  unique(rspinfo$error)
+  min(rspinfo$er.ad[!is.na(rspinfo$error)])
+  # Errors are apparent at larger values:
+  yjit <- runif(nrow(rspinfo), 0, 0.1)
+  plot(rspinfo$er.ad, as.numeric(!is.na(rspinfo$error)) + yjit)
+  # Computation time grows, on average, with er.ad:
+  plot(rspinfo$er.ad, rspinfo$time)
   
   #### Visualise ME 
   me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
@@ -650,8 +678,6 @@ if (FALSE) {
           legend.position = "none")
   dev.off()
   
-  
-  
   # > Best guess:       ~500 
   # > Restricted value: ~250
   # > Flexible value:   ~750 
@@ -666,7 +692,6 @@ if (FALSE) {
   rows <- factor(rows, levels = rows)
   panel <- data.table(row = rows, column = cols)
   # Define mapfiles for selected algorithm runs 
-  selected_paths <- 1:3L
   mapfiles_alg <- 
     iteration |>
     filter(unit_id %in% selected_paths) |>
@@ -720,9 +745,6 @@ if (FALSE) {
 ###########################
 ###########################
 #### Patter algorithms
-
-#### Define selected paths
-selected_paths <- 1:3L
 
 #### Define unitsets (unit_ids & algorithms)
 unitsets <- 
