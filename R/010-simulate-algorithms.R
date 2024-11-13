@@ -1038,43 +1038,47 @@ sapply(split(iteration, seq_row(iteration)), function(d) {
 ###########################
 #### Patter convergence  
 
-#### Define convergence
-iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
-  file.exists(file.path(d$folder_coord, "coord-smo.qs"))
-})]
-# Review overall convergence
-table(iteration$convergence)
-# Review convergence for ACDC
-iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
-
-#### Visualise convergence
-# Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
-# This plot is only useful if convergence is not 100 %
-png(here_fig("simulation", "convergence.png"), 
-    height = 5, width = 10, units = "in", res = 600)
-iteration |>
-  group_by(unit_id, dataset, sensitivity) |> 
-  summarise(convergence = length(which(convergence)) / n()) |>
-  as.data.table() |> 
-  ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
-  geom_linerange(linewidth = 1.2) +
-  facet_grid(unit_id ~ sensitivity, 
-             labeller = labeller(sensitivity = label_value), 
-             scales = "free_x") +
-  labs(
-    x = "Algorithm",
-    y = "Pr(convergence)",
-    colour = "Algorithm"
-  ) +
-  scale_color_brewer(palette = "Dark2") + 
-  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
-  theme_bw() + 
-  theme(panel.spacing.y = unit(1.5, "lines"), 
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)),
-        panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank())
-dev.off()
+if (FALSE) {
+  
+  #### Define convergence
+  iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
+    file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+  })]
+  # Review overall convergence
+  table(iteration$convergence)
+  # Review convergence for ACDC
+  iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
+  
+  #### Visualise convergence
+  # Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
+  # This plot is only useful if convergence is not 100 %
+  png(here_fig("simulation", "convergence.png"), 
+      height = 5, width = 10, units = "in", res = 600)
+  iteration |>
+    group_by(unit_id, dataset, sensitivity) |> 
+    summarise(convergence = length(which(convergence)) / n()) |>
+    as.data.table() |> 
+    ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
+    geom_linerange(linewidth = 1.2) +
+    facet_grid(unit_id ~ sensitivity, 
+               labeller = labeller(sensitivity = label_value), 
+               scales = "free_x") +
+    labs(
+      x = "Algorithm",
+      y = "Pr(convergence)",
+      colour = "Algorithm"
+    ) +
+    scale_color_brewer(palette = "Dark2") + 
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+    theme_bw() + 
+    theme(panel.spacing.y = unit(1.5, "lines"), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)),
+          panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank())
+  dev.off()
+  
+}
 
 
 ###########################
@@ -1124,19 +1128,21 @@ if (FALSE) {
 #### Patter residency 
 
 #### Compute residency (~40 s, 10 cl)
-iteration_res <- copy(iteration)
-iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
-residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
-                                extract_coord = function(s) s$states, 
-                                cl = 10L)
-# Write output
-residency <- 
-  left_join(iteration_res, residency, by = "file") |> 
-  mutate(algorithm = dataset) |>
-  select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
-  arrange(unit_id, algorithm, sensitivity, iter, zone) |>
-  as.data.table()
-qs::qsave(residency, here_data("output", "simulation-residency", "residency-patter.qs"))
+if (FALSE) {
+  iteration_res <- copy(iteration)
+  iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
+  residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
+                                               extract_coord = function(s) s$states, 
+                                               cl = 10L)
+  # Write output
+  residency <- 
+    left_join(iteration_res, residency, by = "file") |> 
+    mutate(algorithm = dataset) |>
+    select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
+    arrange(unit_id, algorithm, sensitivity, iter, zone) |>
+    as.data.table()
+  qs::qsave(residency, here_data("output", "simulation-residency", "residency-patter.qs"))
+}
 
 
 ###########################
@@ -1169,6 +1175,8 @@ residency <-
   as.data.table()
 
 #### Visualise residency within MPA
+png(here_fig("simulation", "residency-mpa.png"), 
+    height = 4, width = 10, units = "in", res = 600)
 # Get true residency
 true_res <- 
   residency |>
@@ -1181,7 +1189,8 @@ residency |>
   filter(zone == "total") |>
   ggplot(aes(algorithm, time)) + 
   geom_jitter(width = 0.1, shape = 21, stroke = 0.5, 
-              colour = "black", aes(fill = paste(algorithm, sensitivity))) + 
+              colour = "black", 
+              aes(fill = sensitivity)) + 
   geom_hline(data = true_res,
              aes(yintercept = true_time),
              colour = "black") +
@@ -1189,11 +1198,16 @@ residency |>
              colour = "dimgrey", 
              linetype = 3) + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  xlab("Algorithm") + 
+  ylab("Residency proportion") + 
   facet_grid(~unit_id, scales = "free_x") + 
   # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
   theme_bw() + 
   theme(panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank())
+        panel.grid.major.y = element_blank(), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)))
+dev.off()
 
 #### Visualise MPA within fished/unfished areas
 # (optional) TO DO
