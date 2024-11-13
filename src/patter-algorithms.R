@@ -33,7 +33,7 @@ patter_ModelObs <- function(sim, timeline, detections, moorings, archival, xinit
     acoustics_containers <- assemble_acoustics_containers(.timeline  = timeline, 
                                                           .acoustics = acoustics,
                                                           .mobility  = sim$mobility, 
-                                                          .bbox = qs::qread(here_data("spatial", "bathy-bbox.qs")))
+                                                          .map = qs::qread(here_data("spatial", "bathy-bbox.qs")))
   }
   
   #### Archival datasets
@@ -120,7 +120,7 @@ pf_filter_wrapper <- function(sim, args) {
   success     <- FALSE
   error       <- NA_character_
   n_trial     <- NA_integer_
-  
+
   # Run filter
   t1      <- Sys.time()
   pout    <- tryCatch(do.call(pf_filter, args, quote = TRUE), error = function(e) e)
