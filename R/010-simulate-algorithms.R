@@ -754,7 +754,7 @@ if (FALSE) {
 
 #### Define unitsets (unit_ids & algorithms)
 unitsets <- 
-  CJ(unit_id = selected_paths, 
+  CJ(unit_id = seq_len(n_path), # selected_paths 
      dataset = c("ac", "dc", "acdc")) |>
   arrange(unit_id, factor(dataset, c("ac", "dc", "acdc"))) |>
   as.data.table()
@@ -794,6 +794,8 @@ parameters <-
 #### Define iteration dataset
 iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
   
+  # d <- unitsets[1, ]
+  
   # Keep the relevant parameters, dependent upon the algorithm
   if (d$dataset == "ac") {
     p <- parameters[sensitivity %in% c("best", "movement", "ac"), ]
@@ -806,7 +808,18 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   if (d$dataset == "acdc") {
     p <- copy(parameters)
   }
-  cbind(d, p)
+  
+  # Combine data with all parameters
+  d <- cbind(d, p)
+  
+  # Select relevant rows
+  # * For selected_paths, we use all parameters
+  # * Otherwise, we just use 1 iteration & the best parameters
+  if (!(d$unit_id[1] %in% selected_paths)) {
+     d <- d[iter == 1L & sensitivity == "best", ]
+  }
+  
+  d
   
 }) |> 
   rbindlist() |> 
@@ -824,6 +837,8 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
          "np",
          "folder_coord", "folder_ud") |>
   as.data.table()
+# Check rows (153 -> 444)
+nrow(iteration_patter)
 
 #### Add supporting columns
 # Update np
@@ -899,19 +914,22 @@ if (FALSE) {
   
   #### (optional) Test convergence
   if (FALSE) {
+    
     # Test convergence for selected algorithm
     # * AC: 5000 particles: success for 1:3
     # * DC: 5000 particles: success for 1:3
     # * ACDC: 10000 particles: success for 1:3
     
-    iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
-    # iteration_trial <- iteration_patter[iter == 1L, ]
-    # iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
-    # iteration_trial[dataset == "acdc", np := 250000] 
+    # Select dataset of interest
+    iteration_trial <- copy(iteration_patter)
+    iteration_trial <- iteration_trial[iter == 1L, ]
+    iteration_trial <- iteration_trial[sensitivity == "best", ]
+    iteration_trial <- iteration_trial[unit_id == 1, ]
+    iteration_trial <- arrange(iteration_trial, dataset, sensitivity)
     # iteration_trial <- iteration_trial[dataset == "ac", ]
     # iteration_trial <- iteration_trial[1, ]
     iteration_trial[, np := 5000] 
-    iteration_trial[, smooth := FALSE]
+    # iteration_trial[, smooth := FALSE]
     # debug(estimate_coord_patter)
     nrow(iteration_trial)
     lapply_estimate_coord_patter(iteration = iteration_trial, 
@@ -1084,7 +1102,7 @@ if (FALSE) {
 ###########################
 #### Patter maps
 
-# For each selected path, visualise UDs from patter (~15 s)
+# For each selected path, visualise UDs for performance & sensitivity (~15 s)
 if (FALSE) {
   
   cl_lapply(selected_paths, function(path) {
@@ -1122,6 +1140,9 @@ if (FALSE) {
   # > Manually simulated path maps with patter UD maps outside of R
    
 }
+
+# For each selected path, visualise UDs for repeatability
+# TO DO
 
 
 ###########################
