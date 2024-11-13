@@ -129,6 +129,12 @@ if (FALSE) {
 if (FALSE) {
   
   #### Simulate data on selected grid
+  # 1) Use aggregated grid and correct observation model
+  # - This tells us how well algorithms perform if we get parameters right
+  # 2) Use high-resolution grid for simulation & aggregated grid for modelling
+  # - This indicates whether our understanding 
+  # - ... of the underlying process + aggregation effects is correct
+  # - But this requires many more particles to achieve convergence.
   # map_5m <- terra::rast(here_data("spatial", "bathy-5m.tif"))
   # set_map(map_5m)
   set_map(map)
@@ -821,7 +827,7 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
 
 #### Add supporting columns
 # Update np
-nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(5000L, 5000L, 100000L))
+nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(5000L, 5000L, 10000L))
 iteration_patter[, np := nplookup$np[match(dataset, nplookup$dataset)]]
 # sim$month_id is required by estimate_coord_patter() to define the timeline
 iteration_patter[, month_id := "04-2024"]
@@ -896,7 +902,7 @@ if (FALSE) {
     # Test convergence for selected algorithm
     # * AC: 5000 particles: success for 1:3
     # * DC: 5000 particles: success for 1:3
-    # * ACDC: 
+    # * ACDC: 10000 particles: success for 1:3
     
     iteration_trial <- iteration_patter[dataset == "acdc" & sensitivity == "best" & iter == 1L, ]
     # iteration_trial <- iteration_patter[iter == 1L, ]
@@ -904,6 +910,7 @@ if (FALSE) {
     # iteration_trial[dataset == "acdc", np := 250000] 
     # iteration_trial <- iteration_trial[dataset == "ac", ]
     # iteration_trial <- iteration_trial[1, ]
+    iteration_trial[, np := 5000] 
     iteration_trial[, smooth := FALSE]
     # debug(estimate_coord_patter)
     nrow(iteration_trial)
