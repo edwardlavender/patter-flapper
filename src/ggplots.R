@@ -5,6 +5,7 @@ ggplot_maps <- function(mapdt,
                         ylim = NULL,
                         grid = terra::rast(here_data("spatial", "ud-grid.tif")),
                         coast = qs::qread(here_data("spatial", "coast.qs")), 
+                        moorings = qs::qread(here_data("input", "mefs", "moorings.qs")),
                         png_args = NULL) {
   
   tictoc::tic()
@@ -73,6 +74,7 @@ ggplot_maps <- function(mapdt,
     geom_raster(aes(x = x, y = y, fill = col)) +
     scale_fill_identity() + 
     # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
+    geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.3, stroke = 0.3) + 
     geom_sf(data = coast, fill = scales::alpha("dimgrey", 0.5)) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 
