@@ -933,10 +933,10 @@ if (TRUE) {
   #### (optional) Test convergence
   if (FALSE) {
     
-    # Test convergence for selected algorithm
-    # * AC: 5000 particles: success for 1:3
-    # * DC: 5000 particles: success for 1:3
-    # * ACDC: 10000 particles: success for 1:3
+    # Test convergence for selected algorithm (best)
+    # * AC    : 5000 particles    : 100 % success 
+    # * DC    : 5000 particles    : 92 % success
+    # * ACDC  : 10000 particles   : 98 % success
     
     # Approximate wall time per run
     # * MacBook: 
