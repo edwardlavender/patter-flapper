@@ -868,10 +868,10 @@ dirs.create(file.path(iteration_patter$folder_ud, "spatstat", "h"))
 
 #### Define datasets
 # NB: the detection data is used b/c assemble_acoustics() is called under the hood
-datasets <- list(detections_by_unit = copy(detections_by_unit[selected_paths]), 
+datasets <- list(detections_by_unit = copy(detections_by_unit), 
                  moorings = moorings,
-                 archival_by_unit = copy(archival_by_unit[selected_paths]), 
-                 behaviour_by_unit = behaviour_by_unit[selected_paths])
+                 archival_by_unit = copy(archival_by_unit), 
+                 behaviour_by_unit = behaviour_by_unit)
 # (essential) Process archival units for patter_ModelObs()
 for (i in selected_paths) {
   datasets$archival_by_unit[[i]] <- 
@@ -939,7 +939,7 @@ if (TRUE) {
     # Approximate wall time per run
     # * MacBook: 
     # - 2 mins x 2 (5,000 particles) for filter
-    # - 15 mins (500 particles) for smoother 
+    # - 15-20 mins (500 particles) for smoother 
     
     # Select dataset of interest
     iteration_trial <- copy(iteration_patter)
