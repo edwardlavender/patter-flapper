@@ -901,20 +901,19 @@ if (TRUE) {
   set_vmap(.vmap = vmap)
   rm(vmap)
   # (optional) Select rows/dataset
-  # * batch 1: 390 rows
-  # * batch 2: 27 rows
-  # * batch 3: 27 rows
+  # * batch 1: 390 rows (tmux sessions 1:8)
+  # * batch 2: 27 rows  (tmux session 9)
+  # * batch 3: 27 rows  (tmux session 10)
   rows <- seq_row(iteration)
   if (batch == pars$pmovement$mobility[1]) {
-    rows <- 1:50
-    # rows <- 51:100
-    # rows <- 101:150
-    # rows <- 151:200
-    # rows <- 201:250
-    # rows <- 251:300
-    # rows <- 301:350
-    # rows <- 351:390
-    # rows <- 51:100
+    rows <- 1:50      # 1
+    # rows <- 51:100  # 2 
+    # rows <- 101:150 # 3
+    # rows <- 151:200 # 4
+    # rows <- 201:250 # 5
+    # rows <- 251:300 # 6
+    # rows <- 301:350 # 7
+    # rows <- 351:390 # 8 
   }
   iteration <- iteration[rows, ]
   
