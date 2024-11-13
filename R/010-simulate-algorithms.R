@@ -280,14 +280,14 @@ if (FALSE) {
                               height = 12, width = 15, units = "in", res = 600))
   
   #### Estimate 'true' residency (~10 s)
-  iteration_res <- data.table(unit_id = c(1, 2, 3), 
+  iteration_res <- data.table(unit_id = seq_len(n_path), 
                               algorithm = "Path", 
                               sensitivity = "Best", 
                               iter = 1L,
-                              file = here_data("input", "simulation", selected_paths, "coord.qs"))
+                              file = here_data("input", "simulation", seq_len(n_path), "coord.qs"))
   residency <- 
     lapply_estimate_residency_coord(files = iteration_res$file,
-                                    cl = 3L)
+                                    cl = 10L)
   residency <- 
     left_join(residency, iteration_res, by = "file") |>
     mutate(file = NULL) |> 
@@ -295,6 +295,26 @@ if (FALSE) {
     arrange(unit_id, algorithm, sensitivity, iter, zone) |>
     as.data.table()
   qs::qsave(residency, here_data("output", "simulation-residency", "residency-path.qs"))
+  
+  #### Estimate residency under null model
+  study_area <- 
+    terra::expanse(ud_grid)[, 2]
+  residency_null_closed <- 
+    sum(terra::expanse(mpa)[which(mpa$open == "closed")]) / study_area
+  residency_null_open <- 
+    sum(terra::expanse(mpa)[which(mpa$open == "open")]) / study_area
+  residency_null_total <- 
+    sum(terra::expanse(mpa)) / study_area
+  residency_null <- 
+    lapply(seq_len(n_path), function(unit_id) {
+      data.table(unit_id= unit_id, 
+                 algorithm = "Null", 
+                 sensitivity = "Best", 
+                 iter = 1L, 
+                 zone = c("closed", "open", "total"), 
+                 time = c(residency_null_closed, residency_null_open, residency_null_total))
+    }) |> rbindlist()
+  qs::qsave(residency_null, here_data("output", "simulation-residency", "residency-null.qs"))
   
   #### Estimate residency from detection days
   # This is implemented below.
@@ -330,7 +350,7 @@ archival_by_unit <- lapply(seq_len(n_path), function(path) {
 #### Estimate residency from detection days
 if (!patter:::os_linux()) {
   
-  residency <- lapply(selected_paths, function(path) {
+  residency <- lapply(seq_len(n_path), function(path) {
     
     # Total number of days in month 
     ndays <- as.integer(lubridate::days_in_month(timeline[1]))
@@ -506,7 +526,7 @@ if (FALSE) {
   # Define dataset
   iteration_res <- 
     iteration |>
-    filter(unit_id %in% selected_paths) |> 
+    # filter(unit_id %in% selected_paths) |> 
     filter(delta_t %in% selected_delta_t) |> 
     mutate(file = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
     as.data.table()
@@ -729,7 +749,7 @@ if (FALSE) {
   # Define dataset
   iteration_res <- 
     iteration |>
-    filter(unit_id %in% selected_paths) |> 
+    # filter(unit_id %in% selected_paths) |> 
     filter(er.ad %in% selected_er.ad) |> 
     mutate(file = file.path(folder_ud, "dbbmm", "ud.tif")) |> 
     as.data.table()
@@ -890,7 +910,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (TRUE) {
+if (FALSE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1178,6 +1198,12 @@ if (FALSE) {
 
 
 ###########################
+#### Maps synthesis
+
+# TO DO
+
+
+###########################
 #### Patter residency 
 
 if (FALSE) {
@@ -1210,6 +1236,7 @@ if (FALSE) {
     rbindlist(
       list(
         qs::qread(here_data("output", "simulation-residency", "residency-path.qs")),
+        qs::qread(here_data("output", "simulation-residency", "residency-null.qs")),
         qs::qread(here_data("output", "simulation-residency", "residency-detection-days.qs")),
         qs::qread(here_data("output", "simulation-residency", "residency-coa.qs")),
         qs::qread(here_data("output", "simulation-residency", "residency-rsp.qs")),
@@ -1223,7 +1250,10 @@ if (FALSE) {
   unique(residency$sensitivity)
   residency <- 
     residency |>
-    mutate(sensitivity = factor(sensitivity, 
+    mutate(zone = factor(zone, 
+                         levels = c("open", "closed", "total"), 
+                         labels = c("Open", "Closed", "Protected")), 
+           sensitivity = factor(sensitivity, 
                                 levels = c("Best", 
                                            "Move (-)", "Move (+)",
                                            "AC(-)", "AC(+)", 
@@ -1231,43 +1261,116 @@ if (FALSE) {
     arrange(unit_id, algorithm, sensitivity, iter, zone) |> 
     as.data.table()
   
-  #### Visualise residency within MPA
-  png(here_fig("simulation", "residency-mpa.png"), 
-      height = 4, width = 10, units = "in", res = 600)
-  # Get true residency
-  true_res <- 
-    residency |>
-    filter(zone == "total", algorithm == "Path", sensitivity == "Best") |>
-    select(unit_id, true_time = time)
-  # Get null residency
-  null_res <- sum(terra::expanse(mpa)) / terra::expanse(ud_grid)[, 2]
-  # Plot residency metrics 
-  residency |>
-    filter(zone == "total") |>
-    ggplot(aes(algorithm, time)) + 
-    geom_jitter(width = 0.1, shape = 21, stroke = 0.5, 
-                colour = "black", 
-                aes(fill = sensitivity)) + 
-    geom_hline(data = true_res,
-               aes(yintercept = true_time),
-               colour = "black") +
-    geom_hline(aes(yintercept = null_res), 
-               colour = "dimgrey", 
-               linetype = 3) + 
-    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  #### Visualise overall residency skill (by zone)
+  # Define residency estimates for best-case simulations 
+  residency_skill <- 
+    residency |> 
+    filter(sensitivity == "Best") |> 
+    # filter(zone == "total") |> 
+    as.data.table()
+  # Define true residency
+  residency_skill_path <- 
+    residency_skill |> 
+    filter(algorithm == "Path") |>
+    select(unit_id, zone, truth = time) |>
+    as.data.table()
+  # Define estimated residency 
+  residency_skill_alg <- 
+    residency_skill |>
+    filter(algorithm != "Path") |> 
+    select(unit_id, zone, algorithm, time) |>
+    as.data.table()
+  # Define error (estimated time - truth)
+  # * <0: underestimation of residency
+  # * >0: overestimation of residency  
+  residency_skill <- 
+    merge(residency_skill_alg, residency_skill_path, by = c("unit_id", "zone")) |> 
+    mutate(error = time - truth) |> 
+    as.data.table()
+  # Visualise skill
+  png(here_fig("simulation", "residency-mpa-skill.png"), 
+      height = 3, width = 10, units = "in", res = 600)
+  residency_skill |>
+    ggplot() + 
+    geom_violin(aes(algorithm, error, fill = algorithm), alpha = 0.3, 
+                scale = "count") + 
+    geom_hline(yintercept = 0, linetype = 3) + 
+    scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
     xlab("Algorithm") + 
-    ylab("Residency proportion") + 
-    facet_grid(~unit_id, scales = "free_x") + 
-    # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
-    theme_bw() + 
+    ylab("Residency error") + 
+    labs(fill = "Algorithm") +
+    facet_wrap(~zone) +
+    theme_bw() +
     theme(panel.grid.minor.y = element_blank(), 
           panel.grid.major.y = element_blank(), 
           axis.title.x = element_text(margin = margin(t = 10)),
-          axis.title.y = element_text(margin = margin(r = 10)))
+          axis.title.y = element_text(margin = margin(r = 10))) 
   dev.off()
   
-  #### Visualise MPA within fished/unfished areas
-  # (optional) TO DO
+  # > Null model underestimates residency 
+  # > DD underestimates residency b/c individuals linger around receivers (in our simulations) 
+  # > COAs + RSPs overestimate residency b/c they don't permit movement away from receivers
+  # > AC, DC, ACDC (TO DO)
+  
+  #### Visualise residency sensitivity for selected_paths
+  png(here_fig("simulation", "residency-mpa-sensitivity.png"), 
+      height = 6, width = 8, units = "in", res = 600)
+  # Get true residency
+  true_res <- 
+    residency |>
+    filter(unit_id %in% selected_paths) |>
+    filter(algorithm == "Path", sensitivity == "Best") |>
+    select(unit_id, zone, true_time = time) |> 
+    as.data.table()
+  # Pair true residency with 'best' estimate for arrows 
+  arrow_res <- 
+    true_res |> 
+    merge(  
+      residency |>
+        filter(unit_id %in% selected_paths, sensitivity == "Best") |>
+        select(unit_id, zone, algorithm, best_time = time) |> 
+        as.data.table(), 
+      by = c("unit_id", "zone"))
+  # Make ggplot 
+  residency |>
+    filter(unit_id %in% selected_paths) |> 
+    as.data.table() |>
+    ggplot(aes(algorithm, time)) + 
+    # Draw lines from the 'best' estimates to the truth (for visual clarity)
+    geom_segment(
+      data = arrow_res,
+      aes(x = algorithm, xend = algorithm, y = true_time, yend = best_time),
+      arrow = arrow(length = unit(0.15, "cm")),
+      colour = "dimgrey",
+      size = 0.5) + 
+    # Add estimates with jitter
+    geom_jitter(
+      width = 0.25,
+      shape = 21, size = 1.5, stroke = 0.5, 
+      colour = "black", alpha = 0.6,
+      aes(algorithm, time, fill = sensitivity)
+    ) + 
+    # Add best estimates as a horizontal line for visual clarity
+    geom_hline(data = true_res,
+               aes(yintercept = true_time),
+               colour = "black") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+    xlab("Algorithm") + 
+    ylab("Residency proportion") + 
+    labs(fill = "Parameterisation") + 
+    facet_grid(unit_id ~ zone, scales = "free_x") + 
+    # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
+    theme_bw() + 
+    theme(panel.spacing.y = unit(1.5, "lines"), 
+          panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  dev.off()
+  
+  # > Results
+  # > TO DO
   
 }
 
