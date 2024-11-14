@@ -1230,8 +1230,39 @@ if (FALSE) {
     
   })
  
-  # For each selected path, visualise UDs for repeatability
-  # TO DO
+  # For one selected path, for each algorithm, visualise UDs for repeatability
+  cl_lapply(c("AC", "DC", "ACDC"), function(alg) {
+    
+    #### Define iteration dataset for mapping
+    # alg <- "AC"
+    iteration_map <- iteration[unit_id == 1L, ]
+    iteration_map <- iteration_map[dataset == alg, ]
+    iteration_map[, iter := factor(iter, levels = sort(unique(iter)), labels = paste("Iter", sort(unique(iter))))]
+    iteration_map[, key := paste(iter, sensitivity)]
+    
+    #### Define file paths to ud.tif (POU or spatstat)
+    # Use POU
+    udtype <- "pou"
+    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
+    # Use spatstat
+    # udtype <- "spatstat"
+    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
+    
+    #### Define mapfiles data.table for mapping
+    mapfiles <- CJ(row = unique(iteration_map$iter), 
+                   column = levels(iteration_map$sensitivity), 
+                   mapfile = NA)
+    mapfiles[, row := factor(row, levels = levels(iteration_map$iter))]
+    mapfiles[, column := factor(column, levels = levels(iteration_map$sensitivity))]
+    mapfiles[, key := paste(row, column)]
+    mapfiles[, mapfile := iteration_map$mapfile[match(key, iteration_map$key)]]
+    
+    #### Make maps
+    ggplot_maps(mapdt = mapfiles, 
+                png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{alg}.png")), 
+                                height = 12, width = 15, units = "in", res = 600))
+    
+  })
    
 }
 
