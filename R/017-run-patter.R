@@ -44,62 +44,114 @@ if (patter:::os_linux()) {
 julia_connect()
 set_seed()
 set_map(here_data("spatial", "bathy.tif"))
-set_vmap(.vmap = here_data("spatial", glue("vmap-{pars$pmovement$mobility[1]}.tif")))
-set_ModelObsCaptureContainer()
 set_model_move_components()
 
-#### Define iterations
-nrow(iteration)
+#### Clean up
+if (FALSE) {
+  unlink(iteration$folder_coord, recursive = TRUE)
+  unlink(iteration$folder_ud, recursive = TRUE)
+  list.files(iteration$folder_coord, recursive = TRUE)
+  list.files(iteration$folder_ud, recursive = TRUE)
+  dirs.create(iteration$folder_coord)
+  dirs.create(iteration$folder_ud)
+}
+
+#### Prepare iterations/datasets
 iteration[, folder_xinit := file.path("data", "input", "xinit", "1.5", individual_id, month_id)]
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 datasets <- list(detections_by_unit = acoustics_by_unit, 
-                 moorings = moorings,
-                 archival_by_unit = archival_by_unit, 
-                 behaviour_by_unit = behaviour_by_unit)
-# Checks
+                 moorings           = moorings,
+                 archival_by_unit   = archival_by_unit, 
+                 behaviour_by_unit  = behaviour_by_unit)
+
+#### Review inputs
+# Check iterations
+# * Each unit_id is a individual/month combination
+# * For each unit_id, we have AC/DC/ACDC algorithm implementations
+# * For each algorithm implementation, we have different parameterisations (sensitivity)
+head(iteration)
+# Check datasets 
+# * unit_ids were defined as _all possible_ individual-month combinations
+# * (see process-data-mefs.R)
+# -> We have 154 possible unit ids (individual-month) combinations
+ids  <- unique(iteration$individual_id)
+mons <- mmyy(seq(as.Date("2016-04-01"), as.Date("2017-05-31"), by = "months"))
+nrow(CJ(ids, mons))
+# * We have 48 'realised' unit_ids 
+# -> These are the individual/months for which we have observations
+sort(unique(iteration$unit_id))
+length(unique(iteration$unit_id))
+# * We have 154 elements in each dataset (one for each _possible_ unit_id)
+length(datasets$detections_by_unit)
+length(datasets$archival_by_unit)  
+length(datasets$behaviour_by_unit)
+# * For all AC/ACDC unit_id, we need detections dataset
+sapply(unique(iteration$unit_id[iteration$dataset %in% c("ac", "acdc")]), function(id) {
+  !is.null(datasets$detections_by_unit[[id]])
+}) |> all() |> stopifnot()
+# * For all DC/ACDC unit_id, we need archival dataset
+sapply(unique(iteration$unit_id[iteration$dataset %in% c("dc", "acdc")]), function(id) {
+  !is.null(datasets$archival_by_unit[[id]])
+}) |> all() |> stopifnot()
+# * For all AC/DC/ACDC unit_id, we need behaviour dataset
+sapply(unique(iteration$unit_id), function(id) {
+  !is.null(datasets$behaviour_by_unit[[id]])
+}) |> all() |> stopifnot()
+# Check folder_xinit
 all(file.exists(file.path(iteration$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
 all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
 
+#### Select batch
+# As for the simulations, we batch by mobility
+batch     <- pars$pmovement$mobility[1]
+iteration <- iteration[mobility == batch, ]
+set_vmap(.vmap = here_data("spatial", glue("vmap-{batch}.tif")))
+
 #### Select iterations
-# Start with 'best' implementations 
-iteration <- iteration[sensitivity == "best", ]
-# Focus on selecteed implementations
-# * ac or dc: fast
-# * acdc    : hard
-iteration <- iteration[dataset == "ac", ]
-table(table(iteration$unit_id))
-# iteration <- iteration[2:.N, ]
-gc()
+# Select iterations 
+# * Select one AC/DC/ACDC run for testing 
 nrow(iteration)
+iteration <- 
+  iteration |> 
+  filter(sensitivity == "best") |>
+  group_by(dataset) |> 
+  slice(1L) |>
+  as.data.table()
+# * Select by dataset/sensitivity
+# iteration <- iteration[dataset == "ac", ]
+# iteration <- iteration[sensitivity == "best", ]
 
 #### Estimate coordinates
-lapply_estimate_coord_patter(iteration = iteration,
-                             datasets = datasets, 
-                             trial = FALSE, 
+gc()
+nrow(iteration)
+lapply_estimate_coord_patter(iteration  = iteration,
+                             datasets   = datasets, 
+                             trial      = FALSE, 
                              log.folder = here_data("output", "log", "real", "analysis"), 
-                             log.txt = NULL)
-
-# Examine selected coords 
-if (on_linux()) {
-  stop("Continue on Mac (for convenience).")
-}
-lapply_qplot_coord(iteration, 
-                   "coord-smo.qs",
-                   extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
+                             log.txt    = NULL)
 
 #### Estimate UDs
-# Time trial 
-lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
-                            extract_coord = function(s) s$states,
-                            cl = NULL, 
-                            plot = FALSE)
-# Implementation 
-lapply_estimate_ud_spatstat(iteration = iteration, 
-                            extract_coord = function(s) s$states,
-                            cl = NULL, 
-                            plot = FALSE)
-# (optional) Examine selected UDs
-lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+if (patter:::os_linux()) {
+  
+  # Examine selected coord
+  # lapply_qplot_coord(iteration, 
+  #                    "coord-smo.qs",
+  #                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
+  
+  #### Estimate UDs
+  # Time trial 
+  lapply_estimate_ud_spatstat(iteration     = iteration[1, ], 
+                              extract_coord = function(s) s$states,
+                              cl            = NULL, 
+                              plot          = FALSE)
+  # Implementation 
+  lapply_estimate_ud_spatstat(iteration     = iteration, 
+                              extract_coord = function(s) s$states,
+                              cl            = NULL, 
+                              plot          = FALSE)
+  # (optional) Examine selected UDs
+  lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+}
 
 
 #### End of code.
