@@ -9,6 +9,7 @@ data-raw/
 data/*
 !data/inst
 dev/05-progress-MCC02XT0AZJGH5.R
+dev/06-progress-SIA-USER024-P.R
 R/deprecated/
 R/dev/
 R/supporting/
