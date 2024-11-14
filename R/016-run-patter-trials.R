@@ -50,7 +50,6 @@ set_seed()
 julia_command('Rasters.checkmem!(false);')
 # TO DO
 # Incorporate ModelObsCaptureContainer in workflow below
-set_ModelObsCaptureContainer()
 set_model_move_components()
 
 
