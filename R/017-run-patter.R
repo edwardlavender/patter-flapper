@@ -111,23 +111,27 @@ set_vmap(.vmap = here_data("spatial", glue("vmap-{batch}.tif")))
 # Select iterations 
 # * Select one AC/DC/ACDC run for testing 
 nrow(iteration)
-iteration <- 
-  iteration |> 
-  filter(sensitivity == "best") |>
-  group_by(dataset) |> 
-  slice(1L) |>
-  as.data.table()
+# iteration <- 
+#   iteration |> 
+#   filter(sensitivity == "best") |>
+#   group_by(dataset) |> 
+#   slice(1L) |>
+#   as.data.table()
 # * Select by dataset/sensitivity
-# iteration <- iteration[dataset == "ac", ]
-# iteration <- iteration[sensitivity == "best", ]
+iteration <- iteration[dataset == "acdc", ]
+iteration <- iteration[sensitivity == "best", ]
 
 #### Estimate coordinates
+# * Convergence trials complete (see /log/real/trials/log-summary.txt)
+# * Batch 1, AC (all): SIA-USER024-P
+# * Batch 1, DC (all): MCC02XT0AZJGH5
+# * Batch 2, ACDC    : TO DO
 gc()
 nrow(iteration)
 lapply_estimate_coord_patter(iteration  = iteration,
                              datasets   = datasets, 
                              trial      = FALSE, 
-                             log.folder = here_data("output", "log", "real", "analysis"), 
+                             log.folder = here_data("output", "log", "real"), 
                              log.txt    = NULL)
 
 #### Estimate UDs
