@@ -165,9 +165,10 @@ png(here_fig("model-move-turning-angle.png"),
     height = 4, width = 4, units = "in", res = 600)
 set_par()
 x <- seq(-pi*1.1, pi*1.1, length.out = 1e5)
-y <- dunif(x, -pi, pi)
+y <- dnorm(x, 0, 1.5)
 y <- y / max(y)
 plot(x, y,
+     ylim = c(0, 1),
      xlab = "", ylab = "",
      type = "l", 
      axes = FALSE)
@@ -244,7 +245,7 @@ dev.off()
 
 #### Define parameters
 # Make plot for seabed depth (mu) = 50 m and 350 m
-pdepth <- data.frame(mu = 200, 
+pdepth <- data.frame(mu = 350, 
                      depth_sigma = c(100, 100 * 0.5, 100 * 1.5), 
                      depth_deep_eps = c(350, 350, 350))
 p       <- copy(pdepth)
@@ -282,7 +283,7 @@ for (i in 1:3) {
     
     #### Visualise uncertainty components 
     # Define helper function 
-    add_uncertainty <- function(mu, sds, cols, alphas = seq(0.8, 0.2, length.out = length(sds))) {
+    add_uncertainty <- function(mu, sds, cols, alphas = seq(0.5, 0.1, length.out = length(sds))) {
       # Iteratively add polygons 
       for (j in length(sds):1) {
 
