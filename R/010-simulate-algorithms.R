@@ -379,7 +379,8 @@ if (FALSE & !patter:::os_linux()) {
     ndays <- as.integer(lubridate::days_in_month(timeline[1]))
     
     # Compute detection days for receivers in MPA
-    detections_by_unit[[path]] |> 
+    dds_total <- 
+      detections_by_unit[[path]] |> 
       filter(receiver_id %in% moorings_in_mpa$receiver_id) |> 
       mutate(day = lubridate::day(timestamp)) |> 
       summarise(time = length(unique(day)) / ndays) |>
@@ -391,6 +392,14 @@ if (FALSE & !patter:::os_linux()) {
       select(unit_id, algorithm, sensitivity, iter, zone, time) |> 
       arrange(unit_id, algorithm, sensitivity, iter, zone) |>
       as.data.table()
+    
+    # Detection days in closed areas are identical 
+    # * (All receivers were in closed areas)
+    # * For the figures, we also record DDs in closed areas
+    dds_closed <- copy(dds_total)
+    dds_closed[, zone := "closed"]
+    
+    rbind(dds_total, dds_closed)
     
   }) |> rbindlist()
   
@@ -472,7 +481,7 @@ if (FALSE) {
   }) |> unlist() |> as.numeric()
   # Visualise ME ~ delta_t
   png(here_fig("simulation", "parameterisation-coa.png"), 
-      height = 5, width = 8, units = "in", res = 600)
+      height = 4, width = 5, units = "in", res = 600)
   iteration |>
     mutate(unit_id     = factor(unit_id), 
            delta_t     = factor(delta_t, levels = pcoa$delta_t), 
@@ -492,7 +501,7 @@ if (FALSE) {
     geom_smooth(aes(as.integer(delta_t), me), method = "gam", 
                 colour = "black", linewidth = 1.2, fill = "dimgrey")  + 
     theme(legend.position = "none") + 
-    scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+    scale_y_continuous(limits = c(-4e-6, 6e-6), expand = c(0, 0), labels = prettyGraphics::sci_notation) + 
     xlab(expression(Delta * T)) + 
     ylab(expression("Relative mean error (" * italic(RME) * ")")) + 
     theme_classic() + 
@@ -553,6 +562,11 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, me) |> 
     arrange(unit_id, algorithm, sensitivity, iter) |>
     as.data.table()
+  # Check convergence for 'best' simulations (100 %)
+  table(is.na(me$me))
+  me |>
+    filter(sensitivity == "Best") |> 
+    summarise(convergence_pr = length(which(!is.na(me))) / n())
   qs::qsave(me, here_data("output", "simulation-summary", "me-coa.qs"))
   
   #### Estimate residency (across all paths)
@@ -708,7 +722,7 @@ if (FALSE) {
   }) |> unlist() |> as.numeric()
   # Visualise ME ~ er.ad
   png(here_fig("simulation", "parameterisation-rsp.png"), 
-      height = 5, width = 8, units = "in", res = 600)
+      height = 4, width = 5, units = "in", res = 600)
   iteration |>
     mutate(unit_id   = factor(unit_id), 
            er.ad     = factor(er.ad, levels = prsp$er.ad), 
@@ -727,7 +741,7 @@ if (FALSE) {
     geom_smooth(aes(as.integer(er.ad), me), method = "gam", 
                 colour = "black", linewidth = 1.2, fill = "dimgrey")  + 
     theme(legend.position = "none") + 
-    scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+    scale_y_continuous(limits = c(-4e-6, 6e-6), expand = c(0, 0), labels = prettyGraphics::sci_notation) + 
     xlab(expression(er.ad)) + 
     ylab(expression("Relative mean error (" * italic(RME) * ")")) + 
     theme_classic() + 
@@ -789,6 +803,11 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, me) |> 
     arrange(unit_id, algorithm, sensitivity, iter) |>
     as.data.table()
+  # Check convergence for 'best' simulations (100 %)
+  table(is.na(me$me))
+  me |>
+    filter(sensitivity == "Best") |> 
+    summarise(convergence_pr = length(which(!is.na(me))) / n())
   qs::qsave(me, here_data("output", "simulation-summary", "me-rsp.qs"))
   
   #### Estimate residency (across all paths)
@@ -1208,11 +1227,11 @@ if (FALSE) {
     
     #### Define file paths to ud.tif (POU or spatstat)
     # Use POU
-    udtype <- "pou"
-    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
+    # udtype <- "pou"
+    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
     # Use spatstat
-    # udtype <- "spatstat"
-    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
+    udtype <- "spatstat"
+    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
     
     #### Define mapfiles data.table for mapping
     mapfiles <- CJ(row = levels(iteration_map$dataset), 
@@ -1242,11 +1261,11 @@ if (FALSE) {
     
     #### Define file paths to ud.tif (POU or spatstat)
     # Use POU
-    udtype <- "pou"
-    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
+    # udtype <- "pou"
+    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "pou", "ud.tif")]
     # Use spatstat
-    # udtype <- "spatstat"
-    # iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
+    udtype <- "spatstat"
+    iteration_map[, mapfile := file.path(iteration_map$folder_ud, "spatstat", "h", "ud.tif")]
     
     #### Define mapfiles data.table for mapping
     mapfiles <- CJ(row = unique(iteration_map$iter), 
@@ -1348,7 +1367,7 @@ skill |>
               scale = "count") +
   scale_y_continuous(labels = prettyGraphics::sci_notation) + 
   xlab("Algorithm") + 
-  ylab("Absolute mean error") + 
+  ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
   labs(fill = "Algorithm") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
@@ -1366,11 +1385,12 @@ skill |>
   filter(unit_id %in% selected_paths) |> 
   as.data.table() |>
   ggplot() + 
-  geom_point(aes(algorithm, me, fill = algorithm), 
+  geom_jitter(aes(algorithm, me, fill = algorithm), 
+              width = 0.2,
              shape = 21, alpha = 0.75) + 
   scale_y_continuous(labels = prettyGraphics::sci_notation) + 
   xlab("Algorithm") + 
-  ylab("Absolute mean error") + 
+  ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
   labs(fill = "Algorithm") +
   facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
   theme_bw() +
@@ -1453,7 +1473,7 @@ if (FALSE) {
     geom_hline(yintercept = 0, linetype = 3) + 
     scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
     xlab("Algorithm") + 
-    ylab("Residency error") + 
+    ylab(expression("Residency error (" * italic(RE) * ")")) + 
     labs(fill = "Algorithm") +
     facet_wrap(~zone) +
     theme_bw() +
