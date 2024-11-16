@@ -1077,9 +1077,19 @@ if (FALSE) {
   #### Estimate UDs
   if (!patter:::os_linux()) {
     
-    #### Estimate UDs via POU (~2 mins)
+    #### Clean up
+    # Clean up folders
+    if (FALSE) {
+      unlink(file.path(iteration$folder_ud, "pou"), recursive = TRUE)
+      unlink(file.path(iteration$folder_ud, "spatstat", "h"), recursive = TRUE)
+    }
+    # Rebuild
     dirs.create(file.path(iteration$folder_ud, "pou"))
+    dirs.create(file.path(iteration$folder_ud, "spatstat", "h"))
+    # Define input coordinates
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+    
+    #### Estimate UDs via POU (~7 mins)
     lapply_estimate_ud_pou(iteration = iteration,
                            extract_coord = function(s) s$states,
                            cl = 12L,
@@ -1088,10 +1098,9 @@ if (FALSE) {
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
     #### Estimate UDs via spatstat (~15 mins)
-    iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
-                                cl = 12L,
+                                cl = 10L,
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
@@ -1143,7 +1152,7 @@ if (FALSE) {
   # Check for errors on forward filter 
   sapply(split(iteration, seq_row(iteration)), function(d) {
     qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
-  }) |> unlist()
+  }) |> unlist() |> unique()
   
   # Check for errors on backward filter 
   sapply(split(iteration, seq_row(iteration)), function(d) {
@@ -1151,7 +1160,7 @@ if (FALSE) {
     if (file.exists(file)) {
       qs::qread(file)$error
     }
-  }) |> unlist()
+  }) |> unlist() |> unique()
   
   # Check for errors on smoother
   sapply(split(iteration, seq_row(iteration)), function(d) {
@@ -1159,7 +1168,7 @@ if (FALSE) {
     if (file.exists(file)) {
       qs::qread(file)$error
     }
-  }) |> unlist() 
+  }) |> unlist() |> unique()
   
 }
 
@@ -1178,19 +1187,45 @@ if (FALSE) {
   # Review convergence for ACDC
   iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
   
-  #### Visualise convergence
+  #### Visualise convergence (best)
+  # This is a barplot of the proportion of simulations that converged
+  # (If we had multiple iterations for each path, it could be a boxplot)
+  png(here_fig("simulation", "convergence-best.png"), 
+      height = 3, width = 5, units = "in", res = 600)
+  iteration |> 
+    filter(sensitivity == "Best" & iter == 1L) |> 
+    group_by(dataset) |> 
+    summarise(convergence = length(which(convergence)) / n()) |>
+    ungroup() |>
+    as.data.table() |> 
+    ggplot(aes(dataset, convergence, fill = dataset)) +
+    geom_bar(stat = "identity", alpha = 0.5) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+    labs(
+      x = "Algorithm",
+      y = "Pr(convergence)",
+      fill = "Algorithm"
+    ) + 
+    theme_bw() + 
+    theme(panel.spacing.y = unit(1.5, "lines"), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)),
+          panel.grid = element_blank())
+  dev.off()
+  
+  #### Visualise convergence (sensitivity)
   # Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
   # This plot is only useful if convergence is not 100 %
-  png(here_fig("simulation", "convergence.png"), 
+  png(here_fig("simulation", "convergence-sensitivity.png"), 
       height = 5, width = 10, units = "in", res = 600)
   iteration |>
+    filter(unit_id %in% selected_paths) |>
     group_by(unit_id, dataset, sensitivity) |> 
     summarise(convergence = length(which(convergence)) / n()) |>
     as.data.table() |> 
     ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
     geom_linerange(linewidth = 1.2) +
     facet_grid(unit_id ~ sensitivity, 
-               labeller = labeller(sensitivity = label_value), 
                scales = "free_x") +
     labs(
       x = "Algorithm",
@@ -1224,7 +1259,14 @@ if (FALSE) {
     iteration_map <- iteration[iter == 1L, ]
     iteration_map <- iteration_map[unit_id == path, ]
     iteration_map[, key := paste(dataset, sensitivity)]
-    
+    if (FALSE) {
+      # Visual check of simulated and reconstructed patter for path 1 
+      pp <- par(mfrow = c(1, 2))
+      terra::plot(terra::rast("data/input/simulation/1/ud.tif"))
+      terra::plot(terra::rast("data/output/simulation/1/patter/ac/1/1/ud/spatstat/h/ud.tif"))
+      par(pp)
+    }
+
     #### Define file paths to ud.tif (POU or spatstat)
     # Use POU
     # udtype <- "pou"
