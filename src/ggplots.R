@@ -57,14 +57,7 @@ ggplot_maps <- function(mapdt,
     # Link data.tables (e.g., row/column)
     cbind(d, rdt)
   }) |> 
-    rbindlist() |>
-    # (custom) Drop selected panels, if applicable, that are NA
-    # * These appear simply as white panels
-    filter(!(key %in% 
-               c("AC DC(-)", "AC DC(+)", 
-                 "DC AC(-)", "DC AC(+)")
-          )) |>
-    as.data.table()
+    rbindlist()
   
   # Update coast with gg mapping
   # * We duplicate coast for each raster
@@ -121,7 +114,7 @@ ggplot_maps <- function(mapdt,
           panel.grid = element_blank(), 
           # strip.text = element_blank(), 
           legend.position = "none") + 
-    facet_grid(row ~ column, drop = TRUE)
+    facet_grid(row ~ column, drop = FALSE)
   
   # Return ggplot 
   if (!is.null(png)) {

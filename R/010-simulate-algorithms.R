@@ -1292,6 +1292,8 @@ if (FALSE) {
     mapfiles[, column := factor(column, levels = levels(iteration_map$sensitivity))]
     mapfiles[, key := paste(row, column)]
     mapfiles[, mapfile := iteration_map$mapfile[match(key, iteration_map$key)]]
+    # Drop NA panels
+    mapfiles <- mapfiles[!(key %in% c("AC DC(-)", "AC DC(+)", "DC AC(-)", "DC AC(+)")), ]
     
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
@@ -1326,6 +1328,13 @@ if (FALSE) {
     mapfiles[, column := factor(column, levels = levels(iteration_map$sensitivity))]
     mapfiles[, key := paste(row, column)]
     mapfiles[, mapfile := iteration_map$mapfile[match(key, iteration_map$key)]]
+    # Drop NA panels
+    if (alg == "AC") {
+      mapfiles <- mapfiles[!(column %in% c("DC(-)", "DC(+)")), ]
+    }
+    if (alg == "DC") {
+      mapfiles <- mapfiles[!(column %in% c("AC(-)", "AC(+)")), ]
+    }
     
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
