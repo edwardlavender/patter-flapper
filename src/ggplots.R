@@ -105,7 +105,7 @@ ggplot_maps <- function(mapdt,
     geom_raster(aes(x = x, y = y, fill = col)) +
     scale_fill_identity() + 
     # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
-    geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.3, stroke = 0.3) + 
+    geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.2, stroke = 0.2) + 
     geom_sf(data = coast, aes(fill = I(col))) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 

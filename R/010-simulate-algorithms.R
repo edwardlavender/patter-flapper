@@ -1298,7 +1298,7 @@ if (FALSE) {
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
                 png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{path}.png")), 
-                                height = 12, width = 15, units = "in", res = 600))
+                                height = 4, width = 7, units = "in", res = 600))
     
   })
  
@@ -1339,7 +1339,7 @@ if (FALSE) {
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
                 png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{alg}.png")), 
-                                height = 12, width = 15, units = "in", res = 600))
+                                height = 4, width = 7,units = "in", res = 600))
     
   })
    
