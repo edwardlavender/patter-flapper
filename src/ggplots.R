@@ -23,7 +23,7 @@ ggplot_maps <- function(mapdt,
   # * Full resolution:  160 s for 12 plots
   # * dTolerance = 500: 3 s for 12 plots (& reasonable approximation of coast)
   # * dTolerance = 100: 3 s for 12 plots (& good approximation of coast)
-  coast <- sf::st_simplify(coast, dTolerance = 100) |> sf::st_geometry()
+  coast <- sf::st_simplify(coast, dTolerance = 100) 
   
   # Define a blank data.frame
   # * This is used to handle blank panels (for which we couldn't compute the UD)
@@ -58,6 +58,22 @@ ggplot_maps <- function(mapdt,
     cbind(d, rdt)
   }) |> rbindlist()
   
+  # Update coast with gg mapping
+  # * We duplicate coast for each raster
+  # * We use a more transparent colour for panels without data
+  coast <- 
+    lapply(unique(mapdata$key), function(key) {
+      coast$key <- key
+      coast
+    }) |> 
+    dplyr::bind_rows() |> 
+    mutate(row = mapdata$row[match(key, mapdata$key)], 
+           column = mapdata$column[match(key, mapdata$key)], 
+           col = mapdata$col[match(key, mapdata$key)], 
+           alp = ifelse(is.na(col), 0.075, 0.5),
+           col = scales::alpha("dimgrey", alp),
+           key = NULL)
+  
   # Define map limits
   if (is.null(xlim)) {
     xlim <- terra::ext(grid)[1:2]
@@ -65,7 +81,7 @@ ggplot_maps <- function(mapdt,
   if (is.null(ylim)) {
     ylim <- terra::ext(grid)[3:4]
   }
-
+  
   # Build ggplot
   p <- 
     mapdata |> 
@@ -75,7 +91,7 @@ ggplot_maps <- function(mapdt,
     scale_fill_identity() + 
     # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
     geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.3, stroke = 0.3) + 
-    geom_sf(data = coast, fill = scales::alpha("dimgrey", 0.5)) + 
+    geom_sf(data = coast, aes(fill = I(col))) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 
     theme(axis.text = element_blank(), 
