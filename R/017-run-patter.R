@@ -124,7 +124,7 @@ iteration <- iteration[sensitivity == "best", ]
 #### Estimate coordinates
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
 # * Batch 1, AC (all): SIA-USER024-P
-# * Batch 1, DC (all): MCC02XT0AZJGH5
+# * Batch 1, DC (all): MCC02XT0AZJGH5, 41 hr
 # * Batch 2, ACDC    : TO DO
 gc()
 nrow(iteration)
