@@ -1097,7 +1097,7 @@ if (FALSE) {
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
-    #### Estimate UDs via spatstat (~15 mins)
+    #### Estimate UDs via spatstat (~23 mins)
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
                                 cl = 10L,
@@ -1335,9 +1335,11 @@ if (FALSE) {
   
   # Compute ME
   me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
+    # ud.tif <- file.path(sim$folder_ud, "pou", "ud.tif")
+    # ud.tif <- file.path(sim$folder_ud, "spatstat", "h", "ud.tif")
     tryCatch(   
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
-               .mod = terra::rast(file.path(sim$folder_ud, "spatstat", "h", "ud.tif"))), 
+               .mod = terra::rast(ud.tif)), 
       error = function(e) NA)
   }) |> unlist() |> as.numeric()
   
@@ -1350,7 +1352,8 @@ if (FALSE) {
     arrange(unit_id, algorithm, sensitivity, iter) |>
     as.data.table()
   
-  qs::qsave(me, here_data("output", "simulation-summary", "me-patter.qs"))
+  # qs::qsave(me, here_data("output", "simulation-summary", "me-patter-pou.qs"))
+  qs::qsave(me, here_data("output", "simulation-summary", "me-patter-spatstat.qs"))
 
 }
 
@@ -1360,7 +1363,7 @@ if (FALSE) {
 
 if (FALSE) {
   
-  # Compute residency (~40 s, 10 cl)
+  # Compute residency (~2 min, 10 cl)
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
   residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
@@ -1395,7 +1398,9 @@ skill <-
       qs::qread(here_data("output", "simulation-summary", "me-null.qs")),
       qs::qread(here_data("output", "simulation-summary", "me-coa.qs")),
       qs::qread(here_data("output", "simulation-summary", "me-rsp.qs")),
-      qs::qread(here_data("output", "simulation-summary", "me-patter.qs"))
+      # qs::qread(here_data("output", "simulation-summary", "me-patter-pou.qs"))
+      # Use spatstat for improved representation of patter patterns
+      qs::qread(here_data("output", "simulation-summary", "me-patter-spatstat.qs"))
     )
   )
 
@@ -1405,9 +1410,13 @@ png(here_fig("simulation", "me.png"),
 skill |> 
   filter(sensitivity == "Best") |>
   ggplot() + 
-  geom_violin(aes(algorithm, me, fill = algorithm), alpha = 0.3, 
+  geom_violin(aes(algorithm, me, fill = algorithm), 
+              alpha = 0.3, linewidth = 0.25, 
               scale = "count") +
-  scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+  scale_y_continuous(
+    limits = c(0, 1.7e-5),
+    expand = c(0, 0),
+    labels = prettyGraphics::sci_notation) + 
   xlab("Algorithm") + 
   ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
   labs(fill = "Algorithm") +
@@ -1510,7 +1519,8 @@ if (FALSE) {
       height = 3, width = 10, units = "in", res = 600)
   residency_skill |>
     ggplot() + 
-    geom_violin(aes(algorithm, error, fill = algorithm), alpha = 0.3, 
+    geom_violin(aes(algorithm, error, fill = algorithm), 
+                alpha = 0.3, linewidth = 0.25,
                 scale = "count") + 
     geom_hline(yintercept = 0, linetype = 3) + 
     scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
