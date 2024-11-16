@@ -56,11 +56,20 @@ ggplot_maps <- function(mapdt,
     }
     # Link data.tables (e.g., row/column)
     cbind(d, rdt)
-  }) |> rbindlist()
+  }) |> 
+    rbindlist() |>
+    # (custom) Drop selected panels, if applicable, that are NA
+    # * These appear simply as white panels
+    filter(!(key %in% 
+               c("AC DC(-)", "AC DC(+)", 
+                 "DC AC(-)", "DC AC(+)")
+          )) |>
+    as.data.table()
   
   # Update coast with gg mapping
   # * We duplicate coast for each raster
-  # * We use a more transparent colour for panels without data
+  # * We use a more transparent colour for panels with convergence failures
+  # * We use a blank panel otherwise (for NA factor levels)
   coast <- 
     lapply(unique(mapdata$key), function(key) {
       coast$key <- key
@@ -73,6 +82,19 @@ ggplot_maps <- function(mapdt,
            alp = ifelse(is.na(col), 0.075, 0.5),
            col = scales::alpha("dimgrey", alp),
            key = NULL)
+  
+  # Update moorings with gg mapping
+  # * This is necessary so that we only add receivers to non-blank panels
+  moorings <- 
+    lapply(unique(mapdata$key), function(key) {
+    m <- copy(moorings)
+    m[, key := key]
+  }) |> 
+    dplyr::bind_rows() |> 
+    mutate(row = mapdata$row[match(key, mapdata$key)], 
+           column = mapdata$column[match(key, mapdata$key)]) |>
+    filter(key %in% mapdata$key)|> 
+    as.data.table()
   
   # Define map limits
   if (is.null(xlim)) {
