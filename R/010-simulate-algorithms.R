@@ -1100,13 +1100,22 @@ if (FALSE) {
     #### Estimate UDs via spatstat (~23 mins)
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
-                                cl = 10L,
+                                cl = 12L,
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
   }
 
 }
+
+# Checks
+iteration |> 
+  filter(unit_id == 1L & dataset == "dc" & iter == 1L) |>
+  select(parameter_id, sensitivity, folder_coord, folder_ud) |> 
+  as.data.table()
+
+list.files("data/output/simulation/1/patter/dc/2/1/coord")
+list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
 
 
 ###########################
@@ -1336,7 +1345,7 @@ if (FALSE) {
   # Compute ME
   me <- cl_lapply(split(iteration, seq_row(iteration)), .cl = 10L, .fun = function(sim) {
     # ud.tif <- file.path(sim$folder_ud, "pou", "ud.tif")
-    # ud.tif <- file.path(sim$folder_ud, "spatstat", "h", "ud.tif")
+    ud.tif <- file.path(sim$folder_ud, "spatstat", "h", "ud.tif")
     tryCatch(   
       skill_me(.obs = terra::rast(here_data("input", "simulation", sim$unit_id, "ud.tif")), 
                .mod = terra::rast(ud.tif)), 
