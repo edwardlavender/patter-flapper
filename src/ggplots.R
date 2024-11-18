@@ -63,6 +63,7 @@ ggplot_maps <- function(mapdt,
   # * We duplicate coast for each raster
   # * We use a more transparent colour for panels with convergence failures
   # * We use a blank panel otherwise (for NA factor levels)
+  mapdata[, key := paste(row, column)]
   coast <- 
     lapply(unique(mapdata$key), function(key) {
       coast$key <- key
