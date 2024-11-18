@@ -123,8 +123,8 @@ iteration <- iteration[dataset == "acdc", ]
 
 #### Estimate coordinates
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
-# * Batch 1, AC (all): SIA-USER024-P
-# * Batch 1, DC (all): MCC02XT0AZJGH5, 41 hr
+# * Batch 1, AC (all): SIA-USER024-P, 8 threads, 3.5 days (rerunning...)
+# * Batch 1, DC (all): MCC02XT0AZJGH5, 12 threads, 41 hr (rerunning...)
 # * Batch 2, ACDC    : TO DO
 gc()
 nrow(iteration)
