@@ -100,6 +100,9 @@ sapply(unique(iteration$unit_id), function(id) {
 # Check folder_xinit
 all(file.exists(file.path(iteration$folder_xinit, "xinit-fwd.qs"))) |> stopifnot()
 all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
+# Check number of rows
+table(iteration$dataset)
+table(iteration$dataset, iteration$mobility)
 
 #### Select batch
 # As for the simulations, we batch by mobility
@@ -120,6 +123,21 @@ nrow(iteration)
 # * Select by dataset/sensitivity
 iteration <- iteration[dataset == "acdc", ]
 # iteration <- iteration[sensitivity == "best", ]
+# * Select rows
+if (batch == pars$pmovement$mobility[1]) {
+  rows <- 1:30      # 1
+  # rows <- 31:60     # 2
+  # rows <- 61:90     # 3
+  # rows <- 91:120    # 4
+  # rows <- 121:150   # 5
+  # rows <- 151:180   # 6
+  # rows <- 181:210   # 7
+  # rows <- 211:240   # 8
+} else {
+  rows <- 1:48      # 9
+  rows <- 1:48      # 10
+}
+iteration <- iteration[rows, ]
 
 #### Estimate coordinates
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
