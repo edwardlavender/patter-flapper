@@ -119,7 +119,7 @@ nrow(iteration)
 #   as.data.table()
 # * Select by dataset/sensitivity
 iteration <- iteration[dataset == "acdc", ]
-iteration <- iteration[sensitivity == "best", ]
+# iteration <- iteration[sensitivity == "best", ]
 
 #### Estimate coordinates
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
