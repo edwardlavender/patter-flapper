@@ -51,6 +51,7 @@ pars       <- qs::qread(here_data("input", "pars.qs"))
 #### Julia connect
 julia_connect()
 set_seed()
+julia_command('Rasters.checkmem!(false);')
 set_map(map)
 
 #### Aggregate map
@@ -78,6 +79,9 @@ detections <-
   detections |> 
   left_join(moorings, by = "receiver_id") |> 
   select(individual_id, timestamp, x = receiver_x, y = receiver_y) |> 
+  # Add buffer column
+  # * (Detection time stamps are known accurately, unlike some recapture time stamps)
+  mutate(buffer = 0) |>
   as.data.frame()
 
 #### Prepare archival 
@@ -148,6 +152,10 @@ lapply(directions, function(direction) {
       gap   <- gap[2]
       coord <- detections[pdet, ]
     }
+    if (coord$buffer > 0) {
+      warning("Using coordinates with uncertain timing (buffer > 0). Check 'nearest observation' assignment!", immediate. = TRUE)
+      print(trecap); print(tdet); print(tarc)
+    }
     # Define xinit for simulation 
     xinit <- 
       coord |> 
@@ -201,6 +209,8 @@ lapply(directions, function(direction) {
       }
     }
     radius <- max(c(2000, radius))
+    radius <- radius + coord$buffer
+    stopifnot(length(radius) == 1L)
     
     #### Define region within which to sample initial locations 
     # Define possible locations of individual 
@@ -260,9 +270,11 @@ lapply(directions, function(direction) {
     
   }
   toc()
+  NULL
   
 })
 
+# NB: recapture events with uncertain timing are never used.
 
 ###########################
 ###########################
