@@ -103,6 +103,7 @@ estimate_coord_rsp <- function(sim, map, datasets) {
 estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   
   #### Initialise
+  coffee()
   cat_init(sim$index)
   
   #### Define outputs

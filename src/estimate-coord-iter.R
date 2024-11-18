@@ -65,6 +65,9 @@ lapply_estimate_coord_patter <- function(iteration,
   tictoc::tic()
   on.exit(tictoc::toc(), add = TRUE)
   
+  # Clean up coffee-break directory 
+  unlink(list.files(here_data("coffee"), full.names = TRUE))
+  
   # Estimate coordinates via estimate_coord_patter()
   iteration_ls <- split(iteration, collapse::seq_row(iteration))
   success <- cl_lapply(iteration_ls, function(sim) {

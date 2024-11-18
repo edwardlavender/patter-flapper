@@ -101,6 +101,45 @@ sink_close <- function(log.txt = NULL) {
   invisible(NULL)
 }
 
+#' Take a coffee break (pause and rest the computer)
+#' Only one interval & duration is currently supported 
+
+coffee <- function(computer = "MCC02XT0AZJGH5",
+                   folder = here_data("coffee"), 
+                   interval = 2 * 60 * 60,
+                   duration = 15 * 60
+                   ) {
+  
+  # Take breaks on selected computer(s) only
+  if (!(Sys.info()["nodename"] %in% computer)) {
+    return(nothing())
+  }
+  
+  # Identify time since last 'coffee' break
+  if (!dir.exists(folder)) {
+    dir.create(folder, recursive = TRUE)
+  }
+  time.qs <- file.path(folder, "time.qs")
+  if (file.exists(time.qs)) {
+    time              <- qs::qread(time.qs)
+    time_since_coffee <- difftime(Sys.time(), time, units = "secs")
+  } else {
+    time <- NA
+  }
+  
+  # Take a break if needed
+  if (is.na(time) || time_since_coffee >= interval) {
+    # Sleep for `duration`
+    Sys.sleep(duration)
+    # Record the time of the break
+    # (We'll sleep in another `duration` secs)
+    qs::qsave(Sys.time(), time.qs)
+  }
+  
+  nothing()
+  
+}
+
 #' Sort bathymetry datasets
 
 sort_bathysets <- function(x) {
