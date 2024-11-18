@@ -120,15 +120,15 @@ coffee <- function(computer = "MCC02XT0AZJGH5",
     dir.create(folder, recursive = TRUE)
   }
   time.qs <- file.path(folder, "time.qs")
-  if (file.exists(time.qs)) {
-    time              <- qs::qread(time.qs)
-    time_since_coffee <- difftime(Sys.time(), time, units = "secs")
-  } else {
-    time <- NA
+  if (!file.exists(time.qs)) {
+    qs::qsave(Sys.time(), time.qs)
+    return(nothing())
   }
+  time              <- qs::qread(time.qs)
+  time_since_coffee <- difftime(Sys.time(), time, units = "secs")
   
   # Take a break if needed
-  if (is.na(time) || time_since_coffee >= interval) {
+  if (time_since_coffee >= interval) {
     # Sleep for `duration`
     Sys.sleep(duration)
     # Record the time of the break
