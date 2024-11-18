@@ -1150,6 +1150,12 @@ if (FALSE) {
                                                "AC(-)", "AC(+)", 
                                                "DC(-)", "DC(+)"))] 
   
+  algorithms     <- c("Null", "DD", "COA", "RSP", "AC", "DC", "ACDC")
+  col_all        <- rainbow(length(algorithms), alpha = 0.3)
+  names(col_all) <- algorithms
+  col_heuristic  <- col_all[1:4]
+  col_patter     <- col_all[5:7]
+  
 }
 
 
@@ -1200,7 +1206,7 @@ if (FALSE) {
   # This is a barplot of the proportion of simulations that converged
   # (If we had multiple iterations for each path, it could be a boxplot)
   png(here_fig("simulation", "convergence-best.png"), 
-      height = 3, width = 5, units = "in", res = 600)
+      height = 4, width = 3, units = "in", res = 600)
   iteration |> 
     filter(sensitivity == "Best" & iter == 1L) |> 
     group_by(dataset) |> 
@@ -1208,7 +1214,8 @@ if (FALSE) {
     ungroup() |>
     as.data.table() |> 
     ggplot(aes(dataset, convergence, fill = dataset)) +
-    geom_bar(stat = "identity", alpha = 0.5) +
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values = col_patter) + 
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
     labs(
       x = "Algorithm",
@@ -1226,7 +1233,7 @@ if (FALSE) {
   # Plot Pr(convergence) ~ algorithm with panels for best/under/over estimation of parameters
   # This plot is only useful if convergence is not 100 %
   png(here_fig("simulation", "convergence-sensitivity.png"), 
-      height = 5, width = 10, units = "in", res = 600)
+      height = 4.5, width = 9, units = "in", res = 600)
   iteration |>
     filter(unit_id %in% selected_paths) |>
     group_by(unit_id, dataset, sensitivity) |> 
@@ -1234,15 +1241,15 @@ if (FALSE) {
     as.data.table() |> 
     ggplot(aes(x = dataset, ymin = 0, ymax = convergence, colour = dataset)) + 
     geom_linerange(linewidth = 1.2) +
-    facet_grid(unit_id ~ sensitivity, 
-               scales = "free_x") +
+    scale_colour_manual(values = col_patter) + 
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
     labs(
       x = "Algorithm",
       y = "Pr(convergence)",
       colour = "Algorithm"
-    ) +
-    scale_color_brewer(palette = "Dark2") + 
-    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+    ) + 
+    facet_grid(unit_id ~ sensitivity, 
+               scales = "free_x") +
     theme_bw() + 
     theme(panel.spacing.y = unit(1.5, "lines"), 
           axis.title.x = element_text(margin = margin(t = 10)),
@@ -1259,8 +1266,38 @@ if (FALSE) {
 
 if (FALSE) {
   
-  # For each selected path, visualise UDs for performance & sensitivity (~15 s)
-  # > Manually simulated path maps with patter UD maps outside of R
+  #### For each selected path, visualise UDs for performance
+  # Define mapfiles for simulated path
+  mapfiles_path <- 
+    data.table(row = selected_paths, 
+               column = "Path",
+               mapfile = here_data("input", "simulation", selected_paths, "ud.tif")
+    )
+  # Select iterations  
+  mapfiles_alg <- 
+    iteration |> 
+    filter(unit_id %in% selected_paths) |>
+    filter(sensitivity == "Best") |> 
+    filter(iter == 1L) |> 
+    mutate(row = unit_id, 
+           column = dataset, 
+           mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+    select(row, column, mapfile) |>
+    as.data.table()
+  # Collect mapfiles (row, column, mapfile)
+  mapfiles <- 
+    rbind(mapfiles_alg, mapfiles_path) |> 
+    arrange(row, column) |> 
+    mutate(row = factor(row, levels = selected_paths), 
+           column = factor(column, levels = c("Path", "AC", "DC", "ACDC"))) |>
+    as.data.table()
+  # Make maps
+  ggplot_maps(mapdt = mapfiles, 
+              png_args = list(filename = here_fig("simulation", "map-patter-spatstat.png"), 
+                              height = 5, width = 10, units = "in", res = 600))
+  
+  #### For each selected path, visualise UDs for performance & sensitivity (~15 s)
+  # (Manually simulated path maps with patter UD maps outside of R)
   cl_lapply(selected_paths, function(path) {
     
     #### Define iteration dataset for mapping
@@ -1298,11 +1335,11 @@ if (FALSE) {
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
                 png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{path}.png")), 
-                                height = 4, width = 7, units = "in", res = 600))
+                                height = 3, width = 7, units = "in", res = 600))
     
   })
  
-  # For one selected path, for each algorithm, visualise UDs for repeatability
+  #### For one selected path, for each algorithm, visualise UDs for repeatability
   cl_lapply(c("AC", "DC", "ACDC"), function(alg) {
     
     #### Define iteration dataset for mapping
@@ -1339,7 +1376,7 @@ if (FALSE) {
     #### Make maps
     ggplot_maps(mapdt = mapfiles, 
                 png_args = list(filename = here_fig("simulation", glue("map-patter-{udtype}-{alg}.png")), 
-                                height = 4, width = 7,units = "in", res = 600))
+                                height = 3, width = 7,units = "in", res = 600))
     
   })
    
@@ -1429,12 +1466,13 @@ skill |>
   filter(sensitivity == "Best") |>
   ggplot() + 
   geom_violin(aes(algorithm, me, fill = algorithm), 
-              alpha = 0.3, linewidth = 0.25, 
+              linewidth = 0.25, 
               scale = "count") +
   scale_y_continuous(
     limits = c(0, 1.7e-5),
     expand = c(0, 0),
     labels = prettyGraphics::sci_notation) + 
+  scale_fill_manual(values = col_all) + 
   xlab("Algorithm") + 
   ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
   labs(fill = "Algorithm") +
@@ -1456,7 +1494,8 @@ skill |>
   ggplot() + 
   geom_jitter(aes(algorithm, me, fill = algorithm), 
               width = 0.2,
-             shape = 21, alpha = 0.75) + 
+             shape = 21) + 
+  scale_fill_manual(values = col_all) + 
   scale_y_continuous(labels = prettyGraphics::sci_notation) + 
   xlab("Algorithm") + 
   ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
@@ -1505,7 +1544,7 @@ if (FALSE) {
                                            "DC(-)", "DC(+)"))) |>
     arrange(unit_id, algorithm, sensitivity, iter, zone) |> 
     as.data.table()
-  
+
   #### Visualise overall residency skill (by zone)
   # Define residency estimates for best-case simulations 
   residency_skill <- 
@@ -1538,14 +1577,15 @@ if (FALSE) {
   residency_skill |>
     ggplot() + 
     geom_violin(aes(algorithm, error, fill = algorithm), 
-                alpha = 0.3, linewidth = 0.25,
+                linewidth = 0.25,
                 scale = "count") + 
     geom_hline(yintercept = 0, linetype = 3) + 
+    scale_fill_manual(values = col_all) + 
     scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
     xlab("Algorithm") + 
     ylab(expression("Residency error (" * italic(RE) * ")")) + 
     labs(fill = "Algorithm") +
-    facet_wrap(~zone) +
+    facet_wrap(~zone, scales = "free_x") +
     theme_bw() +
     theme(panel.grid.minor.y = element_blank(), 
           panel.grid.major.y = element_blank(), 
@@ -1574,12 +1614,16 @@ if (FALSE) {
     merge(  
       residency |>
         filter(unit_id %in% selected_paths, sensitivity == "Best") |>
+        filter(algorithm != "Path") |> 
+        mutate(algorithm = factor(algorithm, levels = algorithms)) |> 
         select(unit_id, zone, algorithm, best_time = time) |> 
         as.data.table(), 
       by = c("unit_id", "zone"))
   # Make ggplot 
   residency |>
     filter(unit_id %in% selected_paths) |> 
+    filter(algorithm != "Path") |>
+    mutate(algorithm = factor(algorithm, levels = algorithms)) |>
     as.data.table() |>
     ggplot(aes(algorithm, time)) + 
     # Draw lines from the 'best' estimates to the truth (for visual clarity)
@@ -1602,7 +1646,7 @@ if (FALSE) {
                colour = "black") +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
     xlab("Algorithm") + 
-    ylab("Residency proportion") + 
+    ylab("Residency") + 
     labs(fill = "Parameterisation") + 
     facet_grid(unit_id ~ zone, scales = "free_x") + 
     # facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
@@ -1617,6 +1661,27 @@ if (FALSE) {
   
   # > Results
   # > TO DO
+  
+  # Summary statistics for performance simulations 
+  residency_skill |> 
+    group_by(zone, algorithm) |> 
+    summarise(median = median(error, na.rm = TRUE), 
+              se     = sd(error, na.rm = TRUE),
+              lwr    = quantile(error, 0.025, na.rm = TRUE),
+              upr    = quantile(error, 0.975, na.rm = TRUE)) |> 
+    ungroup() |>
+    prettyGraphics::tidy_numbers(digits = 2) |>
+    as.data.table()
+  # > COA median error: 10 %, 18 % uncertainty
+  # > RSP median error: 9 %, 17 % uncertainty
+  # > AC, DC and ACDC median error: 
+  # > 1-2 % (5-10 fold improvement in median error) 
+  # > reduced variation (1.5-3.6 fold reduction in uncertainty)
+  
+  # Summary statistics for sensitivity simulations
+  # > Do the above results still hold if we consider sensitivity? 
+  # > I.e., does the variation among paths envelope the variation among sensitivity trials? 
+  
   
 }
 
