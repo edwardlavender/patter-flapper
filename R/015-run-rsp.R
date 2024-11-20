@@ -19,14 +19,14 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-library(ggplot2)
 dv::src()
+library(ggplot2)
 
 #### Load data 
-iteration <- qs::qread(here_data("input", "iteration", "rsp.qs"))
-moorings  <- qs::qread(here_data("input", "mefs", "moorings.qs"))
+iteration         <- qs::qread(here_data("input", "iteration", "rsp.qs"))
+moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
-pars      <- qs::qread(here_data("input", "pars.qs"))
+pars              <- qs::qread(here_data("input", "pars.qs"))
 
 
 ###########################
@@ -67,9 +67,9 @@ lapply_qplot_coord(iteration,
 lapply_estimate_ud_dbbmm(iteration = iteration[1, ], 
                          cl = NULL, 
                          plot = FALSE)
-# Implementation (36 mins, 11 cl)
+# Implementation (7 hr, 10 cl)
 lapply_estimate_ud_dbbmm(iteration = iteration, 
-                         cl = 11L, 
+                         cl = 10L, 
                          plot = FALSE)
 # (optional) Examine selected UDs
 lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
@@ -78,18 +78,18 @@ lapply_qplot_ud(iteration, "dbbmm", "ud.tif")
 unique(iteration$er.ad)
 length(unique(iteration$individual_id))
 length(unique(iteration$month_id))
-mapply(c(100, 50, 150), c("best", "restricted", "flexible"), 
+mapply(c(500, 250, 750), c("best", "restricted", "flexible"), 
        FUN = function(param, label) {
          # Define png args 
          png_args <- 
            list(filename = here_fig("analysis", glue("map-rsp-{label}.png")), 
-                height = 5, width = 10, units = "in", res = 600)
+                height = 10, width = 10, units = "in", res = 600)
          # Collect data and make figure 
          iteration |> 
            filter(er.ad == param) |>
            mutate(mapfile = file.path(folder_ud, "dbbmm", "ud.tif"), 
                   individual_id = factor(individual_id, levels = sort(unique(individual_id)))) |>
-           select(row = individual_id, column = month_id, mapfile) |>
+           dplyr::select(row = individual_id, column = month_id, mapfile) |>
            as.data.table() |> 
            ggplot_maps(png_args = png_args)
          
