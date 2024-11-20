@@ -1199,6 +1199,10 @@ if (FALSE) {
   })]
   # Review overall convergence
   table(iteration$convergence)
+  iteration |> 
+    filter(sensitivity == "Best" & iter == 1L) |> 
+    group_by(dataset) |>
+    summarise(convergence = length(which(convergence)) / n())
   # Review convergence for ACDC
   iteration[dataset == "ACDC" & sensitivity == "Best", .(unit_id, iter, convergence)]
   
@@ -1682,6 +1686,20 @@ if (FALSE) {
   # > Do the above results still hold if we consider sensitivity? 
   # > I.e., does the variation among paths envelope the variation among sensitivity trials? 
   
+  residency |>
+    filter(unit_id %in% selected_paths) |>
+    filter(!algorithm %in% c("Path", "Null", "DD")) |>
+    filter(zone == "Protected") |> 
+    group_by(unit_id, algorithm, zone) |>
+    summarise(n = n(), 
+              range = max(time, na.rm = TRUE) * 100 - min(time, na.rm = TRUE) * 100)
+  
+  left_join(residency, residency_skill_path, by = c("unit_id", "zone")) |> 
+    mutate(error = time - truth) |>
+    filter(zone == "Protected") |>
+    group_by(algorithm, zone) |> 
+    summarise(range = max(error, na.rm = TRUE) - min(error = TRUE)) |> 
+    as.data.table()
   
 }
 
