@@ -194,9 +194,9 @@ dev.off()
 #                          receiver_gamma = c(1750, 1500, 2000))
 pinflate <- 1.25
 pdeflate <- 0.75
-pdetection <- data.table(receiver_alpha = c(4, 4 * pinflate, 4 * pdeflate), 
-                         receiver_beta = c(-0.0094, -0.0094 * pdeflate, -0.0094 * pinflate), 
-                         receiver_gamma = c(3000, 3000 * pinflate, 3000 * pdeflate))
+pdetection <- data.table(receiver_alpha = c(4,  4 * pdeflate, 4 * pinflate), 
+                         receiver_beta = c(-0.0094, -0.0094 * pinflate, -0.0094 * pdeflate), 
+                         receiver_gamma = c(3000, 3000 * pdeflate, 3000 * pinflate))
 p       <- copy(pdetection)
 p$label <- c("Best-guess", "Restrictive", "Flexible")
 p$lwd   <- lwds
