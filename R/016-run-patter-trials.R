@@ -180,13 +180,17 @@ for (i in 1:nrow(iteration)) {
                            .timeline = timeline, 
                            .state = state, 
                            .model_move = model_move,
-                           .n_path = 4L, .one_page = TRUE)
+                           .n_path = 1000, 
+                           .plot = FALSE, .one_page = TRUE)
     # Check correlation coefficient
-    paths |> 
+    paths_cor <- 
+      paths |> 
       group_by(path_id) |> 
       summarise(rho = circular::cor.circular(angle, dplyr::lead(angle))) |> 
       as.data.table() |> 
       suppressWarnings()
+    hist(paths_cor$rho)
+    utils.add::basic_stats(paths_cor$rho)
   }
 
   #### Define acoustic observations 
