@@ -161,7 +161,7 @@ lapply_estimate_coord_patter(iteration  = iteration,
                              datasets   = datasets, 
                              trial      = FALSE, 
                              log.folder = here_data("output", "log", "real"), 
-                             log.txt    = NULL)
+                             log.txt    = glue("log-{iteration$dataset[1]}-{batch}-{min(rows)}.txt"))
 
 #### Estimate UDs
 if (patter:::os_linux()) {
