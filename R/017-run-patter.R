@@ -121,29 +121,40 @@ nrow(iteration)
 #   slice(1L) |>
 #   as.data.table()
 # * Select by dataset/sensitivity
-iteration <- iteration[dataset == "acdc", ]
+iteration <- iteration[dataset == "ac", ]
 # iteration <- iteration[sensitivity == "best", ]
 # * Select rows
-if (batch == pars$pmovement$mobility[1]) {
-  rows <- 1:30      # 1
-  # rows <- 31:60     # 2
-  # rows <- 61:90     # 3
-  # rows <- 91:120    # 4
-  # rows <- 121:150   # 5
-  # rows <- 151:180   # 6
-  # rows <- 181:210   # 7
-  # rows <- 211:240   # 8
-} else {
-  rows <- 1:48      # 9
-  rows <- 1:48      # 10
-}
+# if (batch == pars$pmovement$mobility[1]) {
+#   rows <- 1:30      # 1
+#   # rows <- 31:60     # 2
+#   # rows <- 61:90     # 3
+#   # rows <- 91:120    # 4
+#   # rows <- 121:150   # 5
+#   # rows <- 151:180   # 6
+#   # rows <- 181:210   # 7
+#   # rows <- 211:240   # 8
+# } else {
+#   rows <- 1:48      # 9
+#   rows <- 1:48      # 10
+# }
+rows <- 1:24
+# rows <- 45:48
 iteration <- iteration[rows, ]
 
 #### Estimate coordinates
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
-# * Batch 1, AC (all): SIA-USER024-P, 8 threads, 3.5 days (rerunning...)
-# * Batch 1, DC (all): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour with 'coffee breaks' (15 min every 2 hr)
-# * Batch 2, ACDC    : TO DO
+# * AC:
+# - Batch 1 (144), SIA-USER024-P, 8 threads, 3.6 days
+# - Batch 2 (48), TO DO
+# - Batch 3 (48), TO DO
+# * DC:
+# - Batch 1 (144): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour (incl. 15 min break every 2 hr)
+# - Batch 2 (48): TO DO
+# - Batch 3 (48): TO DO
+# * ACDC:
+# - Batch 1 (240): siam-linux20
+# - Batch 2 (48): siam-linux20
+# - Batch 3 (48): siam-linux20
 gc()
 nrow(iteration)
 lapply_estimate_coord_patter(iteration  = iteration,
