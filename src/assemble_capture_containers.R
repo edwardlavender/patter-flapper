@@ -74,7 +74,7 @@ assemble_capture_containers <- function(.timeline,
   
   # Define sequence of radii
   # For .direction = "forward", radii shrink _forward_ in time
-  # For .direction = "backward", radii shink _backward_ in time 
+  # For .direction = "backward", radii shrink _backward_ in time 
   # radii[1] or radii[T] = radius 
   radii <- radius + (1:length(.timeline) - 1) * .mobility
   if (.direction == "forward") {
