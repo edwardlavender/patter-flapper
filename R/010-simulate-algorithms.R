@@ -344,6 +344,7 @@ if (FALSE) {
   qs::qsave(me, here_data("output", "simulation-summary", "me-null.qs"))
   
   #### Estimate residency under null model
+  # (NB: terra::expanse() accounts for NAs i.e., land)
   study_area <- 
     terra::expanse(ud_grid)[, 2]
   residency_null_closed <- 
@@ -1512,6 +1513,23 @@ skill |>
         axis.title.y = element_text(margin = margin(r = 10)), 
         axis.text.x = element_text(angle = 45, hjust = 1))
 dev.off()
+
+#### Summary
+skill_summary <- 
+  skill |> 
+  group_by(algorithm) |>
+  summarise(med = median(me, na.rm = TRUE), 
+            sd = sd(me, na.rm = TRUE)) |> 
+  filter(algorithm != "Null") |>
+  mutate(type = case_when(
+    algorithm %in% c("COA", "RSP") ~ "heuristic",
+    algorithm %in% c("AC", "DC", "ACDC") ~ "particle"
+  )) 
+
+skill_summary$med[1] / skill_summary$med[3:5]
+skill_summary$med[2] / skill_summary$med[3:5]
+skill_summary$sd[1] / skill_summary$sd[3:5]
+skill_summary$sd[2] / skill_summary$sd[3:5]
 
 
 ###########################
