@@ -1126,7 +1126,7 @@ list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
 ###########################
 #### Tidy iteration 
 
-if (FALSE) {
+if (TRUE) {
   
   #### Tidy iteration
   # Copy
@@ -1466,7 +1466,7 @@ skill <-
 
 #### Visualise overall map skill (ME ~ algorithm)
 png(here_fig("simulation", "me.png"), 
-    height = 3, width = 6, units = "in", res = 600)
+    height = 3, width = 5, units = "in", res = 600)
 skill |> 
   filter(sensitivity == "Best") |>
   ggplot() + 
