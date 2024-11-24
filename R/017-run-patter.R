@@ -218,7 +218,10 @@ if (FALSE && patter:::os_linux()) {
 ###########################
 #### Generate outputs
 
+
+###########################
 #### Tidy iteration (copied from simulate-algorithms.R)
+
 # Define grouping variables with tidy labels
 iteration[, unit_id := factor(unit_id)]
 iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
@@ -239,33 +242,81 @@ iteration[, sensitivity := factor(sensitivity,
                                              "AC(-)", "AC(+)", 
                                              "DC(-)", "DC(+)"))] 
 
+
+###########################
+#### Convergence 
+
+# Determine convergence
+iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
+  file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+})]
+
+# Summarise convergence
+iteration |> 
+  group_by(dataset, sensitivity) |> 
+  summarise(convergence = length(which(convergence)) / n())
+
+# Plot convergence proportions 
+iteration |> 
+  group_by(dataset, sensitivity) |> 
+  summarise(convergence = length(which(convergence)) / n()) |>
+  ungroup() |>
+  as.data.table() |> 
+  ggplot(aes(dataset, convergence, fill = sensitivity)) +
+  geom_bar(stat = "identity", 
+           position = "dodge",
+           colour = "black", linewidth = 0.2, 
+           alpha = 0.5) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  labs(
+    x = "Algorithm",
+    y = "Pr(convergence)",
+    fill = "Algorithm"
+  ) + 
+  theme_bw() + 
+  theme(axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)),
+        panel.grid = element_blank())
+
+
+###########################
 #### Mapping (~3.5 mins)
-unique(iteration$dataset)
-unique(iteration$sensitivity)
-length(unique(iteration$individual_id))
-length(unique(iteration$month_id))
-cl_lapply(unique(iteration$sensitivity), function(sens){
-  lapply(c("AC", "DC", "ACDC"), function(alg) {
-    
-    # Define mapfiles
-    mapfiles <-
-      iteration |> 
-      filter(sensitivity == sens & dataset == alg) |>
-      mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif"), 
-             individual_id = factor(individual_id, levels = sort(unique(individual_id)))) |>
-      dplyr::select(row = individual_id, column = month_id, mapfile) |>
-      as.data.table() 
-    
-    # Make map
-    if (nrow(mapfiles)) {
-      png_args <- 
-        list(filename = here_fig("analysis", glue("map-patter-{alg}-{sens}.png")), 
-             height = 10, width = 10, units = "in", res = 600)
-      ggplot_maps(mapdt = mapfiles, png_args = png_args)
-    }
-    NULL
+
+if (FALSE) {
+  
+  unique(iteration$dataset)
+  unique(iteration$sensitivity)
+  length(unique(iteration$individual_id))
+  length(unique(iteration$month_id))
+  cl_lapply(unique(iteration$sensitivity), function(sens){
+    lapply(c("AC", "DC", "ACDC"), function(alg) {
+      
+      # Define mapfiles
+      mapfiles <-
+        iteration |> 
+        filter(sensitivity == sens & dataset == alg) |>
+        mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif"), 
+               individual_id = factor(individual_id, levels = sort(unique(individual_id)))) |>
+        dplyr::select(row = individual_id, column = month_id, mapfile) |>
+        as.data.table() 
+      
+      # Make map
+      if (nrow(mapfiles)) {
+        png_args <- 
+          list(filename = here_fig("analysis", glue("map-patter-{alg}-{sens}.png")), 
+               height = 10, width = 10, units = "in", res = 600)
+        ggplot_maps(mapdt = mapfiles, png_args = png_args)
+      }
+      NULL
+    })
   })
-})
+  
+}
+
+
+###########################
+#### Compute residency 
+# TO DO
 
 
 #### End of code.
