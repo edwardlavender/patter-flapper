@@ -3,7 +3,7 @@
 #### Define server path
 
 # siam-linux20
-# * Real: ACDC (all batches) [DONE], AC (batch 2), AC (batch 3), DC (batch 2), DC (batch 3) [TO DO]
+# * Real: ACDC (all batches) [DONE], AC (batch 2), AC (batch 3), DC (batch 2), DC (batch 3) [DONE]
 # server <- "/Volumes/homes/documents/projects/patter-flapper"
 # server <- "/Volumes/lavended/documents/projects/patter-flapper"
 server   <- "/Users/lavended/Desktop/server"
@@ -20,6 +20,7 @@ stopifnot(dir.exists(server))
 
 #### Define iteration
 # iteration <- copy(iteration_patter)
+# iteration <- iteration[dataset %in% c("ac", "dc") & mobility %in% pars$pmovement$mobility[2:3], ]
 nrow(iteration)
 head(iteration[, .(folder_coord)])
 
