@@ -44,26 +44,38 @@ if (test) {
 } 
 
 #### Estimate coordinates
-# Time trial
-lapply_estimate_coord_coa(iteration = iteration[1, ], datasets = datasets)
-# Implementation (~7 s)
-lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
-# (optional) Examine selected coords
-lapply_qplot_coord(iteration, "coord.qs")
+if (FALSE) {
+  # Time trial
+  lapply_estimate_coord_coa(iteration = iteration[1, ], datasets = datasets)
+  # Implementation (~7 s)
+  lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
+  # (optional) Examine selected coords
+  lapply_qplot_coord(iteration, "coord.qs")
+}
 
 #### Estimate UDs
-# Time trial
-lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
-                            extract_coord = NULL,
-                            cl = NULL, 
-                            plot = FALSE)
-# Implementation (~3.78 mins: 500 pixel, 10 cl)
-lapply_estimate_ud_spatstat(iteration = iteration, 
-                            extract_coord = NULL,
-                            cl = 10L, 
-                            plot = FALSE)
-# (optional) Examine selected UDs
-lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+if (FALSE) {
+  # Time trial
+  lapply_estimate_ud_spatstat(iteration = iteration[1, ], 
+                              extract_coord = NULL,
+                              cl = NULL, 
+                              plot = FALSE)
+  # Implementation (~3.78 mins: 500 pixel, 10 cl)
+  lapply_estimate_ud_spatstat(iteration = iteration, 
+                              extract_coord = NULL,
+                              cl = 10L, 
+                              plot = FALSE)
+  # (optional) Examine selected UDs
+  lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+}
+
+
+#### Convergence 
+# 141/144 = 98 %
+ud_data <- lapply(file.path(iteration$folder_ud, "spatstat", "h", "data.qs"), function(data.qs){
+  qs::qread(data.qs)
+}) |> rbindlist()
+ud_data[!is.na(error), ]
 
 #### Mapping (~10 s x 3)
 unique(iteration$delta_t)
@@ -85,6 +97,9 @@ mapply(c("2 days", "1 day", "3 days"), c("best", "restricted", "flexible"),
            ggplot_maps(png_args = png_args)
          
        }) |> invisible()
+
+#### Compute residency 
+# TO DO
 
 
 #### End of code.
