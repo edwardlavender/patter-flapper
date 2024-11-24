@@ -145,12 +145,12 @@ iteration <- iteration[rows, ]
 # * Convergence trials complete (see /log/real/trials/log-summary.txt)
 # * AC:
 # - Batch 1 (144), SIA-USER024-P, 8 threads, 3.6 days
-# - Batch 2 (48), TO DO
-# - Batch 3 (48), TO DO
+# - Batch 2 (48), siam-linux20
+# - Batch 3 (48), siam-linux20
 # * DC:
 # - Batch 1 (144): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour (incl. 15 min break every 2 hr)
-# - Batch 2 (48): TO DO
-# - Batch 3 (48): TO DO
+# - Batch 2 (48): siam-linux20
+# - Batch 3 (48): siam-linux20
 # * ACDC:
 # - Batch 1 (240): siam-linux20
 # - Batch 2 (48): siam-linux20
