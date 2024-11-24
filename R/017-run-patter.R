@@ -190,7 +190,7 @@ sapply(split(iteration, seq_row(iteration)), function(d) {
 }) |> unlist() |> unique()
 
 #### Estimate UDs
-if (patter:::os_linux()) {
+if (FALSE && patter:::os_linux()) {
   
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
@@ -212,6 +212,60 @@ if (patter:::os_linux()) {
   lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
   
 }
+
+
+###########################
+###########################
+#### Generate outputs
+
+#### Tidy iteration (copied from simulate-algorithms.R)
+# Define grouping variables with tidy labels
+iteration[, unit_id := factor(unit_id)]
+iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
+# Revise 'sensitivity' coding
+iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
+iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
+iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
+iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
+iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
+iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
+iteration[, sensitivity := factor(sensitivity, 
+                                  levels = c("best", 
+                                             "movement-under", "movement-over", 
+                                             "ac-under", "ac-over",
+                                             "dc-under", "dc-over"), 
+                                  labels = c("Best", 
+                                             "Move (-)", "Move (+)", 
+                                             "AC(-)", "AC(+)", 
+                                             "DC(-)", "DC(+)"))] 
+
+#### Mapping (~3.5 mins)
+unique(iteration$dataset)
+unique(iteration$sensitivity)
+length(unique(iteration$individual_id))
+length(unique(iteration$month_id))
+cl_lapply(unique(iteration$sensitivity), function(sens){
+  lapply(c("AC", "DC", "ACDC"), function(alg) {
+    
+    # Define mapfiles
+    mapfiles <-
+      iteration |> 
+      filter(sensitivity == sens & dataset == alg) |>
+      mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif"), 
+             individual_id = factor(individual_id, levels = sort(unique(individual_id)))) |>
+      dplyr::select(row = individual_id, column = month_id, mapfile) |>
+      as.data.table() 
+    
+    # Make map
+    if (nrow(mapfiles)) {
+      png_args <- 
+        list(filename = here_fig("analysis", glue("map-patter-{alg}-{sens}.png")), 
+             height = 10, width = 10, units = "in", res = 600)
+      ggplot_maps(mapdt = mapfiles, png_args = png_args)
+    }
+    NULL
+  })
+})
 
 
 #### End of code.
