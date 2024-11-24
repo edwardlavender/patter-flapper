@@ -104,64 +104,90 @@ all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot
 table(iteration$dataset)
 table(iteration$dataset, iteration$mobility)
 
-#### Select batch
-# As for the simulations, we batch by mobility
-batch     <- pars$pmovement$mobility[1]
-iteration <- iteration[mobility == batch, ]
-set_vmap(.vmap = here_data("spatial", glue("vmap-{batch}.tif")))
-
-#### Select iterations
-# Select iterations 
-# * Select one AC/DC/ACDC run for testing 
-nrow(iteration)
-# iteration <- 
-#   iteration |> 
-#   filter(sensitivity == "best") |>
-#   group_by(dataset) |> 
-#   slice(1L) |>
-#   as.data.table()
-# * Select by dataset/sensitivity
-iteration <- iteration[dataset == "ac", ]
-# iteration <- iteration[sensitivity == "best", ]
-# * Select rows
-# if (batch == pars$pmovement$mobility[1]) {
-#   rows <- 1:30      # 1
-#   # rows <- 31:60     # 2
-#   # rows <- 61:90     # 3
-#   # rows <- 91:120    # 4
-#   # rows <- 121:150   # 5
-#   # rows <- 151:180   # 6
-#   # rows <- 181:210   # 7
-#   # rows <- 211:240   # 8
-# } else {
-#   rows <- 1:48      # 9
-#   rows <- 1:48      # 10
-# }
-rows <- 1:24
-# rows <- 45:48
-iteration <- iteration[rows, ]
-
 #### Estimate coordinates
-# * Convergence trials complete (see /log/real/trials/log-summary.txt)
-# * AC:
-# - Batch 1 (144), SIA-USER024-P, 8 threads, 3.6 days
-# - Batch 2 (48), siam-linux20
-# - Batch 3 (48), siam-linux20
-# * DC:
-# - Batch 1 (144): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour (incl. 15 min break every 2 hr)
-# - Batch 2 (48): siam-linux20
-# - Batch 3 (48): siam-linux20
-# * ACDC:
-# - Batch 1 (240): siam-linux20
-# - Batch 2 (48): siam-linux20
-# - Batch 3 (48): siam-linux20
-gc()
-nrow(iteration)
-lapply_estimate_coord_patter(iteration  = iteration,
-                             datasets   = datasets, 
-                             trial      = FALSE, 
-                             log.folder = here_data("output", "log", "real"), 
-                             log.txt    = glue("log-{iteration$dataset[1]}-{batch}-{min(rows)}.txt"))
+if (FALSE) {
+  
+  #### Select batch
+  # As for the simulations, we batch by mobility
+  batch     <- pars$pmovement$mobility[1]
+  iteration <- iteration[mobility == batch, ]
+  set_vmap(.vmap = here_data("spatial", glue("vmap-{batch}.tif")))
+  
+  #### Select iterations
+  # Select iterations 
+  # * Select one AC/DC/ACDC run for testing 
+  nrow(iteration)
+  # iteration <- 
+  #   iteration |> 
+  #   filter(sensitivity == "best") |>
+  #   group_by(dataset) |> 
+  #   slice(1L) |>
+  #   as.data.table()
+  # * Select by dataset/sensitivity
+  iteration <- iteration[dataset == "ac", ]
+  # iteration <- iteration[sensitivity == "best", ]
+  # * Select rows
+  # if (batch == pars$pmovement$mobility[1]) {
+  #   rows <- 1:30      # 1
+  #   # rows <- 31:60     # 2
+  #   # rows <- 61:90     # 3
+  #   # rows <- 91:120    # 4
+  #   # rows <- 121:150   # 5
+  #   # rows <- 151:180   # 6
+  #   # rows <- 181:210   # 7
+  #   # rows <- 211:240   # 8
+  # } else {
+  #   rows <- 1:48      # 9
+  #   rows <- 1:48      # 10
+  # }
+  rows <- 1:24
+  # rows <- 45:48
+  iteration <- iteration[rows, ]
+  
+  #### Estimate coordinates
+  # * Convergence trials complete (see /log/real/trials/log-summary.txt)
+  # * AC:
+  # - Batch 1 (144), SIA-USER024-P, 8 threads, 3.6 days
+  # - Batch 2 (48), siam-linux20
+  # - Batch 3 (48), siam-linux20
+  # * DC:
+  # - Batch 1 (144): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour (incl. 15 min break every 2 hr)
+  # - Batch 2 (48): siam-linux20
+  # - Batch 3 (48): siam-linux20
+  # * ACDC:
+  # - Batch 1 (240): siam-linux20
+  # - Batch 2 (48): siam-linux20
+  # - Batch 3 (48): siam-linux20
+  gc()
+  nrow(iteration)
+  lapply_estimate_coord_patter(iteration  = iteration,
+                               datasets   = datasets, 
+                               trial      = FALSE, 
+                               log.folder = here_data("output", "log", "real"), 
+                               log.txt    = glue("log-{iteration$dataset[1]}-{batch}-{min(rows)}.txt"))
+  
+}
+
+#### Patter error check 
+# (Code copied from simulate-algorithms.R)
+# Check for errors on forward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
+}) |> unlist() |> unique()
+# Check for errors on backward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-bwd.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist() |> unique()
+# Check for errors on smoother
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-smo.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist() |> unique()
 
 #### Estimate UDs
 if (patter:::os_linux()) {
@@ -177,13 +203,14 @@ if (patter:::os_linux()) {
                               extract_coord = function(s) s$states,
                               cl            = NULL, 
                               plot          = FALSE)
-  # Implementation 
+  # Implementation (~43 min)
   lapply_estimate_ud_spatstat(iteration     = iteration, 
                               extract_coord = function(s) s$states,
-                              cl            = NULL, 
+                              cl            = 10L, 
                               plot          = FALSE)
   # (optional) Examine selected UDs
   lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
+  
 }
 
 
