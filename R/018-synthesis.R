@@ -143,12 +143,6 @@ if (FALSE) {
 
 ###########################
 ###########################
-#### Convergence
-
-
-
-###########################
-###########################
 #### Patterns of space use
 
 
@@ -157,7 +151,11 @@ if (FALSE) {
 ###########################
 #### Residency 
 
+#### Compute detection days
+# TO
 
+#### Synthesis residency results
+# TO DO
 
 #### End of code. 
 ###########################
