@@ -280,7 +280,7 @@ iteration |>
 
 
 ###########################
-#### Mapping (~3.5 mins)
+#### Mapping (~1 min)
 
 if (FALSE) {
   
@@ -288,7 +288,8 @@ if (FALSE) {
   unique(iteration$sensitivity)
   length(unique(iteration$individual_id))
   length(unique(iteration$month_id))
-  cl_lapply(unique(iteration$sensitivity), function(sens){
+  length(unique(paste(iteration$sensitivity, iteration$dataset)))
+  cl_lapply(unique(iteration$sensitivity), .cl = 9L, .fun = function(sens){
     lapply(c("AC", "DC", "ACDC"), function(alg) {
       
       # Define mapfiles
@@ -304,7 +305,7 @@ if (FALSE) {
       if (nrow(mapfiles)) {
         png_args <- 
           list(filename = here_fig("analysis", glue("map-patter-{alg}-{sens}.png")), 
-               height = 10, width = 10, units = "in", res = 600)
+               height = 10, width = 9, units = "in", res = 800)
         ggplot_maps(mapdt = mapfiles, png_args = png_args)
       }
       NULL

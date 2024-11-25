@@ -87,7 +87,7 @@ if (FALSE) {
            # Define png args 
            png_args <- 
              list(filename = here_fig("analysis", glue("map-coa-{label}.png")), 
-                  height = 10, width = 10, units = "in", res = 600)
+                  height = 10, width = 9, units = "in", res = 800)
            # Collect data and make figure 
            iteration |> 
              filter(delta_t == param) |>

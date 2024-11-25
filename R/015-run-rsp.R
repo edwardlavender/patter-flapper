@@ -86,7 +86,7 @@ table(ud_data$success)
 # Verify: TRUE
 file.exists(file.path(iteration$folder_ud, "dbbmm", "ud.tif")) |> table()
 
-#### Mapping (~10 x 3 s)
+#### Mapping (~20 x 3 s)
 if (FALSE) {
   unique(iteration$er.ad)
   length(unique(iteration$individual_id))
@@ -96,7 +96,7 @@ if (FALSE) {
            # Define png args 
            png_args <- 
              list(filename = here_fig("analysis", glue("map-rsp-{label}.png")), 
-                  height = 10, width = 10, units = "in", res = 600)
+                  height = 10, width = 9, units = "in", res = 800)
            # Collect data and make figure 
            iteration |> 
              filter(er.ad == param) |>
