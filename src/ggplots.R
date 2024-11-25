@@ -77,7 +77,7 @@ ggplot_maps <- function(mapdt,
     mutate(row = mapdata$row[match(key, mapdata$key)], 
            column = mapdata$column[match(key, mapdata$key)], 
            col = mapdata$col[match(key, mapdata$key)], 
-           alp = ifelse(is.na(col), 0.075, 0.5),
+           alp = ifelse(is.na(col), 0.075, 0.3),
            col = scales::alpha("dimgrey", alp),
            key = NULL)
   
@@ -128,8 +128,8 @@ ggplot_maps <- function(mapdt,
     scale_fill_identity() + 
     # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
     geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.2, stroke = 0.2) + 
-    geom_sf(data = coast, aes(fill = I(col)), linewidth = 0.5) + 
-    geom_sf(data = mpa_poly, aes(color = I(col)), fill = NA, linewidth = 0.3) + 
+    geom_sf(data = coast, aes(fill = I(col)), linewidth = 0.15) + 
+    geom_sf(data = mpa_poly, aes(color = I(col)), fill = NA, linewidth = 0.25) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 
     theme(axis.text = element_blank(), 
