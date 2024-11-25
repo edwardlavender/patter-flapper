@@ -119,8 +119,8 @@ residency <-
   left_join(iteration_res, residency, by = "file") |> 
   mutate(algorithm = "RSP", 
          sensitivity = factor(er.ad, levels = c(500, 250, 750), labels = c("Best", "AC(-)", "AC(+)"))) |>
-  select(unit_id, algorithm, sensitivity, zone, time) |> 
-  arrange(unit_id, algorithm, sensitivity, zone) |>
+  select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
   as.data.table()
 qs::qsave(residency, here_data("output", "analysis-summary", "residency-rsp.qs"))
 

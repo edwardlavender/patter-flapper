@@ -325,8 +325,8 @@ residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_r
 residency <- 
   left_join(iteration_res, residency, by = "file") |> 
   mutate(algorithm = dataset) |>
-  select(unit_id, algorithm, sensitivity, zone, time) |> 
-  arrange(unit_id, algorithm, sensitivity, zone) |>
+  select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
   as.data.table()
 qs::qsave(residency, here_data("output", "analysis-summary", "residency-patter.qs"))
 

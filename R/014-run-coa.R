@@ -111,8 +111,8 @@ residency <-
   left_join(iteration_res, residency, by = "file") |> 
   mutate(algorithm = "COA", 
          sensitivity = factor(delta_t, levels = c("2 days", "1 day", "3 days"), labels = c("Best", "AC(-)", "AC(+)"))) |>
-  select(unit_id, algorithm, sensitivity, zone, time) |> 
-  arrange(unit_id, algorithm, sensitivity, zone) |>
+  select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
   as.data.table()
 qs::qsave(residency, here_data("output", "analysis-summary", "residency-coa.qs"))
 
