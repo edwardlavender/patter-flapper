@@ -15,7 +15,7 @@
 
 #### Wipe workspace
 rm(list = ls())
-try(pacman::p_unload("all"), silent = TRUE)
+# try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
@@ -84,9 +84,7 @@ ud_data <- lapply(file.path(iteration$folder_ud, "dbbmm", "data.qs"), function(d
 }) |> rbindlist()
 table(ud_data$success)
 # Verify: TRUE
-sapply(file.path(iteration$folder_ud, "dbbmm", "ud.tif"), function(ud.tif){
-  file.exists(ud.tif)
-}) |> table()
+file.exists(file.path(iteration$folder_ud, "dbbmm", "ud.tif")) |> table()
 
 #### Mapping (~10 x 3 s)
 if (FALSE) {
@@ -111,8 +109,20 @@ if (FALSE) {
          }) |> invisible()
 }
 
-#### Compute residency 
-# TO DO
+#### Compute residency (~9 s)
+iteration_res <- copy(iteration)
+iteration_res[, file := file.path(iteration$folder_ud, "dbbmm", "ud.tif")]
+iteration_res[, file_exists := file.exists(file)]
+residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
+# Write output
+residency <- 
+  left_join(iteration_res, residency, by = "file") |> 
+  mutate(algorithm = "RSP", 
+         sensitivity = factor(er.ad, levels = c(500, 250, 750), labels = c("Best", "AC(-)", "AC(+)"))) |>
+  select(unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(unit_id, algorithm, sensitivity, zone) |>
+  as.data.table()
+qs::qsave(residency, here_data("output", "analysis-summary", "residency-rsp.qs"))
 
 
 #### End of code.
