@@ -24,6 +24,7 @@ dv::src()
 #### Load data 
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 unitsets          <- qs::qread(here_data("input", "unitsets.qs"))
+moorings_in_mpa   <- qs::qread(here_data("input", "mefs", "moorings-in-mpa.qs"))
 acoustics_raw     <- qs::qread(here_data("input", "mefs", "acoustics.qs"))
 archival_raw      <- qs::qread(here_data("input", "mefs", "archival.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
@@ -151,11 +152,124 @@ if (FALSE) {
 ###########################
 #### Residency 
 
-#### Compute detection days
-# TO
+#### Null model
+res_null <- 
+  qs::qread(here_data("output", "simulation-summary", "residency-null.qs")) |>
+  slice(1:3) |> 
+  select("zone", "time") |>
+  mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
+  as.data.table()
+res_null
 
-#### Synthesis residency results
-# TO DO
+#### Detection days
+# (Code modified from simulate-algorithms.R)
+residency <- lapply(acoustics_by_unit, function(acoustics) {
+  
+  if (is.null(acoustics)) {
+    return(NULL)
+  }
+  
+  # Total number of days in month 
+  # acoustics <- acoustics_by_unit[[1]]
+  ndays <- as.integer(lubridate::days_in_month(as.Date.mmyy(acoustics$mmyy[1])))
+  
+  # Compute detection days for receivers in MPA
+  dds_total <- 
+    acoustics |>
+    filter(receiver_id %in% moorings_in_mpa$receiver_id) |> 
+    mutate(day = lubridate::day(timestamp)) |> 
+    summarise(time = length(unique(day)) / ndays) |>
+    mutate(individual_id = acoustics$individual_id[1], 
+           month_id      = acoustics$mmyy[1], 
+           unit_id       = acoustics$unit_id[1], 
+           algorithm     = "DD", 
+           sensitivity   = "Best",
+           zone          = "total") |> 
+    select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+    arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
+    as.data.table()
+  
+  # Detection days in closed areas are identical 
+  # * (All receivers were in closed areas)
+  # * For the figures, we also record DDs in closed areas
+  dds_closed <- copy(dds_total)
+  dds_closed[, zone := "closed"]
+  
+  rbind(dds_total, dds_closed)
+  
+}) |> rbindlist()
+
+qs::qsave(residency, 
+          here_data("output", "analysis-summary", "residency-detection-days.qs"))
+
+#### Collate residency estimates
+residency <- 
+  rbindlist(
+    list(
+      qs::qread(here_data("output", "analysis-summary", "residency-detection-days.qs")),
+      qs::qread(here_data("output", "analysis-summary", "residency-coa.qs")),
+      qs::qread(here_data("output", "analysis-summary", "residency-rsp.qs")),
+      qs::qread(here_data("output", "analysis-summary", "residency-patter.qs"))
+    )
+  ) |> 
+  filter(!is.na(zone)) |>
+  mutate(month = as.Date.mmyy(month_id)) |>
+  mutate(individual_id = factor(individual_id)) |>
+  mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
+  as.data.table()
+
+#### Compute summary statistics
+residency |> 
+  group_by(zone, algorithm) |>
+  summarise(max(time))
+
+#### Visualise residency trends
+head(residency)
+png(here_fig("analysis", "residency-best.png"), 
+    height = 6, width = 10, units = "in", res = 600)
+residency |>
+  # filter(sensitivity == "Best") |>
+  # filter(zone == "total") |> 
+  as_tibble() |> 
+  ggplot() + 
+  geom_point(aes(
+    month, time, 
+    colour = individual_id, 
+    shape = sensitivity, 
+    alpha = if_else(sensitivity == "Best", 1, 0.5), 
+    size = if_else(sensitivity == "Best", 1, 0.5)
+  )) + 
+  geom_line(aes(
+    month, time, 
+    colour = individual_id, 
+    group = interaction(individual_id, sensitivity), 
+    alpha = if_else(sensitivity == "Best", 1, 0.5), 
+    size = if_else(sensitivity == "Best", 0.75, 0.25)
+  )) +
+  scale_alpha_identity() +
+  scale_size_identity() +
+  scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
+  scale_x_date(labels = scales::date_format("%b-%y")) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
+  xlab("Time (months)") + 
+  ylab("Residency") + 
+  guides(
+    colour = guide_legend(order = 1, title = "Individual"),
+    shape = guide_legend(order = 2, title = "Sensitivity"),
+    alpha = "none",
+    size = "none"
+  ) + 
+  facet_grid(zone ~ algorithm) + 
+  theme_bw() + 
+  theme(panel.spacing.y = unit(1.5, "lines"), 
+        panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)), 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+dev.off()
+
 
 #### End of code. 
 ###########################
