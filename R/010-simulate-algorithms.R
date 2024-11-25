@@ -100,15 +100,18 @@ if (!patter:::os_linux()) {
   points(moorings$receiver_x, moorings$receiver_y, pch = 4)
   
   # Identify moorings in MPA 
+  nrow(moorings)
   moorings_in_mpa <- 
     moorings |>
     mutate(open = terra::extract(mpa, cbind(moorings$receiver_x, moorings$receiver_y))$open, 
            open = as.character(open)) |>
     filter(!is.na(open)) |>
     as.data.table()
+  nrow(moorings_in_mpa)
   
   # All moorings within MPA are in closed zones
   table(moorings_in_mpa$open)
+  qs::qsave(moorings_in_mpa, here_data("input", "mefs", "moorings-in-mpa.qs"))
   
 }
 
