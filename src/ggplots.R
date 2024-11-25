@@ -4,6 +4,7 @@ ggplot_maps <- function(mapdt,
                         xlim = NULL, 
                         ylim = NULL,
                         grid = terra::rast(here_data("spatial", "ud-grid.tif")),
+                        mpa = qreadvect(here_data("spatial", "mpa.qs")),
                         coast = qs::qread(here_data("spatial", "coast.qs")), 
                         moorings = qs::qread(here_data("input", "mefs", "moorings.qs")),
                         png_args = NULL) {
@@ -24,6 +25,9 @@ ggplot_maps <- function(mapdt,
   # * dTolerance = 500: 3 s for 12 plots (& reasonable approximation of coast)
   # * dTolerance = 100: 3 s for 12 plots (& good approximation of coast)
   coast <- sf::st_simplify(coast, dTolerance = 100) 
+  
+  # (optional) Prepare MPA
+  mpa_poly <- sf::st_as_sf(mpa)
   
   # Define a blank data.frame
   # * This is used to handle blank panels (for which we couldn't compute the UD)
@@ -77,6 +81,21 @@ ggplot_maps <- function(mapdt,
            col = scales::alpha("dimgrey", alp),
            key = NULL)
   
+  # Update mpa with gg mapping
+  mpa_poly <- 
+    lapply(unique(mapdata$key), function(key) {
+      mpa_poly$key <- key
+      mpa_poly
+    }) |> 
+    dplyr::bind_rows() |> 
+    mutate(row = mapdata$row[match(key, mapdata$key)], 
+           column = mapdata$column[match(key, mapdata$key)],
+           blank = is.na(mapdata$col[match(key, mapdata$key)]), 
+           # col = ifelse(blank, NA, col),
+           alp = ifelse(blank, 0.25, 0.5),
+           col = scales::alpha(col, alp),
+           key = NULL)
+  
   # Update moorings with gg mapping
   # * This is necessary so that we only add receivers to non-blank panels
   moorings <- 
@@ -87,15 +106,17 @@ ggplot_maps <- function(mapdt,
     dplyr::bind_rows() |> 
     mutate(row = mapdata$row[match(key, mapdata$key)], 
            column = mapdata$column[match(key, mapdata$key)]) |>
-    filter(key %in% mapdata$key)|> 
+    filter(key %in% mapdata$key) |> 
     as.data.table()
   
   # Define map limits
   if (is.null(xlim)) {
-    xlim <- terra::ext(grid)[1:2]
+    # xlim <- terra::ext(grid)[1:2]
+    xlim <- terra::ext(mpa)[1:2]
   }
   if (is.null(ylim)) {
-    ylim <- terra::ext(grid)[3:4]
+    # ylim <- terra::ext(grid)[3:4]
+    ylim <- terra::ext(mpa)[3:4]
   }
   
   # Build ggplot
@@ -107,7 +128,8 @@ ggplot_maps <- function(mapdt,
     scale_fill_identity() + 
     # scale_fill_gradientn(colours = getOption("terra.pal"), na.value = "white") +
     geom_point(data = moorings, aes(receiver_x, receiver_y), shape = 4, size = 0.2, stroke = 0.2) + 
-    geom_sf(data = coast, aes(fill = I(col))) + 
+    geom_sf(data = coast, aes(fill = I(col)), linewidth = 0.5) + 
+    geom_sf(data = mpa_poly, aes(color = I(col)), fill = NA, linewidth = 0.3) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
     xlab("") + ylab("") + 
     theme(axis.text = element_blank(), 
