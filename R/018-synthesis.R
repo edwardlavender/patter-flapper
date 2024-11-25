@@ -37,6 +37,15 @@ recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds
 ###########################
 #### Visualise time series 
 
+# Check individual_id, acoustic_id, dst_id for comparison to Lavender et al. (2021)
+# (Add sex, maturity etc. manually from Lavender et al. (2021))
+skateids |>
+  filter(individual_id %in% rbindlist(acoustics_by_unit)$individual_id) |> 
+  mutate(acoustic_id = substr(acoustic_id, 4, 6)) |>
+  select(individual_id, acoustic_id, dst_id) |>
+  as.data.table() |> 
+  prettyGraphics::tidy_write("./fig/individuals.txt")
+
 if (FALSE) {
   
   #### Process modelled time series 
@@ -114,14 +123,14 @@ if (FALSE) {
     geom_line(data = archival, 
               aes(timestamp, depth, colour = depth), 
               lwd = 0.25) + 
-    geom_vline(data = recaps, aes(xintercept = timestamp), 
-               colour = "red", alpha = 0.5,  linewidth = 0.35) + 
     geom_text(data = acoustics,
               aes(timestamp, 2.5, label = "|"),
               colour = "black", size = 2, vjust = 0.5) + 
+    geom_vline(data = recaps, aes(xintercept = timestamp), 
+               colour = "red", alpha = 0.5,  linewidth = 0.35) + 
     scale_x_datetime(labels = scales::date_format("%d"), 
                      breaks = xticks, 
-                     expand = c(0, 0)) +
+                     expand = c(0.025, 0)) +
     scale_y_continuous(breaks = c(-50, -250), expand = c(0, 0), limits = c(-300, 5)) + 
     scale_color_gradientn(
       colours = rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)),
@@ -138,8 +147,16 @@ if (FALSE) {
           axis.title.y = element_text(margin = margin(r = 10)))
   dev.off()
   toc()
-  
+ 
+  # Selected checks
+  acoustics |> 
+    filter(individual_id == 35 & mmyy == "11-2016") |> 
+    print(125)
+   
 }
+
+
+
 
 
 ###########################
