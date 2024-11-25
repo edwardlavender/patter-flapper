@@ -15,7 +15,7 @@
 
 #### Wipe workspace
 rm(list = ls())
-try(pacman::p_unload("all"), silent = TRUE)
+# try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
@@ -100,8 +100,21 @@ if (FALSE) {
          }) |> invisible()
 }
 
-#### Compute residency 
-# TO DO
+#### Compute residency (4 s)
+# (Code modified from simulate-algorithms.R)
+iteration_res <- copy(iteration)
+iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
+iteration_res[, file_exists := file.exists(file)]
+residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
+# Write output
+residency <- 
+  left_join(iteration_res, residency, by = "file") |> 
+  mutate(algorithm = "COA", 
+         sensitivity = factor(delta_t, levels = c("2 days", "1 day", "3 days"), labels = c("Best", "AC(-)", "AC(+)"))) |>
+  select(unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(unit_id, algorithm, sensitivity, zone) |>
+  as.data.table()
+qs::qsave(residency, here_data("output", "analysis-summary", "residency-coa.qs"))
 
 
 #### End of code.
