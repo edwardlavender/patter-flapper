@@ -60,6 +60,11 @@ mmyyrng <- function(mmyy) {
   c(start, end)
 }
 
+# mmyy to date
+as.Date.mmyy <- function(mmyy) {
+  as.Date(paste("01-", mmyy), format = "%d-%m-%Y")
+}
+
 # Examples 
 if (FALSE) {
   lapply(paste0("0", 1:9, "-2016"), mmyyrng)
