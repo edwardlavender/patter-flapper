@@ -315,8 +315,20 @@ if (FALSE) {
 
 
 ###########################
-#### Compute residency 
-# TO DO
+#### Compute residency (~22 s)
+
+iteration_res <- copy(iteration)
+iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
+iteration_res[, file_exists := file.exists(file)]
+residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
+# Write output
+residency <- 
+  left_join(iteration_res, residency, by = "file") |> 
+  mutate(algorithm = dataset) |>
+  select(unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(unit_id, algorithm, sensitivity, zone) |>
+  as.data.table()
+qs::qsave(residency, here_data("output", "analysis-summary", "residency-patter.qs"))
 
 
 #### End of code.
