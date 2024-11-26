@@ -80,7 +80,7 @@ sink_open <- function(log.folder = NULL, log.txt = NULL) {
     }
     # Define full file path & validate 
     log.txt <- file.path(log.folder, log.txt)
-    stopifnot(!file.exists(log.txt))
+    # stopifnot(!file.exists(log.txt))
     # Define connection 
     log.txt <- file(log.txt, open = "wt")
     # Open sink
