@@ -148,11 +148,31 @@ if (FALSE) {
   dev.off()
   toc()
  
-  # Selected checks
+  #### Selected checks
   acoustics |> 
     filter(individual_id == 35 & mmyy == "11-2016") |> 
     print(125)
-   
+  
+  #### Summary statistics
+  # Number of detections per month
+  ndet <- 
+    acoustics |> 
+    group_by(individual_id, mmyy) |> 
+    summarise(n = n()) |> 
+    arrange(n) |>
+    ungroup() |>
+    as.data.table()
+  median(ndet$n)
+  # Gaps between sequential detections
+  gdet <- 
+    acoustics |> 
+    group_by(individual_id, mmyy) |> 
+    mutate(gap = serial_difference(timestamp, units = "mins")) |> 
+    summarise(utils.add::basic_stats(gap, na.rm = TRUE)) |> 
+    ungroup() |>
+    as.data.table()
+  gdet
+  max(gdet$max)
 }
 
 
