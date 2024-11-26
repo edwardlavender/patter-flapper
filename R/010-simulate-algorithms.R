@@ -1129,6 +1129,11 @@ list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
 ###########################
 #### Tidy iteration 
 
+# (optional) TO DO
+# Compute outputs below (ME, residency) for the portion of the path 
+# ... between the first and last detections for comparability to heuristic algorithms
+# (& re-express simulated patterns over the same timeline)
+
 if (TRUE) {
   
   #### Tidy iteration
