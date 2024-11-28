@@ -256,33 +256,41 @@ iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function
 iteration |> 
   group_by(dataset, sensitivity) |> 
   summarise(convergence = length(which(convergence)) / n()) |>
-  filter(dataset == "ACDC") |>
-  arrange(convergence)
+  ungroup() |>
+  group_by(dataset) |> 
+  mutate(range = max(convergence) - min(convergence)) |>
+  ungroup() |>
+  arrange(dataset, convergence) |>
+  as.data.table()
 
 # Plot convergence proportions 
 png(here_fig("analysis", "convergence.png"), 
-    height = 3, width = 5, units = "in", res = 600)
+    height = 3, width = 9, units = "in", res = 600)
 iteration |> 
   group_by(dataset, sensitivity) |> 
   summarise(convergence = length(which(convergence)) / n()) |>
   ungroup() |>
-  as.data.table() |> 
+  # tidyr::complete(dataset, sensitivity) |>
+  as_tibble() |> 
   ggplot(aes(dataset, convergence, fill = sensitivity)) +
   geom_bar(stat = "identity", 
-           position = "dodge",
-           colour = "black", linewidth = 0.2, 
-           alpha = 0.5) +
+           position = position_dodge(preserve = "single"),
+           colour = "black", linewidth = 0.2) +
   scale_fill_manual(values = col_sensitivity) + 
+  # scale_x_discrete(drop = FALSE) + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
   labs(
-    x = "Parameterisation",
+    x = "Algorithm",
     y = "Pr(convergence)",
-    fill = "Algorithm"
+    fill = "Parameterisation"
   ) + 
   theme_bw() + 
   theme(axis.title.x = element_text(margin = margin(t = 10)),
         axis.title.y = element_text(margin = margin(r = 10)),
-        panel.grid = element_blank())
+        panel.grid.major.x = element_line(color = "gray80", linewidth = 0.2),
+        panel.grid.minor.x = element_line(color = "gray80", linewidth = 0.2),
+        panel.grid.major.y = element_blank(), 
+        panel.grid.minor.y = element_blank())
 dev.off()
 
 
