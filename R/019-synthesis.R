@@ -255,7 +255,33 @@ residency <-
 #### Compute summary statistics
 residency |> 
   group_by(zone, algorithm) |>
-  summarise(max(time))
+  summarise(min = min(time), 
+            max = max(time)) |>
+  ungroup() |>
+  arrange(zone, algorithm, min)
+residency |> 
+  filter(algorithm == "DD") |> 
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
+residency |> 
+  filter(algorithm %in% c("COA", "RSP")) |> 
+  filter(sensitivity == "Best") |>
+  group_by(zone) |>
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
+residency |> 
+  filter(algorithm == "AC") |> 
+  filter(sensitivity == "Best") |>
+  group_by(zone) |>
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
+residency |> 
+  filter(algorithm == "DC") |> 
+  filter(sensitivity == "Best") |>
+  group_by(zone) |>
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
+residency |> 
+  filter(algorithm == "ACDC") |> 
+  # filter(sensitivity == "Best") |>
+  group_by(zone) |>
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
 
 #### Visualise residency trends
 head(residency)
@@ -284,7 +310,7 @@ residency |>
   scale_size_identity() +
   scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
   scale_x_date(labels = scales::date_format("%b-%y")) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
   geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
   xlab("Time (months)") + 
   ylab("Residency") + 
