@@ -1167,7 +1167,11 @@ if (TRUE) {
   plot(1:length(col_all), pch = 21, cex = 3, bg = col_all)
   
   sensitivities   <- c("Best", "Move (-)", "Move (+)", "AC(-)", "AC(+)", "DC(-)", "DC(+)")
-  col_sensitivity <- viridis::plasma(length(sensitivities), alpha = 0.8)
+  col_sensitivity <- c("dimgrey", 
+                       "lightgoldenrod", "darkgoldenrod",
+                       "lightgreen", "darkgreen",
+                       "lightblue", "darkblue")
+  col_sensitivity <- scales::alpha(col_sensitivity, alpha = 0.6)
   names(col_sensitivity)  <- sensitivities
   plot(1:length(col_sensitivity), pch = 21, cex = 3, bg = col_sensitivity)
   saveRDS(col_sensitivity, here_data("graphics", "col_sensitivity.rds"))
