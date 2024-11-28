@@ -290,7 +290,7 @@ residency |>
   ylab("Residency") + 
   guides(
     colour = guide_legend(order = 1, title = "Individual"),
-    shape = guide_legend(order = 2, title = "Sensitivity"),
+    shape = guide_legend(order = 2, title = "Parameterisation"),
     alpha = "none",
     size = "none"
   ) + 
