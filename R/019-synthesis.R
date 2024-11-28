@@ -31,6 +31,8 @@ acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
 recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
+iteration_patter  <- qs::qread(here_data("input", "iteration", "patter.qs"))
+mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 
 
 ###########################
@@ -180,6 +182,112 @@ if (FALSE) {
 ###########################
 #### Patterns of space use
 
+#### (Quick) Plot MPA
+terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
+terra::sbar(10000)
+
+#### Example UDs from each algorithm
+algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
+mapfiles <-
+  data.table(algorithm = factor(algorithms, algorithms),
+             mapindex  = seq_len(length(algorithms)),
+             mapfile   = c("coa/ac/1/ud/spatstat/h/ud.tif", 
+                           "rsp/ac/1/ud/dbbmm/ud.tif", 
+                           "patter/ac/1/ud/spatstat/h/ud.tif", 
+                           "patter/dc/1/ud/spatstat/h/ud.tif", 
+                           "patter/acdc/1/ud/spatstat/h/ud.tif"))
+mapfiles <- 
+  CJ(individual_id = c(25, 35, 36), # c(13, 20, 25, 27, 29, 35, 36, 38),
+     mapindex      = mapfiles$mapindex
+  ) |>  
+  mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
+         column = mapfiles$algorithm[match(mapindex, mapfiles$mapindex)],
+         mapfile = mapfiles$mapfile[match(mapindex, mapfiles$mapindex)],
+         mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
+  select(row, column, mapfile) |> 
+  as.data.table()
+ggplot_maps(mapfiles, 
+            png_args = list(filename = here_fig("analysis", "ud-examples.png"), 
+                            height = 4, width = 4, units = "in", res = 800))
+
+#### Overall ACDC UD with tagging locations & angling records
+# List tif files
+mapfiles <- 
+  iteration_patter |> 
+  filter(dataset == "acdc" & sensitivity == "best") |> 
+  mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+  as.data.table()
+# Read UDs
+uds <- 
+  lapply(mapfiles$mapfile, function(ud.tif) {
+  if (file.exists(ud.tif)) {
+    terra::rast(ud.tif)
+  }
+}) |> 
+  plyr::compact()
+# Compute 'overall' UD
+uds <- do.call(c, uds)
+ud <- terra::app(uds, fun = "sum", na.rm = TRUE) / terra::nlyr(uds)
+stopifnot(all.equal(1, as.numeric(terra::global(ud, "sum", na.rm = TRUE))))
+ud.tif <- tempfile(fileext = ".tif")
+terra::writeRaster(ud, ud.tif)
+# Get capture locations for relevant individuals 
+tagsf <- 
+  skateids |> 
+  filter(individual_id %in% mapfiles$individual_id)|> 
+  select(lon = long_tag_capture, lat = lat_tag_capture) |>
+  as.matrix() |> 
+  terra::project(from = "EPSG:4326", to = terra::crs(mpa)) |>
+  as.data.frame() |> 
+  sf::st_as_sf(coords = c("V1", "V2"), crs = terra::crs(mpa))
+  # Get all angling records (download from 28/11/2024)
+# (We expect ! NAs introduced by coercion warning here)
+cr <- 
+  here_data_raw("skatespotter", "data (15).csv") |> 
+  read.csv() |> 
+  select(individual_id, date = date_captured, lon = longitude, lat = latitude) |> 
+  mutate(date = as.Date(date), 
+         lon = as.numeric(lon), 
+         lat = as.numeric(lat)) |>
+  filter(!is.na(lon) & !is.na(lat)) |> 
+  filter(lon != 0 & lat != 0) |>
+  as.data.table()
+range(cr$date)
+p <- 
+  ggplot(data.frame(year = lubridate::year(cr$date))) + 
+  geom_histogram(aes(year), bins = 50) + 
+  theme_bw() 
+plotly::ggplotly(p)
+# Get angling locations
+crxy <- 
+  cbind(cr$lon, cr$lat) |> 
+  terra::vect(crs = "EPSG:4326") |> 
+  terra::project(terra::crs(mpa)) |> 
+  terra::crds(df = TRUE)
+crsf <- 
+  sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
+# Quick plot
+terra::plot(ud)
+points(crxy$x, crxy$y)
+hr <- map_hr_home(ud, .add = TRUE)
+poly <- terra::as.polygons(hr == 1)
+poly <- poly[poly[[1]] == 1]
+poly <- poly |> sf::st_as_sf()
+# ggplot
+png(here_fig("analysis", "ud-overall.png"), 
+    height = 3.5, width = 2.5, units = "in", res = 800)
+p <- 
+  ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
+              png_args = NULL) 
+  p + 
+  geom_sf(data = poly, fill = NA) + 
+  geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
+  geom_sf(data = tagsf, shape = 11, size = 0.9, colour = "darkgreen") + 
+  coord_sf(xlim = p$coordinates$limits$x, ylim = p$coordinates$limits$y) + 
+  theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+dev.off()
+
+#### Algorithm sensitivity
 
 
 ###########################
