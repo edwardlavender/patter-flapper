@@ -131,16 +131,20 @@ ggplot_maps <- function(mapdt,
     geom_sf(data = coast, aes(fill = I(col)), linewidth = 0.15) + 
     geom_sf(data = mpa_poly, aes(color = I(col)), fill = NA, linewidth = 0.25) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
-    xlab("") + ylab("") + 
-    theme(axis.text = element_blank(), 
-          axis.ticks = element_blank(), 
-          panel.grid = element_blank(), 
-          # strip.text = element_blank(), 
-          legend.position = "none") + 
-    facet_grid(row ~ column, drop = FALSE)
+    xlab("") + ylab("") 
+  if (nrow(mapdt) > 1L) {
+    p <- 
+      p +  
+      facet_grid(row ~ column, drop = FALSE) + 
+      theme(axis.text = element_blank(), 
+            axis.ticks = element_blank(), 
+            panel.grid = element_blank(), 
+            # strip.text = element_blank(), 
+            legend.position = "none")
+  }
   
   # Return ggplot 
-  if (!is.null(png)) {
+  if (!is.null(png_args)) {
     do.call(grDevices::png, png_args)
     print(p)
     dev.off()
