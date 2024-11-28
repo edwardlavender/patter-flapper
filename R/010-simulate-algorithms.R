@@ -1164,6 +1164,13 @@ if (TRUE) {
   names(col_all) <- algorithms
   col_heuristic  <- col_all[1:4]
   col_patter     <- col_all[5:7]
+  plot(1:length(col_all), pch = 21, cex = 3, bg = col_all)
+  
+  sensitivities   <- c("Best", "Move (-)", "Move (+)", "AC(-)", "AC(+)", "DC(-)", "DC(+)")
+  col_sensitivity <- viridis::plasma(length(sensitivities), alpha = 0.8)
+  names(col_sensitivity)  <- sensitivities
+  plot(1:length(col_sensitivity), pch = 21, cex = 3, bg = col_sensitivity)
+  saveRDS(col_sensitivity, here_data("graphics", "col_sensitivity.rds"))
   
 }
 
@@ -1453,9 +1460,6 @@ if (FALSE) {
 ###########################
 #### Synthesis
 
-# TO DO
-# Unify colour scales
-
 ###########################
 #### Maps synthesis
 
@@ -1543,7 +1547,7 @@ skill_summary$sd[2] / skill_summary$sd[3:5]
 ###########################
 #### Residency synthesis 
 
-if (FALSE) {
+if (TRUE) {
   
   #### Combine residency datasets
   residency <- 
@@ -1674,6 +1678,7 @@ if (FALSE) {
     geom_hline(data = true_res,
                aes(yintercept = true_time),
                colour = "black") +
+    scale_fill_manual(values = col_sensitivity) + 
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
     xlab("Algorithm") + 
     ylab("Residency") + 
