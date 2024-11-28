@@ -31,6 +31,7 @@ moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
+col_sensitivity   <- readRDS(here_data("graphics", "col_sensitivity.rds"))
 
 
 ###########################
@@ -254,9 +255,13 @@ iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function
 # Summarise convergence
 iteration |> 
   group_by(dataset, sensitivity) |> 
-  summarise(convergence = length(which(convergence)) / n())
+  summarise(convergence = length(which(convergence)) / n()) |>
+  filter(dataset == "ACDC") |>
+  arrange(convergence)
 
 # Plot convergence proportions 
+png(here_fig("analysis", "convergence.png"), 
+    height = 3, width = 5, units = "in", res = 600)
 iteration |> 
   group_by(dataset, sensitivity) |> 
   summarise(convergence = length(which(convergence)) / n()) |>
@@ -267,9 +272,10 @@ iteration |>
            position = "dodge",
            colour = "black", linewidth = 0.2, 
            alpha = 0.5) +
+  scale_fill_manual(values = col_sensitivity) + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
   labs(
-    x = "Algorithm",
+    x = "Parameterisation",
     y = "Pr(convergence)",
     fill = "Algorithm"
   ) + 
@@ -277,6 +283,7 @@ iteration |>
   theme(axis.title.x = element_text(margin = margin(t = 10)),
         axis.title.y = element_text(margin = margin(r = 10)),
         panel.grid = element_blank())
+dev.off()
 
 
 ###########################
