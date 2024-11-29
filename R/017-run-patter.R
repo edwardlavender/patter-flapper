@@ -242,7 +242,7 @@ iteration[, sensitivity := factor(sensitivity,
                                              "Move (-)", "Move (+)", 
                                              "AC(-)", "AC(+)", 
                                              "DC(-)", "DC(+)"))] 
-
+qs::qsave(iteration, here_data("input", "iteration", "patter-tidy.qs"))
 
 ###########################
 #### Convergence 
