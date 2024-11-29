@@ -22,9 +22,11 @@ dv::clear()
 dv::src()
 
 #### Load data 
+bathy             <- terra::rast(here_data("spatial", "bathy.tif"))
 mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
+moorings          <- qs::qread(here_data("input", "mefs", "moorings.qs"))
 moorings_in_mpa   <- qs::qread(here_data("input", "mefs", "moorings-in-mpa.qs"))
 acoustics_raw     <- qs::qread(here_data("input", "mefs", "acoustics.qs"))
 archival_raw      <- qs::qread(here_data("input", "mefs", "archival.qs"))
@@ -137,6 +139,7 @@ if (FALSE) {
                      expand = c(0.025, 0)) +
     scale_y_continuous(breaks = c(-50, -250), expand = c(0, 0), limits = c(-300, 5)) + 
     scale_color_gradientn(
+      breaks = seq(-350, 0, length.out = 100),
       colours = rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)),
       limits = c(-350, 0),
       na.value = "grey"
@@ -184,9 +187,65 @@ if (FALSE) {
 ###########################
 #### Patterns of space use
 
-#### (Quick) Plot MPA
-terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
+###########################
+#### Study area
+
+#### (Quick) Plot study area
+# Study area 
+terra::plot(terra::rast(here_data("spatial", "bathy-5m.tif")))
+qs::qread(here_data("spatial", "coast.qs")) |> 
+  sf::st_simplify(dTolerance = 100) |> 
+  terra::vect() |> 
+  terra::lines()
+# Plot MPA 
 terra::sbar(10000)
+terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
+
+#### Get tagging locations 
+# Get capture locations for relevant individuals 
+tagsf <- 
+  skateids |> 
+  filter(individual_id %in% unique(iteration_patter$individual_id)) |> 
+  select(lon = long_tag_capture, lat = lat_tag_capture) |>
+  as.matrix() |> 
+  terra::project(from = "EPSG:4326", to = terra::crs(mpa)) |>
+  as.data.frame() |> 
+  sf::st_as_sf(coords = c("V1", "V2"), crs = terra::crs(mpa))
+# Write to file
+write.csv(sf::st_coordinates(tagsf), 
+          here_data_raw("tagging-sites.csv"), 
+          row.names = FALSE)
+
+#### Get receiver locations
+moorings |>
+  select(receiver_x, receiver_y) |> 
+  as.data.frame() |> 
+  write.csv(here_data_raw("moorings.csv"), 
+            row.names = FALSE)
+
+#### (deprecated) Plot study area via ggplot2
+tic()
+png(here_fig("study-area.png"), 
+    height = 5, width = 4, units = "in", res = 800)
+op <- options(terra.pal = scales::alpha(rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)), 0.75))
+# terra::plot(terra::rast(here_data("spatial", "bathy.tif")))
+bb   <- terra::ext(bathy) - 6.5e3
+xlim <- bb[1:2]
+ylim <- bb[3:4]
+p <- 
+  ggplot_maps(data.table(mapfile = here_data("spatial", "bathy.tif"), row = 1, column = 1), 
+              xlim = xlim,
+              ylim = ylim,
+              zlim = c(0, 350),
+              mask = TRUE, 
+              png_args = NULL) 
+p + 
+  geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
+  coord_sf(xlim = xlim, ylim = ylim) + 
+  theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+options(op)
+dev.off()
+toc()
 
 
 ###########################
@@ -246,17 +305,6 @@ stopifnot(all.equal(1, as.numeric(terra::global(ud, "sum", na.rm = TRUE))))
 ud.tif <- tempfile(fileext = ".tif")
 terra::writeRaster(ud, ud.tif)
 
-#### Get tagging locations 
-# Get capture locations for relevant individuals 
-tagsf <- 
-  skateids |> 
-  filter(individual_id %in% mapfiles$individual_id)|> 
-  select(lon = long_tag_capture, lat = lat_tag_capture) |>
-  as.matrix() |> 
-  terra::project(from = "EPSG:4326", to = terra::crs(mpa)) |>
-  as.data.frame() |> 
-  sf::st_as_sf(coords = c("V1", "V2"), crs = terra::crs(mpa))
-
 #### Get angling records
 # Get all angling records (download from 28/11/2024)
 # (We expect ! NAs introduced by coercion warning here)
@@ -303,9 +351,44 @@ p <-
   p + 
   geom_sf(data = poly, fill = NA) + 
   geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
-  geom_sf(data = tagsf, shape = 11, size = 0.9, colour = "darkgreen") + 
+  geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
   coord_sf(xlim = p$coordinates$limits$x, ylim = p$coordinates$limits$y) + 
   theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+dev.off()
+
+
+###########################
+#### QGIS inputs
+
+#### Colour hexs
+# Land fill: #6969694C
+# Land border: blank (thin)
+scales::alpha("dimgrey", 0.3)
+# MPA open border: #0000FF80
+scales::alpha("blue", 0.5)
+# MPA closed border: #FF0000CC
+scales::alpha("#FF000080", 0.8)
+# Tagging locations: #006400FF
+scales::alpha("darkgreen", 1.0)
+
+#### Bathymetry colour bar
+breaks <- seq(-350, 0, by = 1); length(breaks)
+labels <- breaks
+labels[!(breaks %in% c(-300, -200, -100, 0))] <- ""
+png(here_fig("study-site-legend.png"),
+             height = 5, width = 5, units = "in", res = 600)
+ggplot(data.frame(depth = 00:350)) + 
+  geom_line(aes(depth, 1, colour = depth)) + 
+  scale_color_gradientn(
+    breaks = breaks, 
+    labels = labels,
+    colours = rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)),
+    limits = c(-350, 0),
+    na.value = "grey", 
+    guide = guide_colourbar(ticks = FALSE)) +
+  theme(
+    legend.text = element_text(margin = margin(t = 0, r = 3, b = 0, l = -1)) 
+  )
 dev.off()
 
 
