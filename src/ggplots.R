@@ -3,6 +3,9 @@ if (!patter:::os_linux()) {
 ggplot_maps <- function(mapdt,
                         xlim = NULL, 
                         ylim = NULL,
+                        zlim = NULL,
+                        mask = FALSE,
+                        simplify = TRUE,
                         grid = terra::rast(here_data("spatial", "ud-grid.tif")),
                         mpa = qreadvect(here_data("spatial", "mpa.qs")),
                         coast = qs::qread(here_data("spatial", "coast.qs")), 
@@ -24,8 +27,12 @@ ggplot_maps <- function(mapdt,
   # * Full resolution:  160 s for 12 plots
   # * dTolerance = 500: 3 s for 12 plots (& reasonable approximation of coast)
   # * dTolerance = 100: 3 s for 12 plots (& good approximation of coast)
-  coast <- sf::st_simplify(coast, dTolerance = 100) 
-  
+  if (simplify) {
+    coast <- sf::st_simplify(coast, dTolerance = 100) 
+  } else {
+    coast <- sf::st_as_sf(coast)
+  }
+
   # (optional) Prepare MPA
   mpa_poly <- sf::st_as_sf(mpa)
   
@@ -41,8 +48,13 @@ ggplot_maps <- function(mapdt,
   mapdata <- lapply(split(mapdt, seq_row(mapdt)), function(d) {
     if (file.exists(d$mapfile)) {
       r <- terra::rast(d$mapfile)
+      if (mask) {
+        r <- terra::mask(r, coast, inverse = TRUE, touches = FALSE)
+      }
       # Get map coordinates via as.data.frame() or terra::spatSample() 
-      rdt <- as.data.frame(r, xy = TRUE, na.rm = TRUE) |> as.data.table()
+      rdt <- as.data.frame(r, xy = TRUE) 
+      rdt <- rdt[!is.na(rdt[, 3]), ]
+      setDT(rdt)
       colnames(rdt) <- c("x", "y", "map_value")
       # Define colours
       # * facet_wrap() forces the same zlim across all plots
@@ -50,7 +62,10 @@ ggplot_maps <- function(mapdt,
       # - Build the col column here
       # - Use scale_fill_identity()
       cols <- getOption("terra.pal")
-      ints  <- seq(min(rdt$map_value), max(rdt$map_value), length.out = length(cols))
+      if (is.null(zlim)) {
+        zlim <- range(rdt$map_value)
+      }
+      ints <- seq(zlim[1], zlim[2], length.out = length(cols))
       cols <- data.table(int = ints, 
                          col = cols)
       rdt[, col := cols$col[findInterval(rdt$map_value, cols$int)]]
@@ -59,9 +74,14 @@ ggplot_maps <- function(mapdt,
       rdt <- copy(blank)
     }
     # Link data.tables (e.g., row/column)
-    cbind(d, rdt)
-  }) |> 
-    rbindlist()
+    # cbind(d, rdt)
+    rdt[, c("row", "column") := .(d$row, d$column)]
+  }) 
+  if (length(mapdata) == 1L) {
+    mapdata <- mapdata[[1]]
+  } else {
+    mapdata <- rbindlist(mapdata)
+  }
   
   # Update coast with gg mapping
   # * We duplicate coast for each raster
