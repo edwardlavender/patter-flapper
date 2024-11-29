@@ -191,7 +191,7 @@ sapply(split(iteration, seq_row(iteration)), function(d) {
 }) |> unlist() |> unique()
 
 #### Estimate UDs
-if (FALSE && patter:::os_linux()) {
+if (FALSE && !patter:::os_linux()) {
   
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
