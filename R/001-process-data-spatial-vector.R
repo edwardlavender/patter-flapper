@@ -68,7 +68,7 @@ if (FALSE) {
 # Define open areas
 mpa_open$id     <- seq_len(nrow(mpa_open))
 mpa_open$open   <- "open"
-mpa_open$col    <- scales::alpha("skyblue", 0.5)
+mpa_open$col    <- "blue"
 
 # Define closed areas
 mpa_closed$id   <- max(mpa_open$id) + 1L
@@ -103,6 +103,8 @@ data.frame(mpa)
 terra::plot(mpa, y = "id", col = 1:9L)
 terra::plot(mpa, col = mpa$col)
 terra::plot(mpa, y = "open", col = c(mpa_open$col[1], mpa_closed$col[1]))
+terra::plot(howe)
+terra::lines(mpa, col = scales::alpha(mpa$col, 0.5), lwd = 2)
 
 
 ###########################
@@ -140,7 +142,7 @@ if (gb > 6) {
 #### Visualise study site (~7 s)
 # > We will create a publication quality map of the study area in QGIS
 tic()
-png(here_fig("study-site.png"), 
+png(here_fig("study-site-quick.png"), 
     height = 10, width = 10, units = "in", res = 600)
 terra::plot(howe)
 terra::plot(mpa, 
