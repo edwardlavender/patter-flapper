@@ -89,12 +89,12 @@ if (FALSE) {
   unlink(iteration$folder_ud, recursive = TRUE)
 }
 dirs.create(iteration$folder_coord)
-# dirs.create(iteration$folder_ud)
-# dirs.create(file.path(iteration$folder_ud, "spatstat", "h"))
+dirs.create(iteration$folder_ud)
+dirs.create(file.path(iteration$folder_ud, "spatstat", "h"))
 dir.create(here_data("output", "log", "real", "reanalysis"), recursive = TRUE)
 
 #### Estimate coordinates
-if (TRUE) {
+if (FALSE) {
   
   #### Select rows
   nrow(iteration)
@@ -119,8 +119,73 @@ if (TRUE) {
   
 }
 
-#### Convergence 
-# TO DO
+#### Patter error check 
+# (Code copied from simulate-algorithms.R)
+# Check for errors on forward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
+}) |> unlist() |> unique()
+# Check for errors on backward filter 
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-bwd.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist() |> unique()
+# Check for errors on smoother
+sapply(split(iteration, seq_row(iteration)), function(d) {
+  file <- file.path(d$folder_coord, "data-smo.qs")
+  if (file.exists(file)) {
+    qs::qread(file)$error
+  }
+}) |> unlist() |> unique()
+
+#### Patter convergence 
+iteration[, convergence := file.exists(file.path(folder_coord, "coord-smo.qs"))]
+table(iteration$convergence)
+
+#### Estimate UDs
+if (FALSE && !patter:::os_linux()) {
+  
+  #### Estimate UDs
+  # Time trial 
+  lapply_estimate_ud_spatstat(iteration     = iteration[1, ], 
+                              extract_coord = function(s) s$states,
+                              cl            = NULL, 
+                              plot          = FALSE)
+  # Implementation (~1 min)
+  lapply_estimate_ud_spatstat(iteration     = iteration, 
+                              extract_coord = function(s) s$states,
+                              cl            = 10L, 
+                              plot          = FALSE)
+  
+}
+
+#### Mapping
+iteration |> 
+  mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |>
+  select(row = individual_id, column = month_id, mapfile) |> 
+  ggplot_maps(png_args = list(filename = here_fig("analysis", "map-reanalysis.png"), 
+                              height = 10, width = 9, units = "in", res = 800))
+
+#### Residency
+iteration_res <- copy(iteration)
+iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
+iteration_res[, file_exists := file.exists(file)]
+residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
+# Write output
+residency <- 
+  left_join(iteration_res, residency, by = "file") |> 
+  mutate(algorithm = dataset) |>
+  select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+  arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
+  as.data.table()
+qs::qsave(residency, here_data("output", "analysis-summary", "residency-patter-reanalysis.qs"))
+# Summarise
+residency |> 
+  filter(!is.na(zone)) |>
+  group_by(zone) |> 
+  summarise(utils.add::basic_stats(time, na.rm = TRUE))
 
 
 #### End of code. 
