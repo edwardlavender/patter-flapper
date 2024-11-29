@@ -22,17 +22,19 @@ dv::clear()
 dv::src()
 
 #### Load data 
+mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
-unitsets          <- qs::qread(here_data("input", "unitsets.qs"))
+recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
 moorings_in_mpa   <- qs::qread(here_data("input", "mefs", "moorings-in-mpa.qs"))
 acoustics_raw     <- qs::qread(here_data("input", "mefs", "acoustics.qs"))
 archival_raw      <- qs::qread(here_data("input", "mefs", "archival.qs"))
 acoustics_by_unit <- qs::qread(here_data("input", "acoustics_by_unit.qs"))
 archival_by_unit  <- qs::qread(here_data("input", "archival_by_unit.qs"))
 behaviour_by_unit <- qs::qread(here_data("input", "behaviour_by_unit.qs"))
-recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
-iteration_patter  <- qs::qread(here_data("input", "iteration", "patter.qs"))
-mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
+unitsets          <- qs::qread(here_data("input", "unitsets.qs"))
+iteration_coa     <- qs::qread(here_data("input", "iteration", "coa.qs"))
+iteration_rsp     <- qs::qread(here_data("input", "iteration", "rsp.qs"))
+iteration_patter  <- qs::qread(here_data("input", "iteration", "patter-tidy.qs"))
 
 
 ###########################
@@ -186,7 +188,11 @@ if (FALSE) {
 terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
 terra::sbar(10000)
 
+
+###########################
 #### Example UDs from each algorithm
+
+#### Define mapfiles
 algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
 mapfiles <-
   data.table(algorithm = factor(algorithms, algorithms),
@@ -196,6 +202,8 @@ mapfiles <-
                            "patter/ac/1/ud/spatstat/h/ud.tif", 
                            "patter/dc/1/ud/spatstat/h/ud.tif", 
                            "patter/acdc/1/ud/spatstat/h/ud.tif"))
+
+#### Collate data.table for mapping
 mapfiles <- 
   CJ(individual_id = c(25, 35, 36), # c(13, 20, 25, 27, 29, 35, 36, 38),
      mapindex      = mapfiles$mapindex
@@ -206,15 +214,21 @@ mapfiles <-
          mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
   select(row, column, mapfile) |> 
   as.data.table()
+
+#### Make maps 
 ggplot_maps(mapfiles, 
             png_args = list(filename = here_fig("analysis", "ud-examples.png"), 
                             height = 4, width = 4, units = "in", res = 800))
 
-#### Overall ACDC UD with tagging locations & angling records
+
+###########################
+#### Overall ACDC UD 
+
+#### Estimate overall UD
 # List tif files
 mapfiles <- 
   iteration_patter |> 
-  filter(dataset == "acdc" & sensitivity == "best") |> 
+  filter(dataset == "ACDC" & sensitivity == "Best") |> 
   mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
   as.data.table()
 # Read UDs
@@ -231,6 +245,8 @@ ud <- terra::app(uds, fun = "sum", na.rm = TRUE) / terra::nlyr(uds)
 stopifnot(all.equal(1, as.numeric(terra::global(ud, "sum", na.rm = TRUE))))
 ud.tif <- tempfile(fileext = ".tif")
 terra::writeRaster(ud, ud.tif)
+
+#### Get tagging locations 
 # Get capture locations for relevant individuals 
 tagsf <- 
   skateids |> 
@@ -240,7 +256,9 @@ tagsf <-
   terra::project(from = "EPSG:4326", to = terra::crs(mpa)) |>
   as.data.frame() |> 
   sf::st_as_sf(coords = c("V1", "V2"), crs = terra::crs(mpa))
-  # Get all angling records (download from 28/11/2024)
+
+#### Get angling records
+# Get all angling records (download from 28/11/2024)
 # (We expect ! NAs introduced by coercion warning here)
 cr <- 
   here_data_raw("skatespotter", "data (15).csv") |> 
@@ -252,6 +270,7 @@ cr <-
   filter(!is.na(lon) & !is.na(lat)) |> 
   filter(lon != 0 & lat != 0) |>
   as.data.table()
+# Check temporal distribution
 range(cr$date)
 p <- 
   ggplot(data.frame(year = lubridate::year(cr$date))) + 
@@ -266,14 +285,16 @@ crxy <-
   terra::crds(df = TRUE)
 crsf <- 
   sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
-# Quick plot
+
+#### Quick plot of UD
 terra::plot(ud)
 points(crxy$x, crxy$y)
 hr <- map_hr_home(ud, .add = TRUE)
 poly <- terra::as.polygons(hr == 1)
 poly <- poly[poly[[1]] == 1]
 poly <- poly |> sf::st_as_sf()
-# ggplot
+
+#### Plot UD with tagging & angling records
 png(here_fig("analysis", "ud-overall.png"), 
     height = 3.5, width = 2.5, units = "in", res = 800)
 p <- 
@@ -287,7 +308,54 @@ p <-
   theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
 dev.off()
 
+
+###########################
 #### Algorithm sensitivity
+
+#### Define mapfiles
+mapfiles <- rbindlist(
+  list(
+    # COA mapfiles
+    iteration_coa |> 
+      filter(individual_id == 36 & month_id == "04-2016") |> 
+      mutate(algorithm = "COA", 
+             sensitivity = factor(delta_t,
+                                  c("2 days", "1 day", "3 days"), 
+                                  labels = c("Best", "AC(-)", "AC(+)")), 
+             mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+      select(row = sensitivity, column = algorithm, mapfile) |>
+      as.data.table(),
+    
+    # RSP mapfiles
+    iteration_rsp |> 
+      filter(individual_id == 36 & month_id == "04-2016")  |> 
+      mutate(algorithm = "RSP", 
+             sensitivity = factor(er.ad,
+                                  c(500, 250, 750), 
+                                  labels = c("Best", "AC(-)", "AC(+)")), 
+             mapfile = file.path(folder_ud, "dbbmm", "ud.tif")) |> 
+      select(row = sensitivity, column = algorithm, mapfile) |>
+      as.data.table(),
+    # Patter mapfiles
+    iteration_patter |> 
+      filter(individual_id == 36 & month_id == "04-2016") |>
+      mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+      select(row = sensitivity, column = dataset, mapfile) |>
+      as.data.table()
+  )
+) |>
+  # (optional) Swap rows and columns
+  mutate(row0 = row, column0 = column, 
+         row = column0, column = row0) |> 
+  as.data.table()
+
+#### Make maps
+# If sensitivity (row) by algorithm (column), use: height = 6, width = 3, 
+# If algorithm (row) by sensitivity (column), use: height = 5, width = 5
+head(mapfiles)
+ggplot_maps(mapdt = mapfiles, 
+            png_args = list(filename = here_fig("analysis", "ud-sensitivity.png"), 
+                                       height = 5, width = 5, units = "in", res = 800))
 
 
 ###########################
