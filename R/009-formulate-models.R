@@ -54,9 +54,11 @@ cols        <- c("black", "red", "blue")
 #### Resting
 
 #### Define parameters
+# NB:mobility should have been defined as:
+# c(1095, 1095 * tdeflate, 1095 * tinflate)
 pmovement_rest <- data.table(k1 = c(0, 0, 0), 
                              theta1 = c(5, 5, 5), 
-                             mobility = c(1095, 990, 1125))
+                             mobility = c(1095, 1095 * tdeflate, 1095 * tinflate))
 p       <- copy(pmovement_rest)
 p$label <- c("Best-guess", "Restrictive", "Flexible")
 
