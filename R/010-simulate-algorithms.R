@@ -979,7 +979,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (FALSE) {
+if (TRUE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1113,13 +1113,15 @@ if (FALSE) {
 }
 
 # Checks
-iteration |> 
-  filter(unit_id == 1L & dataset == "dc" & iter == 1L) |>
-  select(parameter_id, sensitivity, folder_coord, folder_ud) |> 
-  as.data.table()
-
-list.files("data/output/simulation/1/patter/dc/2/1/coord")
-list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
+if (FALSE) {
+  iteration |> 
+    filter(unit_id == 1L & dataset == "dc" & iter == 1L) |>
+    select(parameter_id, sensitivity, folder_coord, folder_ud) |> 
+    as.data.table()
+  
+  list.files("data/output/simulation/1/patter/dc/2/1/coord")
+  list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
+}
 
 
 ###########################
@@ -1134,7 +1136,7 @@ list.files("data/output/simulation/1/patter/dc/2/1/ud", recursive = TRUE)
 # ... between the first and last detections for comparability to heuristic algorithms
 # (& re-express simulated patterns over the same timeline)
 
-if (TRUE) {
+if (FALSE) {
   
   #### Tidy iteration
   # Copy
@@ -1478,91 +1480,95 @@ if (FALSE) {
 ###########################
 #### Maps synthesis
 
-#### Combine ME datasets
-skill <- 
-  rbindlist(
-    list(
-      qs::qread(here_data("output", "simulation-summary", "me-null.qs")),
-      qs::qread(here_data("output", "simulation-summary", "me-coa.qs")),
-      qs::qread(here_data("output", "simulation-summary", "me-rsp.qs")),
-      # qs::qread(here_data("output", "simulation-summary", "me-patter-pou.qs"))
-      # Use spatstat for improved representation of patter patterns
-      qs::qread(here_data("output", "simulation-summary", "me-patter-spatstat.qs"))
+if (FALSE) {
+  
+  #### Combine ME datasets
+  skill <- 
+    rbindlist(
+      list(
+        qs::qread(here_data("output", "simulation-summary", "me-null.qs")),
+        qs::qread(here_data("output", "simulation-summary", "me-coa.qs")),
+        qs::qread(here_data("output", "simulation-summary", "me-rsp.qs")),
+        # qs::qread(here_data("output", "simulation-summary", "me-patter-pou.qs"))
+        # Use spatstat for improved representation of patter patterns
+        qs::qread(here_data("output", "simulation-summary", "me-patter-spatstat.qs"))
+      )
     )
-  )
-
-#### Visualise overall map skill (ME ~ algorithm)
-png(here_fig("simulation", "me.png"), 
-    height = 3, width = 5, units = "in", res = 600)
-skill |> 
-  filter(sensitivity == "Best") |>
-  ggplot() + 
-  geom_violin(aes(algorithm, me, fill = algorithm), 
-              linewidth = 0.25, 
-              scale = "count") +
-  scale_y_continuous(
-    limits = c(0, 1.7e-5),
-    expand = c(0, 0),
-    labels = prettyGraphics::sci_notation) + 
-  scale_fill_manual(values = col_all) + 
-  xlab("Algorithm") + 
-  ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
-  labs(fill = "Algorithm") +
-  theme_bw() +
-  theme(panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank(), 
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10))) 
-dev.off()
-
-#### Visualise map skill sensitivity for selected_paths
-# For Null, COA, RSP  : 1 point per panel
-# For AC, DC, ACDC    : 3 points per panel (three iterations)
-png(here_fig("simulation", "me-sensitivity.png"), 
-    height = 5, width = 12, units = "in", res = 600)
-skill |> 
-  filter(unit_id %in% selected_paths) |> 
-  as.data.table() |>
-  ggplot() + 
-  geom_jitter(aes(algorithm, me, fill = algorithm), 
-              width = 0.2,
-             shape = 21) + 
-  scale_fill_manual(values = col_all) + 
-  scale_y_continuous(labels = prettyGraphics::sci_notation) + 
-  xlab("Algorithm") + 
-  ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
-  labs(fill = "Algorithm") +
-  facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
-  theme_bw() +
-  theme(panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank(), 
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)), 
-        axis.text.x = element_text(angle = 45, hjust = 1))
-dev.off()
-
-#### Summary
-skill_summary <- 
+  
+  #### Visualise overall map skill (ME ~ algorithm)
+  png(here_fig("simulation", "me.png"), 
+      height = 3, width = 5, units = "in", res = 600)
   skill |> 
-  group_by(algorithm) |>
-  summarise(med = median(me, na.rm = TRUE), 
-            sd = sd(me, na.rm = TRUE)) |> 
-  filter(algorithm != "Null") |>
-  mutate(type = case_when(
-    algorithm %in% c("COA", "RSP") ~ "heuristic",
-    algorithm %in% c("AC", "DC", "ACDC") ~ "particle"
-  )) 
-
-skill_summary$med[1] / skill_summary$med[3:5]
-skill_summary$med[2] / skill_summary$med[3:5]
-skill_summary$sd[1] / skill_summary$sd[3:5]
-skill_summary$sd[2] / skill_summary$sd[3:5]
+    filter(sensitivity == "Best") |>
+    ggplot() + 
+    geom_violin(aes(algorithm, me, fill = algorithm), 
+                linewidth = 0.25, 
+                scale = "count") +
+    scale_y_continuous(
+      limits = c(0, 1.7e-5),
+      expand = c(0, 0),
+      labels = prettyGraphics::sci_notation) + 
+    scale_fill_manual(values = col_all) + 
+    xlab("Algorithm") + 
+    ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
+    labs(fill = "Algorithm") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10))) 
+  dev.off()
+  
+  #### Visualise map skill sensitivity for selected_paths
+  # For Null, COA, RSP  : 1 point per panel
+  # For AC, DC, ACDC    : 3 points per panel (three iterations)
+  png(here_fig("simulation", "me-sensitivity.png"), 
+      height = 5, width = 12, units = "in", res = 600)
+  skill |> 
+    filter(unit_id %in% selected_paths) |> 
+    as.data.table() |>
+    ggplot() + 
+    geom_jitter(aes(algorithm, me, fill = algorithm), 
+                width = 0.2,
+                shape = 21) + 
+    scale_fill_manual(values = col_all) + 
+    scale_y_continuous(labels = prettyGraphics::sci_notation) + 
+    xlab("Algorithm") + 
+    ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
+    labs(fill = "Algorithm") +
+    facet_grid(unit_id ~ sensitivity, scales = "free_x") + 
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  dev.off()
+  
+  #### Summary
+  skill_summary <- 
+    skill |> 
+    group_by(algorithm) |>
+    summarise(med = median(me, na.rm = TRUE), 
+              sd = sd(me, na.rm = TRUE)) |> 
+    filter(algorithm != "Null") |>
+    mutate(type = case_when(
+      algorithm %in% c("COA", "RSP") ~ "heuristic",
+      algorithm %in% c("AC", "DC", "ACDC") ~ "particle"
+    )) 
+  
+  skill_summary$med[1] / skill_summary$med[3:5]
+  skill_summary$med[2] / skill_summary$med[3:5]
+  skill_summary$sd[1] / skill_summary$sd[3:5]
+  skill_summary$sd[2] / skill_summary$sd[3:5]
+  
+}
 
 
 ###########################
 #### Residency synthesis 
 
-if (TRUE) {
+if (FALSE) {
   
   #### Combine residency datasets
   residency <- 
