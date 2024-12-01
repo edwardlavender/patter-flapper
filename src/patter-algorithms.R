@@ -198,19 +198,27 @@ pf_smoother_wrapper <- function(sim) {
   pfile   <- "coord-smo.qs"
   dfile   <- "data-smo.qs"
   
+  # Initialise variables (assume success)
+  success     <- TRUE
+  error       <- NA_character_
+  
   # Run smoother
   t1      <- Sys.time()
-  pout    <- pf_smoother_two_filter(.n_particle = 500L,
-                                    .verbose = TRUE)
-  t2 <- Sys.time()
+  pout    <- tryCatch(pf_smoother_two_filter(.n_particle = 500L, .verbose = TRUE), 
+                      error = function(e) e)
+  t2      <- Sys.time()
+  time    <- secs(t2, t1)
+  if (inherits(pout, "error")) {
+    success <- FALSE
+    error   <- pout$message 
+  } 
   
   # Collect success statistics
-  time <- secs(t2, t1)
   dout <- data.table(id = sim$index, 
                      method = "particle", 
                      routine = "smo", 
-                     success = TRUE, 
-                     error = NA_character_, 
+                     success = success, 
+                     error = error, 
                      time = time)
   
   # Write outputs
