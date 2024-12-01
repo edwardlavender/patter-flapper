@@ -204,7 +204,7 @@ pf_smoother_wrapper <- function(sim) {
   
   # Run smoother
   t1      <- Sys.time()
-  pout    <- tryCatch(pf_smoother_two_filter(.n_particle = 500L, .verbose = TRUE), 
+  pout    <- tryCatch(pf_smoother_two_filter(.n_particle = 1000L, .verbose = TRUE), 
                       error = function(e) e)
   t2      <- Sys.time()
   time    <- secs(t2, t1)
