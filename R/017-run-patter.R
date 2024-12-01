@@ -24,6 +24,7 @@ dv::src()
 #### Load data 
 if (!patter:::os_linux()) {
   map <- terra::rast(here_data("spatial", "bathy.tif"))
+  coast <- qreadvect(here_data("spatial", "coast.qs"))
 }
 pars              <- qs::qread(here_data("input", "pars.qs"))
 iteration         <- qs::qread(here_data("input", "iteration", "patter.qs"))
@@ -244,6 +245,7 @@ iteration[, sensitivity := factor(sensitivity,
                                              "DC(-)", "DC(+)"))] 
 qs::qsave(iteration, here_data("input", "iteration", "patter-tidy.qs"))
 
+
 ###########################
 #### Convergence 
 
@@ -295,6 +297,12 @@ dev.off()
 
 
 ###########################
+#### Diagnostics
+
+# TO DO
+
+
+###########################
 #### Mapping (~1 min)
 
 if (FALSE) {
@@ -328,6 +336,64 @@ if (FALSE) {
   })
   
 }
+
+
+###########################
+#### Geographic uncertainty
+
+#### (1) Simplify coast for speed
+coast_s <- terra::simplifyGeom(coast, tolerance = 100)
+
+#### (2) Test method
+# Sample points 
+pxy <- terra::spatSample(map, size = 100, xy = TRUE, na.rm = TRUE)
+# Compute MCP + cut out coast
+mcp <- terra::convHull(terra::vect(cbind(pxy$x, pxy$y), crs = terra::crs(map)))
+mcp <- terra::erase(mcp, coast_s)
+# Visual check
+terra::plot(map)
+points(pxy$x, pxy$y)
+terra::lines(mcp)
+# Compute area spanned by MCP
+terra::expanse(mcp, unit = "km")
+
+#### (3) Implementation
+tic()
+particle_mcps <- 
+  cl_lapply(split(iteration, iteration$index), .cl = 10L, .fun = function(d) {
+    # d <- iteration[1, ]
+    print(d$index)
+    if (file.exists(d$file_coord)) {
+      # Read particles 
+      pxy <- qs::qread(d$file_coord)$states
+      # Compute area of MCP by timestep & return data.table (~1.5 mins)
+      cl_lapply(split(pxy, pxy$timestep), function(pxy_for_t) {
+        # pxy_for_t <- pxy[timestep == 3L, ]
+        if (FALSE) {
+          terra::plot(map)
+          points(pxy_for_t$x, pxy_for_t$y)
+        }
+        coord_n <- collapse::fnunique(rleid(pxy_for_t$x, pxy_for_t$y))
+        if (coord_n == 1L) {
+          coord_km2 <- 0
+        } else {
+          coord_km2 <- 
+            cbind(pxy_for_t$x, pxy_for_t$y) |> 
+            terra::vect(crs = terra::crs(map)) |> 
+            terra::convHull() |> 
+            terra::erase(coast_s) |>
+            terra::expanse(unit = "km")
+        }
+        data.table(file_coord = d$file_coord[1], 
+                   timestep   = pxy_for_t$timestep[1], 
+                   coord_n    = coord_n,
+                   coord_km2  = coord_km2
+        )
+      }) |> rbindlist()
+    }
+  }) |> rbindlist()
+toc()
+qs::qsave(particle_mcps, here_data("output", "analysis-summary", "particle-mcps.qs"))
 
 
 ###########################
