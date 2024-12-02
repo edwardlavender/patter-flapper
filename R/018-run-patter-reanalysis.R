@@ -46,6 +46,7 @@ if (patter:::os_linux()) {
 julia_connect()
 set_seed()
 # Set map 
+julia_command('Rasters.checkmem!(false);')
 set_map(here_data("spatial", "bathy-5m.tif"))
 # Set vmap & movement model components
 batch <- pars$pmovement$mobility[1]
