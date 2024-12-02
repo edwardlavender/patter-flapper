@@ -276,7 +276,7 @@ mapfiles <-
 
 #### Make maps 
 ggplot_maps(mapfiles, 
-            png_args = list(filename = here_fig("analysis", "ud-examples.png"), 
+            png_args = list(filename = here_fig("analysis", "map-examples.png"), 
                             height = 4, width = 4, units = "in", res = 800))
 
 
@@ -343,7 +343,7 @@ poly <- poly[poly[[1]] == 1]
 poly <- poly |> sf::st_as_sf()
 
 #### Plot UD with tagging & angling records
-png(here_fig("analysis", "ud-overall.png"), 
+png(here_fig("analysis", "map-overall.png"), 
     height = 3.5, width = 2.5, units = "in", res = 800)
 p <- 
   ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
@@ -437,7 +437,7 @@ mapfiles <- rbindlist(
 # If algorithm (row) by sensitivity (column), use: height = 5, width = 5
 head(mapfiles)
 ggplot_maps(mapdt = mapfiles, 
-            png_args = list(filename = here_fig("analysis", "ud-sensitivity.png"), 
+            png_args = list(filename = here_fig("analysis", "map-sensitivity.png"), 
                                        height = 5, width = 5, units = "in", res = 800))
 
 
@@ -544,7 +544,7 @@ residency |>
 
 #### Visualise residency trends
 head(residency)
-png(here_fig("analysis", "residency-best.png"), 
+png(here_fig("analysis", "residency.png"), 
     height = 6, width = 10, units = "in", res = 600)
 residency |>
   # filter(sensitivity == "Best") |>
