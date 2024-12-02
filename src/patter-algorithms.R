@@ -148,6 +148,7 @@ pf_filter_wrapper <- function(sim, args) {
     success <- julia_eval(glue('p{routine}.convergence'))
   } else {
     error <- pout$message
+    warning(error, immediate. = TRUE, call. = FALSE)
   }
 
   # Visualise outputs
@@ -211,6 +212,7 @@ pf_smoother_wrapper <- function(sim) {
   if (inherits(pout, "error")) {
     success <- FALSE
     error   <- pout$message 
+    warning(error, immediate. = TRUE, call. = FALSE)
   } 
   
   # Collect success statistics
