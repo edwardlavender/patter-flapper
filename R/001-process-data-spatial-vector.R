@@ -179,7 +179,7 @@ wins <- cl_lapply(c(0, 100, 500, 1000, 2000, 5000), function(dmin) {
 })
 qs::qsave(wins, here_data("spatial", "wins.qs"))
 
-# > Wiith dmin <= 1000, we have accurate representation of coastline.
+# > With dmin <= 1000, we have accurate representation of coastline.
 # > With dmin = 2000, we start to see the effects of rounding 
 # > (without further speedup in UD estimation). 
 # > With dmin = 5000, we have too much smoothing of coastline. 
