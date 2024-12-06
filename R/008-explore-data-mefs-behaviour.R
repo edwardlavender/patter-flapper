@@ -39,6 +39,7 @@ archival[, state := get_mvt_resting(copy(archival), fct = "fct")]
 resting <- duration_state(archival, fct = "fct", state = 0L)
 # Duration of active behaviour 
 active <- duration_state(archival, fct = "fct", state = 1L)
+# > NB: Duration here is the number of two-min time steps for which the behaviour was maintained
 
 #### Summarises
 # Basic stats on the proportions of time spent resting versus active by individual
