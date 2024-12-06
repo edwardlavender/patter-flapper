@@ -935,7 +935,7 @@ nrow(iteration_patter)
 
 #### Add supporting columns
 # Update np
-nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(5000L, 5000L, 10000L))
+nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(25000L, 25000L, 50000L))
 iteration_patter[, np := nplookup$np[match(dataset, nplookup$dataset)]]
 # sim$month_id is required by estimate_coord_patter() to define the timeline
 iteration_patter[, month_id := "04-2024"]
