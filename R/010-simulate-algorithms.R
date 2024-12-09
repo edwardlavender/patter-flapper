@@ -1301,7 +1301,46 @@ if (FALSE) {
 ###########################
 #### Diagnostics
 
-# TO DO
+#### Extract standard diagnostics (ESS)
+iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+diagnostics <- 
+  cl_lapply(iteration$file_coord, .fun = function(file_coord) {
+    if (file.exists(file_coord)) {
+      diag <- qs::qread(file_coord)$diagnostics
+      diag[, file_coord := file_coord]
+      diag[, .(file_coord, ess, maxlp)]
+    }
+  }, .cl = 10L, .combine = rbindlist)
+# Join iteration and diagnostics
+diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+
+#### Check smoothing success
+diagnostics |> 
+  filter(convergence) |> 
+  group_by(file_coord) |> 
+  summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
+  arrange(desc(nan_perc)) |> 
+  as.data.table()
+
+#### Examine ESS
+# Visualise histogram of ESS for 'best' simulations 
+diagnostics |> 
+  filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+  ggplot() + 
+  geom_histogram(aes(ess), bins = 500) + 
+  scale_y_continuous(expand = c(0, 0)) + 
+  xlab("ESS") + ylab("Frequency") + 
+  facet_wrap(~dataset) +
+  theme_bw() + 
+  theme(panel.grid = element_blank()) 
+# Compute summary statistics
+diagnostics |> 
+  filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+  group_by(dataset) |>
+  summarise(mean(ess, na.rm = TRUE), 
+            median(ess, na.rm = TRUE),
+            quantile(ess, na.rm = TRUE)) |> 
+  as.data.table()
 
 
 ###########################
