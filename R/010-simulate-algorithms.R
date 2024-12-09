@@ -67,7 +67,7 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 #### Set up algorithms 
 
 #### Julia set up
-if (JULIA_SESSION) {
+if (Sys.getenv("JULIA_SESSION") == "TRUE") {
   julia_connect()
   set_seed()
   set_model_move_components()
@@ -95,7 +95,7 @@ head(moorings)
 
 #### Flag moorings in MPA
 # The moorings_in_mpa dataset is used to compute detection days
-if (!JULIA_SESSION) {
+if (Sys.getenv("JULIA_SESSION") == "FALSE") {
   
   # Visualise receivers in MPA
   terra::plot(map)
@@ -378,7 +378,7 @@ if (FALSE) {
 #### Detection days
 
 #### Estimate residency from detection days
-if (FALSE & !JULIA_SESSION) {
+if (FALSE & Sys.getenv("JULIA_SESSION") == "FALSE") {
   
   residency <- lapply(seq_len(n_path), function(path) {
     
@@ -1091,7 +1091,7 @@ if (FALSE) {
   #                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
   
   #### Estimate UDs
-  if (FALSE & !JULIA_SESSION) {
+  if (FALSE & Sys.getenv("JULIA_SESSION") == "FALSE") {
     
     #### Clean up
     # Clean up folders
