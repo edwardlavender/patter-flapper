@@ -1,4 +1,4 @@
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
 
 #' Estimate residency from coordinates (particles)
 lapply_estimate_residency_coord <- 

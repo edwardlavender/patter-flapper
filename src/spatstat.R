@@ -1,7 +1,7 @@
 #' simplify.owin.trial()
 
 # Smoothing the window improves UD estimation speed
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
 
 # We visualise different window smoothnesses
 # And test how long UD fitting takes with a sample of data

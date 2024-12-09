@@ -1,4 +1,4 @@
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   
 #' Estimate UDs via pou iteratively
 lapply_estimate_ud_pou <- function(iteration, 

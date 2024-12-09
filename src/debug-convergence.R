@@ -1,4 +1,4 @@
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   
   #' Animate particles from the filter
   #' @param .sim The data.table row

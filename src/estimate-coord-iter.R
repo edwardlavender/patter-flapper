@@ -1,4 +1,4 @@
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
  
   #' Estimate COAs iteratively
   lapply_estimate_coord_coa <- function(iteration, datasets) {

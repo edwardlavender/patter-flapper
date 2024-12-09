@@ -1,4 +1,4 @@
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
 
 #' Set par parameters
 set_par <- function(...) {

@@ -12,7 +12,7 @@ library(spatstat)
 library(tictoc)
 
 # terra options
-if (!patter:::os_linux()) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   op <- options(terra.pal = rev(terrain.colors(256)))
   if (Sys.info()["nodename"] == "MCC02XT0AZJGH5") {
     tmpdir <- "/Volumes/My Book/projects/eawag/patter-flapper/data-raw/temporary"

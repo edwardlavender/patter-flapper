@@ -44,13 +44,19 @@ simulate_behaviour <- function(timeline) {
   span  <- 1
   while (span < length(timeline)) {
     
-    # Simulate the number of time steps for which the current state is maintained
+    # Simulate the number of two-minute time steps for which the current state is maintained
     # * These parameters are based on explore-data-mefs-behaviour.R
     if (beh_state == 1L) {
       z <- rgamma(n = 1L, shape = 0.730, rate = 0.163)
     } else {
       z <- rgamma(n = 1L, shape = 0.960, rate = 0.168)
     }
+    
+    # Round Gamma distributions 
+    # (optional) TO DO
+    # * round() is sufficient here 
+    # * plyr::round_any(z, 2) is left for historical reasons
+    # * (It won't make much difference)
     z <- plyr::round_any(z, 2)
     
     # Record duration
