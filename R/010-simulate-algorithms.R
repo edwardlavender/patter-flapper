@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-JULIA_SESSION <- FALSE
+Sys.getenv("JULIA_SESSION") == "FALSE"
 
 #### Essential packages
 dv::src()
@@ -50,7 +50,7 @@ if (JULIA_SESSION & patter:::os_linux()) {
 }
 
 #### Load data 
-if (!patter:::os_linux() | !JULIA_SESSION) {
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   map      <- terra::rast(here_data("spatial", "bathy.tif"))
   ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
   ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
@@ -1064,7 +1064,7 @@ if (FALSE) {
     qs::qread(file.path(iteration_trial$folder_coord[1], "data-fwd.qs"))
     
     # Compare output
-    if (!patter:::os_linux()) {
+    if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
       here_data("input", "simulation", "1", "ud.tif") |> terra::rast() |> terra::plot()
       map_pou(.map = terra::rast(here_data("input", "spatial", "map.tif")),
               .coord = file.path(iteration$folder_coord[1], "coord-smo.qs"))
