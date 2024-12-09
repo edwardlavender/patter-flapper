@@ -49,7 +49,8 @@ if (patter:::os_linux()) {
 }
 
 #### Load data 
-if (!patter:::os_linux()) {
+JULIA_SESSION <- FALSE
+if (!patter:::os_linux() | !JULIA_SESSION) {
   map      <- terra::rast(here_data("spatial", "bathy.tif"))
   ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
   ud_null  <- terra::rast(here_data("spatial", "ud-null.tif"))
@@ -66,10 +67,12 @@ pars     <- qs::qread(here_data("input", "pars.qs"))
 #### Set up algorithms 
 
 #### Julia set up
-julia_connect()
-set_seed()
-set_model_move_components()
-# set_ModelObsCaptureContainer()
+if (JULIA_SESSION) {
+  julia_connect()
+  set_seed()
+  set_model_move_components()
+  # set_ModelObsCaptureContainer()
+}
 
 #### Define simulation timeline
 n_path         <- 100L
@@ -92,7 +95,7 @@ head(moorings)
 
 #### Flag moorings in MPA
 # The moorings_in_mpa dataset is used to compute detection days
-if (!patter:::os_linux()) {
+if (!JULIA_SESSION) {
   
   # Visualise receivers in MPA
   terra::plot(map)
@@ -375,7 +378,7 @@ if (FALSE) {
 #### Detection days
 
 #### Estimate residency from detection days
-if (FALSE & !patter:::os_linux()) {
+if (FALSE & !JULIA_SESSION) {
   
   residency <- lapply(seq_len(n_path), function(path) {
     
@@ -979,7 +982,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (TRUE) {
+if (FALSE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1088,7 +1091,7 @@ if (TRUE) {
   #                    extract_coord = function(s) s$states[sample.int(1000, size = .N, replace = TRUE), ])
   
   #### Estimate UDs
-  if (!patter:::os_linux()) {
+  if (FALSE & !JULIA_SESSION) {
     
     #### Clean up
     # Clean up folders
