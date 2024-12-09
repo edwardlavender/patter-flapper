@@ -45,7 +45,7 @@ Sys.getenv("JULIA_SESSION") == "FALSE"
 dv::src()
 library(spatstat)
 library(ggplot2)
-if (JULIA_SESSION & patter:::os_linux()) {
+if (patter:::os_linux() & Sys.getenv("JULIA_SESSION") == "TRUE") {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 
