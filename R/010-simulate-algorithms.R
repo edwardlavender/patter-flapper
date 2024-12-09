@@ -39,17 +39,17 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
+JULIA_SESSION <- FALSE
 
 #### Essential packages
 dv::src()
 library(spatstat)
 library(ggplot2)
-if (patter:::os_linux()) {
+if (JULIA_SESSION & patter:::os_linux()) {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 
 #### Load data 
-JULIA_SESSION <- FALSE
 if (!patter:::os_linux() | !JULIA_SESSION) {
   map      <- terra::rast(here_data("spatial", "bathy.tif"))
   ud_grid  <- terra::rast(here_data("spatial", "ud-grid.tif"))
