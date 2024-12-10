@@ -213,14 +213,14 @@ tagsf <-
   sf::st_as_sf(coords = c("V1", "V2"), crs = terra::crs(mpa))
 # Write to file
 write.csv(sf::st_coordinates(tagsf), 
-          here_data_raw("tagging-sites.csv"), 
+          here_data_raw("movement", "tagging-sites.csv"), 
           row.names = FALSE)
 
 #### Get receiver locations
 moorings |>
   select(receiver_x, receiver_y) |> 
   as.data.frame() |> 
-  write.csv(here_data_raw("moorings.csv"), 
+  write.csv(here_data_raw("movement", "moorings.csv"), 
             row.names = FALSE)
 
 #### (deprecated) Plot study area via ggplot2
@@ -309,7 +309,7 @@ terra::writeRaster(ud, ud.tif)
 # Get all angling records (download from 28/11/2024)
 # (We expect ! NAs introduced by coercion warning here)
 cr <- 
-  here_data_raw("skatespotter", "data (15).csv") |> 
+  here_data_raw("movement", "skatespotter", "data (15).csv") |> 
   read.csv() |> 
   select(individual_id, date = date_captured, lon = longitude, lat = latitude) |> 
   mutate(date = as.Date(date), 
