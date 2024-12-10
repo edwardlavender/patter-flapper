@@ -2,13 +2,13 @@
 
 # Patter.jl installation -------------------------------------------------------
 
-# Windows: set up the number of threads
-Threads.nthreads()
-
-# Install Patter.jl from the DEV branch
-julia
-using Pkg
-Pkg.add(url = "https://github.com/edwardlavender/Patter.jl#dev")
+# # Windows: set up the number of threads
+# Threads.nthreads()
+# 
+# # Install Patter.jl from the DEV branch
+# julia
+# using Pkg
+# Pkg.add(url = "https://github.com/edwardlavender/Patter.jl#dev")
 
 
 # patter installation ----------------------------------------------------------
