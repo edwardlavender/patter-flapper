@@ -19,11 +19,12 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
+Sys.setenv(JULIA_SESSION = "TRUE")
 dv::src()
 
 #### Load data 
-if (!patter:::os_linux()) {
-  map <- terra::rast(here_data("spatial", "bathy.tif"))
+if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
+  map   <- terra::rast(here_data("spatial", "bathy.tif"))
   coast <- qreadvect(here_data("spatial", "coast.qs"))
 }
 pars              <- qs::qread(here_data("input", "pars.qs"))
@@ -40,7 +41,7 @@ col_sensitivity   <- readRDS(here_data("graphics", "col_sensitivity.rds"))
 #### Run algorithm 
 
 #### Julia Set up
-if (patter:::os_linux()) {
+if (patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 julia_connect()
@@ -192,7 +193,7 @@ sapply(split(iteration, seq_row(iteration)), function(d) {
 }) |> unlist() |> unique()
 
 #### Estimate UDs
-if (FALSE && !patter:::os_linux()) {
+if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
   
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
