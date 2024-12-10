@@ -1,5 +1,5 @@
 ---
-title: Particle filtering reconstructs patterns of space use in flapper skate (_Dipturus intermedius_)
+title: Animal tracking for conservation with particle algorithms
 author: Edward Lavender*
 output: github_document
 ---
@@ -10,80 +10,80 @@ output: github_document
 
 # Introduction
 
-This repository reconstructs patterns of space use for a Critically Endangered elasmobranch in a passive acoustic telemetry system. In 2016--17, we tagged flapper skate (_Dipturus intermedius_) with acoustic and archival tags in a Marine Protected Area off the west coast of Scotland as part of the Movement Ecology of Flapper Skate (MEFS) project. In 2023, we developed a process-based framework for reconstructing movement patterns and patterns of space use, motivated by our work in this system (Lavender et al., 2023). More recently, we refined this framework (Lavender et al., in prep) and developed the [`patter`](https://github.com/edwardlavender/patter) [R](https://www.r-project.org/) package to support its application. In this repository, we apply the methodology to reconstruct patterns of space use exhibited by tagged individuals in relation to the management zones within the MPA. 
+This repository reconstructs movement patterns of a Critically Endangered elasmobranch in a passive acoustic telemetry system. In 2016--17, we tagged flapper skate (_Dipturus intermedius_) with acoustic and archival tags in a Marine Protected Area (MPA) off the west coast of Scotland as part of the Movement Ecology of Flapper Skate (MEFS) project. In 2023, we developed a process-based framework for reconstructing movement patterns and patterns of space use, motivated by our work in this system (Lavender et al., [2023](https://doi.org/10.1111/2041-210X.14193)). More recently, we refined this framework, formalising the methodology in the language of state-space modelling, with model inference implemented using particle algorithms (Lavender et al., [2024](https://doi.org/10.1101/2024.09.16.613223)). We developed the [`patter`](https://github.com/edwardlavender/patter) package to support its application (Lavender et al., [2024](https://doi.org/10.1101/2024.07.30.605733)). The package is implemented in [R](https://www.r-project.org/) and wraps a high-performance [Julia](http://julialang.org) backend. In this repository, we apply the methodology to reconstruct movements, patterns of space use and residency exhibited by tagged individuals in relation to the management zones within the MPA. 
 
 Methods are written in [R](https://www.r-project.org/) and organised as an [RStudio](https://www.rstudio.com/) [Project](https://r4ds.had.co.nz/workflow-projects.html). Key elements of the workflow include:
 
 * **Data processing.** We collate data from tagged animals and process data as required by the [`patter`](https://github.com/edwardlavender/patter) package. 
-* **Algorithm set up.** We prepare inputs for the analysis. 
-* **Algorithm implementation.** We use forward-filtering backward-sampling algorithms to reconstruct movement paths and patterns of space use. 
-* **Mapping and analyses.** We map and analyse patterns of space use with respect to the management regions within the MPA. 
+* **Simulations.** We conduct a simulation-based analysis to evaluate algorithm performance, sensitivity and reproducibility. 
+* **Real-world analyses.** We analyse real-world movement patterns from tagged flapper skate. 
 
 # Description
 
 ## Dependencies
 
-The project was built in [R](https://www.r-project.org/) (version `r paste0(version$major, ".", version$minor)`) in [RStudio](https://www.rstudio.com/) and implements local dependency management using [`renv`](https://rstudio.github.io/renv/articles/renv.html). This manages the installation of the [`dv`](https://github.com/edwardlavender/dv) package (from [GitHub](https://github.com/)), as well as other packages from the [Comprehensive R Archive Network](https://cran.r-project.org/). The first time the project is opened, [`renv`](https://rstudio.github.io/renv/articles/renv.html) can be used to regenerate the local project library, as described in `renv.lock` (via `.Rprofile` and `renv/activate.R`). 
+The project was built in [R](https://www.r-project.org/) (version `r paste0(version$major, ".", version$minor)`) in [RStudio](https://www.rstudio.com/) and implements local dependency management using [`renv`](https://rstudio.github.io/renv/articles/renv.html). 
 
 ## Directories
 
 The project follows a standardised structure encouraged by the [`dv`](https://github.com/edwardlavender/dv) package. The high-level structure was generated via `dv::use_template_proj()`. The contents as follows:
 
-1.  **`renv/`** implements local dependency management.
+1.  **`data-raw/`** contains 'raw' data:
 
-2.  **`data-raw/`** contains 'raw' data:
-
-    -   `bathymetry/` contains bathymetry data for the study area, from Howe et al. (2015) and [Digimap](https://digimap.edina.ac.uk); 
-    -   `coast/` contains coastline data from [Digimap](https://digimap.edina.ac.uk);
-    -   `mpa/` contains MPA boundary data;
-    -   `sediments/` contains sediment data, from Howe et al. (2015) and Boswarva et al. (2018);
+    -   `bathymetry/` contains bathymetry data for the study area, from Howe et al. ([2015](https://doi.org/10.1017/S1755691015000146)), [Admiralty](https://www.admiralty.co.uk/access-data/seabed-mapping) and  [Digimap](https://digimap.edina.ac.uk); 
+    -   `boundaries/` contains boundaries of the study site, from `process-data-spatial-*.R`;
+    -   `coast/` contains coastline data, from [Digimap](https://digimap.edina.ac.uk);
+    -   `movement/` contains raw movement datasets, from the MEFS project and [Skatespotter](https://skatespotter.sams.ac.uk); 
+    -   `mpa/` contains MPA boundary data, from J. Thorburn;
     <br/>
 
-3.  **`data/`** contains processed data and results:
+2.  **`data/`** contains processed data and results:
 
-    -   `example/` contains outputs for an example analysis (see `example-workflow.R`);
+    -   `graphics/` contains graphical settings (recorded by scripts);
     -   `input/` contains algorithm inputs;
     -   `inst/` contains [RStudio](https://www.rstudio.com/) [Project](https://r4ds.had.co.nz/workflow-projects.html)-management files generated by [`dv`](https://github.com/edwardlavender/dv):
         -   `dependencies.rds` is a list of dependencies;
         -   `session-info.rds` is a record of information about the [R](https://www.r-project.org/) Session;
         -   `tree.rds` is a record of the project directory tree;
-    -   `mefs` contains acoustic and archival datasets (see `process-data-mefs.R`);
-    -   `output` contains algorithm outputs;
-    -   `spatial/` contains processed spatial datasets (see `process-data-spatial.R`); <br/>
+    -   `output/` contains algorithm outputs;
+    -   `spatial/` contains processed spatial datasets (see `process-data-spatial-*.R`); <br/>
 
-4.  **`R/`** contains scripts for data processing and analysis:
-
-    -   `define-global-param.R` defines global parameters;
-    -   `process-*` scripts implement data processing:
-        -   `process-data-spatial.R` processes spatial data;
-        -   `process-data-mefs.R` process MEFS data;
-    -   `explore-data.R` explores the MEFS data;
-    -   `prepare-patter-*.R`scripts prepare model components:
-        -   `prepare-patter-param.R` defines and validates algorithm parameters;
-        -   `prepare-patter-param-plot.R` plots selected algorithm components;
-        -   `prepare-patter-ac.R` prepares inputs for the AC*PF algorithm;
-        -   `prepare-patter-dc.R` prepares inputs for the *DCPF algorithm;
-        -   `prepare-patter-acdc.R` prepares inputs for the ACDCPF algorithm;
-        -   `prepare-patter-obs.R` prepares multi-individual observation timelines;
-    -   `run-*` scripts run the simulation:
-        -   `run-forward-sim-1.R` runs the forward simulation;
-        -   `run-forward-sim-2.R` reruns selected forward simulations;
-        -   `run-backward-pass.R` runs the backward pass;
-    -   `mapping.R` maps patterns of space;
-
-5. **`src/`** contains supporting [R](https://www.r-project.org/) functions.
-
-6. **`bin/`** contains bash scripts, used to deploy selected routines at scale on an Eawag cluster (`siam-linux20`). 
-
-5.  **`dev/`** contains project-management scripts.
+3.  **`dev/`** contains project-management scripts.
 
     -   `01-dev.R` and `02-clone.R` are standard [`dv`](https://github.com/edwardlavender/dv) scripts:
         -   `01-dev.R` records project set up and development;
         -   `02-clone.R` is used to clone the project (see 'Instructions');
+        -   `*-cluster-*.R` scripts support local cluster setup and management;
 
-6.  **`fig/`** contains figures.
+4.  **`R/`** contains [R](https://www.r-project.org/) scripts for data processing and analysis:
 
-7.  **`doc/`** contains supporting documents.
+    -   `process-*` scripts implement data processing:
+        -   `process-data-spatial-*.R` scripts process spatial data;
+        -   `process-data-mefs-*.R` scripts process MEFS data;
+    -   `explore-*` scripts implement data exploration;
+        -   `explore-data-mefs-*.R` scripts explore the MEFS data;
+    -   `formulate-models.R` formulates models;
+    -   `simulate algorithms.R` runs simulations;
+    -   `prepare-*.R`scripts prepare real-world analyses:
+        -   `prepare-runs` prepares iteration datasets;
+        -   `prepare-xinit-*.R` prepares initial locations;
+    -   `run-*` scripts run real-world analyses:
+        -   `run-coa.R` runs the COA algorithm;
+        -   `run-rsp.R` runs the RSP algorithm;
+        -   `run-patter-trials.R` trials `patter`'s algorithms;
+        -   `run-patter.R` - runs `patter`'s algorithms 
+        -   `run-patter-reanalysis.R` runs a reanalysis;
+        -   `synthesis.R` synthesises results from real-world analyses;
+
+5. **`src/`** contains supporting [R](https://www.r-project.org/) functions.
+
+6.  **`renv/`** implements local dependency management.
+
+7. **`Julia/`** houses the [Julia](http://julialang.org) project. 
+
+8.  **`fig/`** contains figures.
+
+9.  **`doc/`** contains supporting documents.
 
 Note that the `data-raw/`, `data/` (except `data/inst/`), `fig/` and `doc` directories are not provided in the online version of this repository.
 
@@ -91,11 +91,11 @@ Note that the `data-raw/`, `data/` (except `data/inst/`), `fig/` and `doc` direc
 
 Follow the steps described below to clone the project and reproduce the workflow.
 
-1. **Contact us.** Please get in touch if you would like to reproduce the workflow in full. We are unable to publish raw datasets openly here due to copyright and third-party restrictions. [Digimap](https://digimap.edina.ac.uk) datasets are subject to copyright restrictions and acoustic and archival belong to NatureScot and Marine Scotland Science. In addition, in this project, acoustic and archival data were sourced from the [`MEFS`](https://github.com/edwardlavender/MEFS) [R](https://www.r-project.org/) package, which requires authentication for access. 
+1. **Contact us.** Please get in touch if you would like to reproduce the workflow in full. We are unable to publish all raw datasets openly here due to copyright and third-party restrictions. [Digimap](https://digimap.edina.ac.uk) datasets are subject to copyright restrictions and acoustic and archival belong to NatureScot and Marine Scotland Science. In addition, in this project, acoustic and archival data were sourced from the [`MEFS`](https://github.com/edwardlavender/MEFS) [R](https://www.r-project.org/) package, which requires authentication for access. 
 
 2.  **Clone the project** via GitHub. Follow the instructions in `dev/02-clone.R` to install packages and directories:
 
-    -   **Packages.** Work through `dev/02-clone.R` to use [`renv`](https://rstudio.github.io/renv/articles/renv.html) to regenerate the local project library. Authentication is required for [`MEFS`](https://github.com/edwardlavender/MEFS). Packages can also be manually reinstalled via `02-clone.R`.
+    -   **Packages.** Work through `dev/02-clone.R` to use [`renv`](https://rstudio.github.io/renv/articles/renv.html) to regenerate the local project library. Packages can also be manually reinstalled via `02-clone.R`. Contact us for the development versions of [R](https://www.r-project.org/) and [Julia](http://julialang.org) libraries. Authentication is required for [`MEFS`](https://github.com/edwardlavender/MEFS). 
     -   **Directories.** Rebuild the project directory tree, via `dv::use_template_proj()` and `dv::use_template_tree()`.
 
 3.  **Source project files** (namely, raw data) from the authors. 
@@ -105,19 +105,22 @@ Follow the steps described below to clone the project and reproduce the workflow
 5. **Warnings**:
 
     * [`patter`](https://github.com/edwardlavender/patter) routines. We continued to revise the [`patter`](https://github.com/edwardlavender/patter) package during the development of this repository, so some routines may no longer work with the recorded package version. 
-    * Clusters. Selected routines (e.g. in `bin/`) are designed for specific clusters and require adaptation for other machines.  
+    * Clusters. Selected routines were designed for specific clusters and may require adaptation for other machines.  
 
 # References
-
-Boswarva, K. et al. (2018). Improving marine habitat mapping using high-resolution acoustic data; a predictive habitat map for the Firth of Lorn, Scotland. Continental Shelf Research, 168, 39–47. https://doi.org/10.1016/j.csr.2018.09.005
 
 Howe, J. et al. (2014). The seabed geomorphology and geological structure of the Firth of Lorn, western Scotland, UK, as revealed by multibeam echo-sounder survey. Earth and Environmental Science Transactions of the Royal Society of Edinburgh, 105(4), 273–284. https://doi.org/10.1017/S1755691015000146
 
 Lavender, E. et al. (2023). An integrative modelling framework for passive acoustic telemetry. Methods in Ecology and Evolution, 14, 2626–2638. https://doi.org/10.1111/2041-210X.14193
 
+Lavender, E. et al. (2024a). Particle algorithms for animal movement modelling in autonomous receiver
+networks. bioRxiv, https://doi.org/10.1101/2024.09.16.613223
+
+Lavender, E. et al. (2024b). patter: particle algorithms for animal tracking in R and Julia. bioRxiv, https://doi.org/10.1101/2024.07.30.605733
+
 # Citation
 
-Lavender, E. et al. (in prep). Particle filtering reconstructs patterns of space use in a Critically Endangered elasmobranch.
+Lavender, E. et al. (in prep). 
 
 # Code of conduct
 

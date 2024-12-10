@@ -1,4 +1,14 @@
-#' @title {Tools4ETS} imports & extensions
+#' {Tools4ETS} imports & extensions
+
+# Convert Date to POSIXct
+date_to_POSIXct <- function(x) {
+  as.POSIXct(paste(x, "00:00:00"), tz = "UTC")
+}
+
+# Duration (secs)
+secs <- function(time1, time2) {
+  as.numeric(difftime(time1, time2, units = "secs"))
+}
 
 # Differences
 difference <- function(x2, x1, f = NULL, ...) {
@@ -50,8 +60,29 @@ mmyyrng <- function(mmyy) {
   c(start, end)
 }
 
+# mmyy to date
+as.Date.mmyy <- function(mmyy) {
+  as.Date(paste("01-", mmyy), format = "%d-%m-%Y")
+}
+
 # Examples 
 if (FALSE) {
   lapply(paste0("0", 1:9, "-2016"), mmyyrng)
   lapply(paste0(10:12, "-2016"), mmyyrng)
+}
+
+#' Duration of resting/active behaviour
+
+duration_state <- function(data, fct = NULL, state) {
+  data <- copy(data)
+  if (is.null(fct)) {
+    data[, fct := 1L]
+  }
+  lapply(split(data, data$fct), function(d) {
+    duration <- rle(d$state)
+    duration <- duration$lengths[duration$values == state]
+    data.frame(unit_id = d$fct[1], duration = duration)
+  }) |> rbindlist() |>
+    filter(!is.na(duration)) |> 
+    as.data.table()
 }
