@@ -60,10 +60,12 @@ lapply_estimate_coord_patter <- function(iteration,
   log.txt <- sink_open(log.folder = log.folder, log.txt = log.txt)
   on.exit(sink_close(log.txt), add = TRUE)
   
-  # Print time 
+  # Print time
   print(Sys.time())
+  print(paste("Using", JuliaCall::julia_eval('Threads.nthreads()'), "Julia threads..."))
   tictoc::tic()
   on.exit(tictoc::toc(), add = TRUE)
+  on.exit(print(Sys.time()), add = TRUE)
   
   # Clean up coffee-break directory 
   unlink(list.files(here_data("coffee"), full.names = TRUE))
@@ -77,7 +79,6 @@ lapply_estimate_coord_patter <- function(iteration,
   })
   
   # Close function
-  print(Sys.time())
   if (trial) {
     return(unlist(success))
   }
