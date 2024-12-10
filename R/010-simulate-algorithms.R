@@ -1105,7 +1105,7 @@ if (FALSE) {
     # Define input coordinates
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     
-    #### Estimate UDs via POU (~7 mins)
+    #### Estimate UDs via POU (~20 mins)
     lapply_estimate_ud_pou(iteration = iteration,
                            extract_coord = function(s) s$states,
                            cl = 12L,
@@ -1113,7 +1113,7 @@ if (FALSE) {
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
-    #### Estimate UDs via spatstat (~23 mins)
+    #### Estimate UDs via spatstat (~58 mins)
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
                                 cl = 12L,
@@ -1301,7 +1301,7 @@ if (FALSE) {
 ###########################
 #### Diagnostics
 
-#### Extract standard diagnostics (ESS)
+#### Extract standard diagnostics (ESS) (~2 min)
 iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
 diagnostics <- 
   cl_lapply(iteration$file_coord, .fun = function(file_coord) {
@@ -1336,11 +1336,22 @@ diagnostics |>
 # Compute summary statistics
 diagnostics |> 
   filter(convergence & sensitivity == "Best" & iter == 1L) |> 
-  group_by(dataset) |>
-  summarise(mean(ess, na.rm = TRUE), 
-            median(ess, na.rm = TRUE),
-            quantile(ess, na.rm = TRUE)) |> 
+  # group_by(dataset) |>
+  summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
+  # summarise(mean(ess, na.rm = TRUE), 
+  #           median(ess, na.rm = TRUE),
+  #           quantile(ess, na.rm = TRUE)) |> 
   as.data.table()
+
+# min   mean median   max     sd    IQR   MAD
+# <num>  <num>  <num> <num>  <num>  <num> <num>
+#  1 113.89  40.69  1000 151.16 166.45 55.92
+
+# dataset   min   mean median   max     sd    IQR   MAD
+# <fctr> <num>  <num>  <num> <num>  <num>  <num> <num>
+#   1:      AC     1 116.93  39.64  1000 159.38 165.40 54.26
+# 2:      DC     1  79.72  27.41  1000 103.58 121.04 37.09
+# 3:    ACDC     1 143.62  63.52  1000 172.96 223.27 88.48
 
 
 ###########################
@@ -1468,7 +1479,7 @@ if (FALSE) {
 ###########################
 #### Geographic uncertainty
 
-# TO DO
+# (optional) TO DO
 
 
 ###########################
@@ -1506,7 +1517,7 @@ if (FALSE) {
 
 if (FALSE) {
   
-  # Compute residency (~2 min, 10 cl)
+  # Compute residency (~6 min, 10 cl)
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
   residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
