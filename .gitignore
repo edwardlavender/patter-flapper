@@ -10,7 +10,6 @@ data-raw/
 data/*
 !data/inst
 dev/*-progress-*.R
-dev/*-progress-*.R
 R/deprecated/
 R/dev/
 R/supporting/
