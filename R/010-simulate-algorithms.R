@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-Sys.setenv("JULIA_SESSION" = "TRUE")
+Sys.setenv("JULIA_SESSION" = "FALSE")
 
 #### Essential packages
 dv::src()
@@ -632,15 +632,17 @@ if (FALSE) {
   
   #### Build iteration dataset
   # Define parameters
-  prsp <- data.table(parameter_id = 1:25L, 
+  prsp <- data.table(parameter_id = 1:28L, 
                      er.ad = c(2.5,  # 250 * 0.01, 
                                12.5, # 250 * 0.05, # default
                                25.0,
                                seq(50, 1000, by = 50),
                                1250, 
                                1500, 
-                               1750, 
-                               2000
+                               1750,
+                               2000, 
+                               2500,
+                               3000
                      ))
   # Define dataset
   iteration_rsp <- 
