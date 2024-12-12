@@ -131,7 +131,7 @@ if (FALSE) {
   dirs.create(here_data("input", "simulation", seq_len(n_path)))
 }
   
-# Run simulation (~45 mins)
+# Run simulation (~50 mins)
 if (FALSE) {
   
   #### Simulate data on selected grid
@@ -175,6 +175,15 @@ if (FALSE) {
     
     print(path_id)
 
+    #### Simulate behavioural states 
+    # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
+    behaviour   <- simulate_behaviour(timeline)
+    julia_assign("behaviour", behaviour)
+    
+    #### Define movement model
+    state <- state_flapper
+    update_model_move_components()
+    
     #### Simulate initial 'tagging' location
     # We sample an initial location from the receiver array 
     # This helps to ensure we generate some detections for the COA/RSP/AC*PF algorithms
@@ -188,15 +197,7 @@ if (FALSE) {
     if (model_move_is_crw()) {
       xinit_fwd[, angle := runif(.N) * 2 * pi]
     }
-    
-    #### Simulate behavioural states 
-    # behaviour <- sample(c(1L, 2L), length(timeline), replace = TRUE)
-    behaviour   <- simulate_behaviour(timeline)
-    julia_assign("behaviour", behaviour)
-    
-    #### Define movement model
-    state <- state_flapper
-    update_model_move_components()
+    xinit_fwd[, behaviour := behaviour[1]]
     
     #### Simulate movement path 
     coord_path <- sim_path_walk(.map        = map, 
@@ -206,11 +207,12 @@ if (FALSE) {
                                 .model_move = model_move, 
                                 .n_path     = 1L, 
                                 .plot       = FALSE)
-    xinit_bwd <- coord_path[.N, .(map_value, x, y)]
+    coord_path[, behaviour := as.integer(behaviour)]
+    xinit_bwd <- coord_path[.N, .(map_value, x, y, behaviour)]
     # points(moorings$receiver_x, moorings$receiver_y)
     
     #### Record capture/recapture locations for filter
-    # We assume the capture/recapture locations are known
+    # We assume the capture/recapture locations & behaviour are known
     # Angles are unknown
     xinit_fwd <- lapply(1:1e5L, function(i) {
       xinit_fwd
@@ -238,6 +240,29 @@ if (FALSE) {
     if (any(duplicated(yobs$ModelObsDepthNormalTrunc[[1]]$timestamp))) {
       stop("Simulated depth time series contains duplicated time stamps.")
     }
+    # Check the simulation of step lengths
+    # * Step lengths during 'resting' should be much more restrictive
+    png(here_fig("simulation", "check", paste0("step-lengths-", path_id, ".png")), 
+        height = 5, width = 5, units = "in", res = 150)
+    g <- 
+      coord_path |> 
+      mutate(chunk = rleid(behaviour)) |> 
+      group_by(chunk) |>
+      mutate(length = terra::distance(cbind(x, y), lonlat = FALSE, sequential = TRUE)) |>
+      as_tibble() |> 
+      ggplot() + 
+      geom_histogram(aes(length)) + 
+      facet_wrap(~behaviour) 
+    print(g)
+    dev.off()
+    # Check the assignment of behaviours
+    behaviour_dt <- data.table(timestep = seq_len(length(behaviour)), behaviour)
+    stopifnot(
+      all.equal(
+        coord_path$behaviour,
+        behaviour_dt$behaviour[match(coord_path$timestep, behaviour_dt$timestep)]
+      )
+    )
     
     #### Map path UD 
     # * 13 s 500 pixels 
@@ -455,14 +480,14 @@ if (FALSE) {
   iteration <- copy(iteration_coa)
   if (FALSE) {
     
-    #### Estimate coordinates (~2 s for three paths, ~83 s for 100 paths)
+    #### Estimate coordinates (~120 s for 100 paths)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_coa(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
     lapply_qplot_coord(iteration, "coord.qs")
     
     #### Estimate UDs
-    # Implementation (22 mins, 500 pixels, sigma = bw.h, cl = 10L)
+    # Implementation (1 hr 40 mins, 500 pixels, sigma = bw.h, cl = 10L)
     nrow(iteration)
     lapply_estimate_ud_spatstat(iteration = iteration, 
                                 extract_coord = NULL,
@@ -569,7 +594,7 @@ if (FALSE) {
     select(unit_id, algorithm, sensitivity, iter, me) |> 
     arrange(unit_id, algorithm, sensitivity, iter) |>
     as.data.table()
-  # Check convergence for 'best' simulations (100 %)
+  # Check convergence for 'best' simulations (97 %)
   table(is.na(me$me))
   me |>
     filter(sensitivity == "Best") |> 
@@ -585,7 +610,7 @@ if (FALSE) {
     mutate(file = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
     as.data.table()
   # Compute residency 
-  residency <- lapply_estimate_residency_ud(files = iteration_res$file)
+  residency <- lapply_estimate_residency_ud(files = iteration_res$file[file.exists(iteration_res$file)])
   # Write output
   residency <- 
     left_join(iteration_res, residency, by = "file") |> 
@@ -613,7 +638,9 @@ if (FALSE) {
                                25.0,
                                seq(50, 1000, by = 50),
                                1250, 
-                               1500
+                               1500, 
+                               1750, 
+                               2000
                      ))
   # Define dataset
   iteration_rsp <- 
