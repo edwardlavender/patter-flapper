@@ -301,6 +301,9 @@ behaviour_by_unit <- lapply(archival_by_unit, function(d) {
   
   # Get 'low activity'/resting behaviour
   # * 0 = resting / 1 = active (+ 1)
+  # * The state at time t - 1 is defined by the change in depth from t - 1 to t
+  # * This aligns with the simulation of movements from time t - 1 to t
+  # * ... based on the behaviour over this time period (at t - 1)
   state <- flapper::get_mvt_resting(copy(d)) + 1
   
   # Assume the last state (NA) is active
