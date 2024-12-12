@@ -51,13 +51,8 @@ simulate_behaviour <- function(timeline) {
     } else {
       z <- rgamma(n = 1L, shape = 0.960, rate = 0.168)
     }
-    
     # Round Gamma distributions 
-    # (optional) TO DO
-    # * round() is sufficient here 
-    # * plyr::round_any(z, 2) is left for historical reasons
-    # * (It won't make much difference)
-    z <- plyr::round_any(z, 2)
+    z <- round(z)
     
     # Record duration
     beh_ts[[chunk]] <- data.table(state = beh_state, duration = z)
