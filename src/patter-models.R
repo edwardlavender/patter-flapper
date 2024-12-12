@@ -39,9 +39,9 @@ simulate_behaviour <- function(timeline) {
   beh_state   <- sample(c(1L, 2L), size = 1)
   
   # Simulate subsequent states
-  beh_ts      <- list()
-  chunk <- 1L
-  span  <- 1
+  beh_ts <- list()
+  chunk  <- 1L
+  span   <- 1
   while (span < length(timeline)) {
     
     # Simulate the number of two-minute time steps for which the current state is maintained
