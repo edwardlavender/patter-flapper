@@ -9,8 +9,8 @@ bin/
 data-raw/
 data/*
 !data/inst
-dev/*-progress-MCC02XT0AZJGH5.R
-dev/*-progress-SIA-USER024-P.R
+dev/*-progress-*.R
+dev/*-progress-*.R
 R/deprecated/
 R/dev/
 R/supporting/
