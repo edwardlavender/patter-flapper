@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-Sys.setenv("JULIA_SESSION" = "FALSE")
+Sys.setenv("JULIA_SESSION" = "TRUE")
 
 #### Essential packages
 dv::src()
@@ -675,7 +675,7 @@ if (FALSE) {
   iteration <- copy(iteration_rsp)
   if (FALSE) {
     
-    #### Estimate coordinates (~1.5 hours)
+    #### Estimate coordinates (~1 hour 40 min)
     iteration[, file_coord := file.path(folder_coord, "coord.qs")]
     lapply_estimate_coord_rsp(iteration = iteration, datasets = datasets)
     # (optional) Examine selected coords
@@ -691,7 +691,7 @@ if (FALSE) {
                        })
     
     #### Estimate UDs
-    # Implementation (5 hr, 10 cl)
+    # Implementation (5.1 hr, 10 cl)
     lapply_estimate_ud_dbbmm(iteration = iteration, 
                              cl = 10L, 
                              plot = FALSE)
@@ -735,7 +735,7 @@ if (FALSE) {
     }
     return(out)
   }) |> rbindlist()
-  # We observe errors with er.ad >= 950 m: 
+  # We observe errors with er.ad >= 900 m: 
   unique(rspinfo$error)
   min(rspinfo$er.ad[!is.na(rspinfo$error)])
   # Errors are apparent at larger values:
