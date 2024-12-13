@@ -1375,9 +1375,6 @@ if (FALSE) {
     filter(convergence & sensitivity == "Best" & iter == 1L) |> 
     # group_by(dataset) |>
     summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
-    # summarise(mean(ess, na.rm = TRUE), 
-    #           median(ess, na.rm = TRUE),
-    #           quantile(ess, na.rm = TRUE)) |> 
     as.data.table()
   
   #### ESS (1000 smoothing particles)
