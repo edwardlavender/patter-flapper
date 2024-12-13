@@ -394,7 +394,8 @@ if (FALSE) {
 if (FALSE) {
   
   #### (1) Simplify coast for speed
-  coast_s <- terra::simplifyGeom(coast, tolerance = 100)
+  coast_s   <- terra::simplifyGeom(coast, tolerance = 100)
+  coast_s_w <- terra::wrap(coast_s)
   
   #### (2) Test method
   # Sample points 
@@ -410,14 +411,26 @@ if (FALSE) {
   terra::expanse(mcp, unit = "km")
   
   #### (3) Implementation
+  # TO DO 
+  # Rerun
+  # Initial runtime: 
+  # * 1 cl  : 42 min; 
+  # * 2 cl  : 21 min
+  # * 10 cl : 37 min
+  # Limited benefits of cluster here due to memory requirements
+  # (Updated run expected to take much longer due to larger files)
   tic()
   particle_mcps <- 
-    cl_lapply(split(iteration, iteration$index), .cl = 1L, .fun = function(d) {
+    cl_lapply(split(iteration, iteration$index), .cl = 2L, .fun = function(d) {
       # d <- iteration[1, ]
       print(d$index)
       if (file.exists(d$file_coord)) {
         # Read particles 
-        pxy <- qs::qread(d$file_coord)$states
+        pxy     <- qs::qread(d$file_coord)$states
+        # Unwrap coast
+        # * This is very fast (2 milliseconds)
+        # * So there is no need to implement chunking
+        coast_s <- terra::unwrap(coast_s_w)
         # Compute area of MCP by timestep & return data.table (~1.5 mins)
         cl_lapply(split(pxy, pxy$timestep), function(pxy_for_t) {
           # pxy_for_t <- pxy[timestep == 3L, ]
@@ -431,7 +444,7 @@ if (FALSE) {
           } else {
             coord_km2 <- 
               cbind(pxy_for_t$x, pxy_for_t$y) |> 
-              terra::vect(crs = terra::crs(map)) |> 
+              terra::vect(crs = terra::crs(coast_s)) |> 
               terra::convHull() |> 
               terra::erase(coast_s) |>
               terra::expanse(unit = "km")
