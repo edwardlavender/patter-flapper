@@ -100,7 +100,9 @@ follows:
       - `*-cluster-*.R` scripts support local cluster setup and
         management;
 
-4.  **`R/`** contains [R](https://www.r-project.org/) scripts for data
+4.  **`bin/`** contains bash scripts.
+
+5.  **`R/`** contains [R](https://www.r-project.org/) scripts for data
     processing and analysis:
 
     - `process-*` scripts implement data processing:
@@ -121,16 +123,16 @@ follows:
       - `run-patter-reanalysis.R` runs a reanalysis;
       - `synthesis.R` synthesises results from real-world analyses;
 
-5.  **`src/`** contains supporting [R](https://www.r-project.org/)
+6.  **`src/`** contains supporting [R](https://www.r-project.org/)
     functions.
 
-6.  **`renv/`** implements local dependency management.
+7.  **`renv/`** implements local dependency management.
 
-7.  **`Julia/`** houses the [Julia](http://julialang.org) project.
+8.  **`Julia/`** houses the [Julia](http://julialang.org) project.
 
-8.  **`fig/`** contains figures.
+9.  **`fig/`** contains figures.
 
-9.  **`doc/`** contains supporting documents.
+10. **`doc/`** contains supporting documents.
 
 Note that the `data-raw/`, `data/` (except `data/inst/`), `fig/` and
 `doc` directories are not provided in the online version of this
