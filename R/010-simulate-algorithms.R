@@ -1085,7 +1085,7 @@ if (TRUE) {
     
   }
   
-  #### Memory management
+  #### Clean memory
   if (TRUE) {
     objs      <- ls()
     objs      <- objs[sapply(objs, function(x) !is.function(get(x)))]
