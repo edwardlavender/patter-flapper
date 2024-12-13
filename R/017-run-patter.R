@@ -105,92 +105,80 @@ all(file.exists(file.path(iteration$folder_xinit, "xinit-fwd.qs"))) |> stopifnot
 all(file.exists(file.path(iteration$folder_xinit, "xinit-bwd.qs"))) |> stopifnot()
 # Check number of rows
 table(iteration$dataset)
+table(iteration$mobility)
 table(iteration$dataset, iteration$mobility)
 
 #### Estimate coordinates
 if (FALSE) {
   
-  #### Select batch
-  # As for the simulations, we batch by mobility
-  batch     <- pars$pmovement$mobility[1]
+  #### Set batch/rows
+  # Set batch & rows
+  # * batch 1: 528 rows
+  # * batch 2: 144 rows 
+  # * batch 3: 144 rows
+  cmdargs <- commandArgs(trailingOnly = TRUE)
+  # batch <- pars$pmovement$mobility[1]
+  batch <- as.numeric(cmdargs[1])
+  rows  <- eval(parse(text = cmdargs[2]))
+  # rows <- 1L
+  # Select batch & rows
   iteration <- iteration[mobility == batch, ]
-  set_vmap(.vmap = here_data("spatial", glue("vmap-{batch}.tif")))
-  
-  #### Select iterations
-  # Select iterations 
-  # * Select one AC/DC/ACDC run for testing 
-  nrow(iteration)
-  # iteration <- 
-  #   iteration |> 
-  #   filter(sensitivity == "best") |>
-  #   group_by(dataset) |> 
-  #   slice(1L) |>
-  #   as.data.table()
-  # * Select by dataset/sensitivity
-  iteration <- iteration[dataset == "ac", ]
-  # iteration <- iteration[sensitivity == "best", ]
-  # * Select rows
-  # if (batch == pars$pmovement$mobility[1]) {
-  #   rows <- 1:30      # 1
-  #   # rows <- 31:60     # 2
-  #   # rows <- 61:90     # 3
-  #   # rows <- 91:120    # 4
-  #   # rows <- 121:150   # 5
-  #   # rows <- 151:180   # 6
-  #   # rows <- 181:210   # 7
-  #   # rows <- 211:240   # 8
-  # } else {
-  #   rows <- 1:48      # 9
-  #   rows <- 1:48      # 10
-  # }
-  rows <- 1:24
-  # rows <- 45:48
   iteration <- iteration[rows, ]
+  # Export vmap
+  vmap      <- here_data("spatial", glue("vmap-{batch}.tif"))
+  set_vmap(.vmap = vmap)
+  rm(vmap, cmdargs)
+  
+  #### Clean memory 
+  if (TRUE) {
+    # pryr::mem_used() # 314 MB
+    objs      <- ls()
+    objs      <- objs[sapply(objs, function(x) !is.function(get(x)))]
+    objs_keep <- c("iteration", "datasets", 
+                   "batch", "rows", 
+                   "logpdf_step.ModelMoveFlapper", "logpdf_step.ModelMoveFlapperCRW", 
+                   "ModelMoveFlapperCRW", "moorings", "rho", 
+                   "simulate_step.ModelMoveFlapper", "simulate_step.ModelMoveFlapperCRW", 
+                   "state_flapper", "states_init.StateXYD")
+    rm(list = objs[!(objs %in% objs_keep)])
+    # pryr::mem_used() # 314 MB
+  }
   
   #### Estimate coordinates
-  # * Convergence trials complete (see /log/real/trials/log-summary.txt)
-  # * AC:
-  # - Batch 1 (144), SIA-USER024-P, 8 threads, 3.6 days
-  # - Batch 2 (48), siam-linux20
-  # - Batch 3 (48), siam-linux20
-  # * DC:
-  # - Batch 1 (144): MCC02XT0AZJGH5, 12 threads, 41 hr; 10 threads, 42.9 hour (incl. 15 min break every 2 hr)
-  # - Batch 2 (48): siam-linux20
-  # - Batch 3 (48): siam-linux20
-  # * ACDC:
-  # - Batch 1 (240): siam-linux20
-  # - Batch 2 (48): siam-linux20
-  # - Batch 3 (48): siam-linux20
   gc()
   nrow(iteration)
   lapply_estimate_coord_patter(iteration  = iteration,
                                datasets   = datasets, 
                                trial      = FALSE, 
                                log.folder = here_data("output", "log", "real"), 
-                               log.txt    = glue("log-{iteration$dataset[1]}-{batch}-{min(rows)}.txt"))
+                               log.txt    = glue("log-{batch}-{min(rows)}.txt"))
   
 }
 
 #### Patter error check 
-# (Code copied from simulate-algorithms.R)
-# Check for errors on forward filter 
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
-}) |> unlist() |> unique()
-# Check for errors on backward filter 
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  file <- file.path(d$folder_coord, "data-bwd.qs")
-  if (file.exists(file)) {
-    qs::qread(file)$error
-  }
-}) |> unlist() |> unique()
-# Check for errors on smoother
-sapply(split(iteration, seq_row(iteration)), function(d) {
-  file <- file.path(d$folder_coord, "data-smo.qs")
-  if (file.exists(file)) {
-    qs::qread(file)$error
-  }
-}) |> unlist() |> unique()
+if (FALSE) {
+  
+  # (Code copied from simulate-algorithms.R)
+  # Check for errors on forward filter 
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
+  }) |> unlist() |> unique()
+  # Check for errors on backward filter 
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-bwd.qs")
+    if (file.exists(file)) {
+      qs::qread(file)$error
+    }
+  }) |> unlist() |> unique()
+  # Check for errors on smoother
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (file.exists(file)) {
+      qs::qread(file)$error
+    }
+  }) |> unlist() |> unique()
+  
+}
 
 #### Estimate UDs
 if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
@@ -225,76 +213,84 @@ if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
 ###########################
 #### Tidy iteration (copied from simulate-algorithms.R)
 
-# Define grouping variables with tidy labels
-iteration[, unit_id := factor(unit_id)]
-iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
-# Revise 'sensitivity' coding
-iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
-iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
-iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
-iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
-iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
-iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
-iteration[, sensitivity := factor(sensitivity, 
-                                  levels = c("best", 
-                                             "movement-under", "movement-over", 
-                                             "ac-under", "ac-over",
-                                             "dc-under", "dc-over"), 
-                                  labels = c("Best", 
-                                             "Move (-)", "Move (+)", 
-                                             "AC(-)", "AC(+)", 
-                                             "DC(-)", "DC(+)"))] 
-qs::qsave(iteration, here_data("input", "iteration", "patter-tidy.qs"))
+if (FALSE) {
+  
+  # Define grouping variables with tidy labels
+  iteration[, unit_id := factor(unit_id)]
+  iteration[, dataset := factor(dataset, levels = c("ac", "dc", "acdc"), labels = c("AC", "DC", "ACDC"))]
+  # Revise 'sensitivity' coding
+  iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[2], sensitivity := "movement-under"]
+  iteration[sensitivity == "movement" & mobility == pars$pmovement$mobility[3], sensitivity := "movement-over"]
+  iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[2], sensitivity := "ac-under"]
+  iteration[sensitivity == "ac" & receiver_alpha == pars$pdetection$receiver_alpha[3], sensitivity := "ac-over"]
+  iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[2], sensitivity := "dc-under"]
+  iteration[sensitivity == "dc" & depth_sigma == pars$pdepth$depth_sigma[3], sensitivity := "dc-over"]
+  iteration[, sensitivity := factor(sensitivity, 
+                                    levels = c("best", 
+                                               "movement-under", "movement-over", 
+                                               "ac-under", "ac-over",
+                                               "dc-under", "dc-over"), 
+                                    labels = c("Best", 
+                                               "Move (-)", "Move (+)", 
+                                               "AC(-)", "AC(+)", 
+                                               "DC(-)", "DC(+)"))] 
+  qs::qsave(iteration, here_data("input", "iteration", "patter-tidy.qs"))
+  
+}
 
 
 ###########################
 #### Convergence 
 
-# Determine convergence
-iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
-  file.exists(file.path(d$folder_coord, "coord-smo.qs"))
-})]
-
-# Summarise convergence
-iteration |> 
-  group_by(dataset, sensitivity) |> 
-  summarise(convergence = length(which(convergence)) / n()) |>
-  ungroup() |>
-  group_by(dataset) |> 
-  mutate(range = max(convergence) - min(convergence)) |>
-  ungroup() |>
-  arrange(dataset, convergence) |>
-  as.data.table()
-
-# Plot convergence proportions 
-png(here_fig("analysis", "convergence.png"), 
-    height = 3, width = 9, units = "in", res = 600)
-iteration |> 
-  group_by(dataset, sensitivity) |> 
-  summarise(convergence = length(which(convergence)) / n()) |>
-  ungroup() |>
-  # tidyr::complete(dataset, sensitivity) |>
-  as_tibble() |> 
-  ggplot(aes(dataset, convergence, fill = sensitivity)) +
-  geom_bar(stat = "identity", 
-           position = position_dodge(preserve = "single"),
-           colour = "black", linewidth = 0.2) +
-  scale_fill_manual(values = col_sensitivity) + 
-  # scale_x_discrete(drop = FALSE) + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
-  labs(
-    x = "Algorithm",
-    y = "Pr(convergence)",
-    fill = "Parameterisation"
-  ) + 
-  theme_bw() + 
-  theme(axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)),
-        panel.grid.major.x = element_line(color = "gray80", linewidth = 0.2),
-        panel.grid.minor.x = element_line(color = "gray80", linewidth = 0.2),
-        panel.grid.major.y = element_blank(), 
-        panel.grid.minor.y = element_blank())
-dev.off()
+if (FALSE) {
+  
+  # Determine convergence
+  iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
+    file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+  })]
+  
+  # Summarise convergence
+  iteration |> 
+    group_by(dataset, sensitivity) |> 
+    summarise(convergence = length(which(convergence)) / n()) |>
+    ungroup() |>
+    group_by(dataset) |> 
+    mutate(range = max(convergence) - min(convergence)) |>
+    ungroup() |>
+    arrange(dataset, convergence) |>
+    as.data.table()
+  
+  # Plot convergence proportions 
+  png(here_fig("analysis", "convergence.png"), 
+      height = 3, width = 9, units = "in", res = 600)
+  iteration |> 
+    group_by(dataset, sensitivity) |> 
+    summarise(convergence = length(which(convergence)) / n()) |>
+    ungroup() |>
+    # tidyr::complete(dataset, sensitivity) |>
+    as_tibble() |> 
+    ggplot(aes(dataset, convergence, fill = sensitivity)) +
+    geom_bar(stat = "identity", 
+             position = position_dodge(preserve = "single"),
+             colour = "black", linewidth = 0.2) +
+    scale_fill_manual(values = col_sensitivity) + 
+    # scale_x_discrete(drop = FALSE) + 
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+    labs(
+      x = "Algorithm",
+      y = "Pr(convergence)",
+      fill = "Parameterisation"
+    ) + 
+    theme_bw() + 
+    theme(axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)),
+          panel.grid.major.x = element_line(color = "gray80", linewidth = 0.2),
+          panel.grid.minor.x = element_line(color = "gray80", linewidth = 0.2),
+          panel.grid.major.y = element_blank(), 
+          panel.grid.minor.y = element_blank())
+  dev.off()
+  
+}
 
 
 ###########################
@@ -342,76 +338,84 @@ if (FALSE) {
 ###########################
 #### Geographic uncertainty
 
-#### (1) Simplify coast for speed
-coast_s <- terra::simplifyGeom(coast, tolerance = 100)
-
-#### (2) Test method
-# Sample points 
-pxy <- terra::spatSample(map, size = 100, xy = TRUE, na.rm = TRUE)
-# Compute MCP + cut out coast
-mcp <- terra::convHull(terra::vect(cbind(pxy$x, pxy$y), crs = terra::crs(map)))
-mcp <- terra::erase(mcp, coast_s)
-# Visual check
-terra::plot(map)
-points(pxy$x, pxy$y)
-terra::lines(mcp)
-# Compute area spanned by MCP
-terra::expanse(mcp, unit = "km")
-
-#### (3) Implementation
-tic()
-particle_mcps <- 
-  cl_lapply(split(iteration, iteration$index), .cl = 10L, .fun = function(d) {
-    # d <- iteration[1, ]
-    print(d$index)
-    if (file.exists(d$file_coord)) {
-      # Read particles 
-      pxy <- qs::qread(d$file_coord)$states
-      # Compute area of MCP by timestep & return data.table (~1.5 mins)
-      cl_lapply(split(pxy, pxy$timestep), function(pxy_for_t) {
-        # pxy_for_t <- pxy[timestep == 3L, ]
-        if (FALSE) {
-          terra::plot(map)
-          points(pxy_for_t$x, pxy_for_t$y)
-        }
-        coord_n <- collapse::fnunique(rleid(pxy_for_t$x, pxy_for_t$y))
-        if (coord_n == 1L) {
-          coord_km2 <- 0
-        } else {
-          coord_km2 <- 
-            cbind(pxy_for_t$x, pxy_for_t$y) |> 
-            terra::vect(crs = terra::crs(map)) |> 
-            terra::convHull() |> 
-            terra::erase(coast_s) |>
-            terra::expanse(unit = "km")
-        }
-        data.table(file_coord = d$file_coord[1], 
-                   timestep   = pxy_for_t$timestep[1], 
-                   coord_n    = coord_n,
-                   coord_km2  = coord_km2
-        )
-      }) |> rbindlist()
-    }
-  }) |> rbindlist()
-toc()
-qs::qsave(particle_mcps, here_data("output", "analysis-summary", "particle-mcps.qs"))
+if (FALSE) {
+  
+  #### (1) Simplify coast for speed
+  coast_s <- terra::simplifyGeom(coast, tolerance = 100)
+  
+  #### (2) Test method
+  # Sample points 
+  pxy <- terra::spatSample(map, size = 100, xy = TRUE, na.rm = TRUE)
+  # Compute MCP + cut out coast
+  mcp <- terra::convHull(terra::vect(cbind(pxy$x, pxy$y), crs = terra::crs(map)))
+  mcp <- terra::erase(mcp, coast_s)
+  # Visual check
+  terra::plot(map)
+  points(pxy$x, pxy$y)
+  terra::lines(mcp)
+  # Compute area spanned by MCP
+  terra::expanse(mcp, unit = "km")
+  
+  #### (3) Implementation
+  tic()
+  particle_mcps <- 
+    cl_lapply(split(iteration, iteration$index), .cl = 10L, .fun = function(d) {
+      # d <- iteration[1, ]
+      print(d$index)
+      if (file.exists(d$file_coord)) {
+        # Read particles 
+        pxy <- qs::qread(d$file_coord)$states
+        # Compute area of MCP by timestep & return data.table (~1.5 mins)
+        cl_lapply(split(pxy, pxy$timestep), function(pxy_for_t) {
+          # pxy_for_t <- pxy[timestep == 3L, ]
+          if (FALSE) {
+            terra::plot(map)
+            points(pxy_for_t$x, pxy_for_t$y)
+          }
+          coord_n <- collapse::fnunique(rleid(pxy_for_t$x, pxy_for_t$y))
+          if (coord_n == 1L) {
+            coord_km2 <- 0
+          } else {
+            coord_km2 <- 
+              cbind(pxy_for_t$x, pxy_for_t$y) |> 
+              terra::vect(crs = terra::crs(map)) |> 
+              terra::convHull() |> 
+              terra::erase(coast_s) |>
+              terra::expanse(unit = "km")
+          }
+          data.table(file_coord = d$file_coord[1], 
+                     timestep   = pxy_for_t$timestep[1], 
+                     coord_n    = coord_n,
+                     coord_km2  = coord_km2
+          )
+        }) |> rbindlist()
+      }
+    }) |> rbindlist()
+  toc()
+  qs::qsave(particle_mcps, here_data("output", "analysis-summary", "particle-mcps.qs"))
+  
+}
 
 
 ###########################
 #### Compute residency (~22 s)
 
-iteration_res <- copy(iteration)
-iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
-iteration_res[, file_exists := file.exists(file)]
-residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
-# Write output
-residency <- 
-  left_join(iteration_res, residency, by = "file") |> 
-  mutate(algorithm = dataset) |>
-  select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
-  arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
-  as.data.table()
-qs::qsave(residency, here_data("output", "analysis-summary", "residency-patter.qs"))
+if (FALSE) {
+  
+  iteration_res <- copy(iteration)
+  iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
+  iteration_res[, file_exists := file.exists(file)]
+  residency <- lapply_estimate_residency_ud(files = iteration_res$file[iteration_res$file_exists])
+  # Write output
+  residency <- 
+    left_join(iteration_res, residency, by = "file") |> 
+    mutate(algorithm = dataset) |>
+    select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+    arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
+    as.data.table()
+  qs::qsave(residency, here_data("output", "analysis-summary", "residency-patter.qs"))
+  
+}
 
 
 #### End of code.
