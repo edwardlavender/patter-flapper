@@ -156,13 +156,14 @@ if (FALSE) {
 }
 
 #### Patter error check 
+# (Code copied from simulate-algorithms.R)
 if (FALSE) {
   
-  # (Code copied from simulate-algorithms.R)
   # Check for errors on forward filter 
   sapply(split(iteration, seq_row(iteration)), function(d) {
     qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
   }) |> unlist() |> unique()
+  
   # Check for errors on backward filter 
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "data-bwd.qs")
@@ -170,6 +171,7 @@ if (FALSE) {
       qs::qread(file)$error
     }
   }) |> unlist() |> unique()
+  
   # Check for errors on smoother
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "data-smo.qs")
@@ -177,6 +179,15 @@ if (FALSE) {
       qs::qread(file)$error
     }
   }) |> unlist() |> unique()
+  
+  # Check file sizes (MB) for reference
+  # > Smoothed particles for one month are ~XXX MB
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (file.exists(file)) {
+      file.size(file) / 1e6
+    }
+  }) |> unlist() |> utils.add::basic_stats()
   
 }
 
@@ -295,8 +306,50 @@ if (FALSE) {
 
 ###########################
 #### Diagnostics
+# (copied from simulate-algorithms.R)
 
-# TO DO
+if (FALSE) {
+  
+  #### Extract standard diagnostics (ESS) (~2 min)
+  iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+  diagnostics <- 
+    cl_lapply(iteration$file_coord, .fun = function(file_coord) {
+      if (file.exists(file_coord)) {
+        diag <- qs::qread(file_coord)$diagnostics
+        diag[, file_coord := file_coord]
+        diag[, .(file_coord, ess, maxlp)]
+      }
+    }, .cl = 10L, .combine = rbindlist)
+  # Join iteration and diagnostics
+  diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+  
+  #### Check smoothing success
+  diagnostics |> 
+    filter(convergence) |> 
+    group_by(file_coord) |> 
+    summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
+    arrange(desc(nan_perc)) |> 
+    as.data.table()
+  
+  #### Examine ESS
+  # Visualise histogram of ESS for 'best' simulations 
+  diagnostics |> 
+    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    ggplot() + 
+    geom_histogram(aes(ess), bins = 500) + 
+    scale_y_continuous(expand = c(0, 0)) + 
+    xlab("ESS") + ylab("Frequency") + 
+    facet_wrap(~dataset) +
+    theme_bw() + 
+    theme(panel.grid = element_blank()) 
+  # Compute summary statistics
+  diagnostics |> 
+    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    # group_by(dataset) |>
+    summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
+    as.data.table()
+  
+}
 
 
 ###########################
@@ -359,7 +412,7 @@ if (FALSE) {
   #### (3) Implementation
   tic()
   particle_mcps <- 
-    cl_lapply(split(iteration, iteration$index), .cl = 10L, .fun = function(d) {
+    cl_lapply(split(iteration, iteration$index), .cl = 1L, .fun = function(d) {
       # d <- iteration[1, ]
       print(d$index)
       if (file.exists(d$file_coord)) {
@@ -383,7 +436,7 @@ if (FALSE) {
               terra::erase(coast_s) |>
               terra::expanse(unit = "km")
           }
-          data.table(file_coord = d$file_coord[1], 
+          data.table(file_coord = d$file_coord, 
                      timestep   = pxy_for_t$timestep[1], 
                      coord_n    = coord_n,
                      coord_km2  = coord_km2
