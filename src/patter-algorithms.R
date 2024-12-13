@@ -224,10 +224,6 @@ pf_smoother_wrapper <- function(sim) {
                      time = time)
   
   # Write outputs
-  # * Smoother outputs seem to be smaller than those from the filter (13 MB)
-  # * This may be due to more efficient compression due to NAs (?)
-  # * For now, this appears to be manageable. 
-  # * (optional) TO DO: check file sizes across simulations
   qs::qsave(pout, file.path(sim$folder_coord, pfile))
   qs::qsave(dout, file.path(sim$folder_coord, dfile))
   nothing()
