@@ -187,19 +187,43 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
                .collect    = FALSE,
                .verbose    = TRUE)
   
-  #### Implement particle filter
-  # Forward filter 
+  #### Implement forward filter
   cat("... (1) Implementing forward filter...\n")
   success <- pf_filter_wrapper(sim = sim, args = args)
   if (trial) {
     return(success)
   }
-  # Backward filter 
+  
+  #### Implement backward filter 
   if (success) {
     cat("\n... (2) Implementing backward filter...\n")
+    
+    #### Update behaviour
+    
+    # On forward run, behaviour at t - 1 is based on behaviour from t - 1 to t
+    # * E.g., at t3 behaviour is defined based on behaviour from t3 to t4
+    
+    # On backward filter (and smoother), we move from t -> t-1 -> t-2 etc.
+    # * We need to correct the behavioural vector accordingly
+    # * I.e., at t3 behaviour is defined based on behaviour from t3 to t2
+    
+    # Time steps: 1,        2,        3,        4,        5
+    # Forward   : 1 (1->2), 1 (2->3), 2 (3->4), 2 (4->5), 2 (5->)
+    # Backward  : 2 (1->),  1 (2->1), 1 (3->2), 2 (4->3), 2 (5->4)
+    # c(1, 1, 2, 2, 2)
+    # dplyr::lag(c(1, 1, 2, 2, 2))
+    
+    behaviour    <- dplyr::lag(behaviour)
+    behaviour[1] <- 2L
+    julia_assign("behaviour", behaviour)
+    update_model_move_components()
+    
+    #### Update args
     args$.xinit     <- xinit_bwd
     args$.yobs      <- yobs_bwd
     args$.direction <- "backward"
+    
+    #### Run filter
     success         <- pf_filter_wrapper(sim = sim, args = args)
   }
 
