@@ -5,6 +5,7 @@
 .Renviron
 .Rprofile 
 
+bin/helper*
 data-raw/
 data/*
 !data/inst
