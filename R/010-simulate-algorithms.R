@@ -1085,6 +1085,19 @@ if (TRUE) {
     
   }
   
+  #### Memory management
+  if (TRUE) {
+    objs      <- ls()
+    objs      <- objs[sapply(objs, function(x) !is.function(get(x)))]
+    objs_keep <- c("iteration", "datasets", 
+                   "batch", "rows", 
+                   "logpdf_step.ModelMoveFlapper", "logpdf_step.ModelMoveFlapperCRW", 
+                   "ModelMoveFlapperCRW", "moorings", "rho", 
+                   "simulate_step.ModelMoveFlapper", "simulate_step.ModelMoveFlapperCRW", 
+                   "state_flapper", "states_init.StateXYD")
+    rm(list = objs[!(objs %in% objs_keep)])
+  }
+  
   #### Estimate coords
   gc()
   nrow(iteration)
@@ -1232,6 +1245,15 @@ if (FALSE) {
     }
   }) |> unlist() |> unique()
   
+  # Check file sizes (MB) for reference
+  # > Smoothed particles for one month are ~XXX MB
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (file.exists(file)) {
+      file.size(file) / 1e6
+    }
+  }) |> unlist() |> utils.add::basic_stats()
+  
 }
 
 
@@ -1314,57 +1336,71 @@ if (FALSE) {
 ###########################
 #### Diagnostics
 
-#### Extract standard diagnostics (ESS) (~2 min)
-iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
-diagnostics <- 
-  cl_lapply(iteration$file_coord, .fun = function(file_coord) {
-    if (file.exists(file_coord)) {
-      diag <- qs::qread(file_coord)$diagnostics
-      diag[, file_coord := file_coord]
-      diag[, .(file_coord, ess, maxlp)]
-    }
-  }, .cl = 10L, .combine = rbindlist)
-# Join iteration and diagnostics
-diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
-
-#### Check smoothing success
-diagnostics |> 
-  filter(convergence) |> 
-  group_by(file_coord) |> 
-  summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
-  arrange(desc(nan_perc)) |> 
-  as.data.table()
-
-#### Examine ESS
-# Visualise histogram of ESS for 'best' simulations 
-diagnostics |> 
-  filter(convergence & sensitivity == "Best" & iter == 1L) |> 
-  ggplot() + 
-  geom_histogram(aes(ess), bins = 500) + 
-  scale_y_continuous(expand = c(0, 0)) + 
-  xlab("ESS") + ylab("Frequency") + 
-  facet_wrap(~dataset) +
-  theme_bw() + 
-  theme(panel.grid = element_blank()) 
-# Compute summary statistics
-diagnostics |> 
-  filter(convergence & sensitivity == "Best" & iter == 1L) |> 
-  # group_by(dataset) |>
-  summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
-  # summarise(mean(ess, na.rm = TRUE), 
-  #           median(ess, na.rm = TRUE),
-  #           quantile(ess, na.rm = TRUE)) |> 
-  as.data.table()
-
-# min   mean median   max     sd    IQR   MAD
-# <num>  <num>  <num> <num>  <num>  <num> <num>
-#  1 113.89  40.69  1000 151.16 166.45 55.92
-
-# dataset   min   mean median   max     sd    IQR   MAD
-# <fctr> <num>  <num>  <num> <num>  <num>  <num> <num>
-#   1:      AC     1 116.93  39.64  1000 159.38 165.40 54.26
-# 2:      DC     1  79.72  27.41  1000 103.58 121.04 37.09
-# 3:    ACDC     1 143.62  63.52  1000 172.96 223.27 88.48
+if (FALSE) {
+  
+  #### Extract standard diagnostics (ESS) (~2 min)
+  iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+  diagnostics <- 
+    cl_lapply(iteration$file_coord, .fun = function(file_coord) {
+      if (file.exists(file_coord)) {
+        diag <- qs::qread(file_coord)$diagnostics
+        diag[, file_coord := file_coord]
+        diag[, .(file_coord, ess, maxlp)]
+      }
+    }, .cl = 10L, .combine = rbindlist)
+  # Join iteration and diagnostics
+  diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+  
+  #### Check smoothing success
+  diagnostics |> 
+    filter(convergence) |> 
+    group_by(file_coord) |> 
+    summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
+    arrange(desc(nan_perc)) |> 
+    as.data.table()
+  
+  #### Examine ESS
+  # Visualise histogram of ESS for 'best' simulations 
+  diagnostics |> 
+    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    ggplot() + 
+    geom_histogram(aes(ess), bins = 500) + 
+    scale_y_continuous(expand = c(0, 0)) + 
+    xlab("ESS") + ylab("Frequency") + 
+    facet_wrap(~dataset) +
+    theme_bw() + 
+    theme(panel.grid = element_blank()) 
+  # Compute summary statistics
+  diagnostics |> 
+    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    # group_by(dataset) |>
+    summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
+    # summarise(mean(ess, na.rm = TRUE), 
+    #           median(ess, na.rm = TRUE),
+    #           quantile(ess, na.rm = TRUE)) |> 
+    as.data.table()
+  
+  #### ESS (1000 smoothing particles)
+  
+  # min   mean median   max     sd    IQR   MAD
+  # <num>  <num>  <num> <num>  <num>  <num> <num>
+  #  1 113.89  40.69  1000 151.16 166.45 55.92
+  
+  # dataset   min   mean median   max     sd    IQR   MAD
+  # <fctr> <num>  <num>  <num> <num>  <num>  <num> <num>
+  # 1:      AC     1 116.93  39.64  1000 159.38 165.40 54.26
+  # 2:      DC     1  79.72  27.41  1000 103.58 121.04 37.09
+  # 3:    ACDC     1 143.62  63.52  1000 172.96 223.27 88.48
+  
+  #### ESS (50,000 filter; 1500 smoothing particles)
+  
+  # dataset   min   mean median   max     sd    IQR    MAD
+  # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
+  # 1:      AC     1 196.60  69.65  1500 259.48 297.92  97.54
+  # 2:      DC     1 139.79  47.76  1500 178.45 222.72  66.54
+  # 3:    ACDC     1 239.47 113.48  1500 279.16 389.83 160.09
+  
+}
 
 
 ###########################
