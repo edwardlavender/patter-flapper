@@ -183,7 +183,7 @@ if (FALSE) {
   # Check file sizes (MB) for reference
   # > Smoothed particles for one month are ~XXX MB
   sapply(split(iteration, seq_row(iteration)), function(d) {
-    file <- file.path(d$folder_coord, "data-smo.qs")
+    file <- file.path(d$folder_coord, "coord-smo.qs")
     if (file.exists(file)) {
       file.size(file) / 1e6
     }
