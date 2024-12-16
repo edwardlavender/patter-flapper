@@ -1,58 +1,53 @@
 #!/bin/bash
-Rscript ./R/017-run-patter.R 1095.0 "1:15" &
-Rscript ./R/017-run-patter.R 1095.0 "16:30" &
-Rscript ./R/017-run-patter.R 1095.0 "31:45" &
-Rscript ./R/017-run-patter.R 1095.0 "46:60" &
-Rscript ./R/017-run-patter.R 1095.0 "61:75" &
-Rscript ./R/017-run-patter.R 1095.0 "76:90" &
-Rscript ./R/017-run-patter.R 1095.0 "91:105" &
-Rscript ./R/017-run-patter.R 1095.0 "106:120" &
-Rscript ./R/017-run-patter.R 1095.0 "121:135" &
-Rscript ./R/017-run-patter.R 1095.0 "136:150" &
-Rscript ./R/017-run-patter.R 1095.0 "151:165" &
-Rscript ./R/017-run-patter.R 1095.0 "166:180" &
-Rscript ./R/017-run-patter.R 1095.0 "181:195" &
-Rscript ./R/017-run-patter.R 1095.0 "196:210" &
-Rscript ./R/017-run-patter.R 1095.0 "211:225" &
-Rscript ./R/017-run-patter.R 1095.0 "226:240" &
-Rscript ./R/017-run-patter.R 1095.0 "241:255" &
-Rscript ./R/017-run-patter.R 1095.0 "256:270" &
-Rscript ./R/017-run-patter.R 1095.0 "271:285" &
-Rscript ./R/017-run-patter.R 1095.0 "286:300" &
-Rscript ./R/017-run-patter.R 1095.0 "301:315" &
-Rscript ./R/017-run-patter.R 1095.0 "316:330" &
-Rscript ./R/017-run-patter.R 1095.0 "331:345" &
-Rscript ./R/017-run-patter.R 1095.0 "346:360" &
-Rscript ./R/017-run-patter.R 1095.0 "361:375" &
-Rscript ./R/017-run-patter.R 1095.0 "376:390" &
-Rscript ./R/017-run-patter.R 1095.0 "391:405" &
-Rscript ./R/017-run-patter.R 1095.0 "406:420" &
-Rscript ./R/017-run-patter.R 1095.0 "421:435" &
-Rscript ./R/017-run-patter.R 1095.0 "436:450" &
-Rscript ./R/017-run-patter.R 1095.0 "451:465" &
-Rscript ./R/017-run-patter.R 1095.0 "466:480" &
-Rscript ./R/017-run-patter.R 1095.0 "481:495" &
-Rscript ./R/017-run-patter.R 1095.0 "496:510" &
+
+# Record start time
+start_time=$(date)
+echo "Start time: $start_time"
+start_seconds=$(date +%s)
+
+# For 1095.0, in batches of 30, stopping at 528
+Rscript ./R/017-run-patter.R 1095.0 "1:30" &
+Rscript ./R/017-run-patter.R 1095.0 "31:60" &
+Rscript ./R/017-run-patter.R 1095.0 "61:90" &
+Rscript ./R/017-run-patter.R 1095.0 "91:120" &
+Rscript ./R/017-run-patter.R 1095.0 "121:150" &
+Rscript ./R/017-run-patter.R 1095.0 "151:180" &
+Rscript ./R/017-run-patter.R 1095.0 "181:210" &
+Rscript ./R/017-run-patter.R 1095.0 "211:240" &
+Rscript ./R/017-run-patter.R 1095.0 "241:270" &
+Rscript ./R/017-run-patter.R 1095.0 "271:300" &
+Rscript ./R/017-run-patter.R 1095.0 "301:330" &
+Rscript ./R/017-run-patter.R 1095.0 "331:360" &
+Rscript ./R/017-run-patter.R 1095.0 "361:390" &
+Rscript ./R/017-run-patter.R 1095.0 "391:420" &
+Rscript ./R/017-run-patter.R 1095.0 "421:450" &
+Rscript ./R/017-run-patter.R 1095.0 "451:480" &
+Rscript ./R/017-run-patter.R 1095.0 "481:510" &
 Rscript ./R/017-run-patter.R 1095.0 "511:528" &
-Rscript ./R/017-run-patter.R 985.5 "1:15" &
-Rscript ./R/017-run-patter.R 985.5 "16:30" &
-Rscript ./R/017-run-patter.R 985.5 "31:45" &
-Rscript ./R/017-run-patter.R 985.5 "46:60" &
-Rscript ./R/017-run-patter.R 985.5 "61:75" &
-Rscript ./R/017-run-patter.R 985.5 "76:90" &
-Rscript ./R/017-run-patter.R 985.5 "91:105" &
-Rscript ./R/017-run-patter.R 985.5 "106:120" &
-Rscript ./R/017-run-patter.R 985.5 "121:135" &
-Rscript ./R/017-run-patter.R 985.5 "136:144" &
-Rscript ./R/017-run-patter.R 1204.5 "1:15" &
-Rscript ./R/017-run-patter.R 1204.5 "16:30" &
-Rscript ./R/017-run-patter.R 1204.5 "31:45" &
-Rscript ./R/017-run-patter.R 1204.5 "46:60" &
-Rscript ./R/017-run-patter.R 1204.5 "61:75" &
-Rscript ./R/017-run-patter.R 1204.5 "76:90" &
-Rscript ./R/017-run-patter.R 1204.5 "91:105" &
-Rscript ./R/017-run-patter.R 1204.5 "106:120" &
-Rscript ./R/017-run-patter.R 1204.5 "121:135" &
-Rscript ./R/017-run-patter.R 1204.5 "136:144" &
+
+# For 985.5, in batches of 30, stopping at 144
+Rscript ./R/017-run-patter.R 985.5 "1:30" &
+Rscript ./R/017-run-patter.R 985.5 "31:60" &
+Rscript ./R/017-run-patter.R 985.5 "61:90" &
+Rscript ./R/017-run-patter.R 985.5 "91:120" &
+Rscript ./R/017-run-patter.R 985.5 "121:144" &
+
+# For 1204.5, in batches of 30, stopping at 144
+Rscript ./R/017-run-patter.R 1204.5 "1:30" &
+Rscript ./R/017-run-patter.R 1204.5 "31:60" &
+Rscript ./R/017-run-patter.R 1204.5 "61:90" &
+Rscript ./R/017-run-patter.R 1204.5 "91:120" &
+Rscript ./R/017-run-patter.R 1204.5 "121:144" &
+
+# Wait for processes to complete
 wait
-echo "All simulations completed!"
+
+# Print end time & duration (hours, mins, secs)
+end_seconds=$(date +%s)
+duration=$((end_seconds - start_seconds))
+hours=$((duration / 3600))
+minutes=$(((duration % 3600) / 60))
+seconds=$((duration % 60))
+echo "Duration: $hours hours, $minutes minutes, $seconds seconds"
+
+echo "Simulations completed!"
