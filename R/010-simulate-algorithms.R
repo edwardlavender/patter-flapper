@@ -208,18 +208,26 @@ if (FALSE) {
                                 .n_path     = 1L, 
                                 .plot       = FALSE)
     coord_path[, behaviour := as.integer(behaviour)]
-    xinit_bwd <- coord_path[.N, .(map_value, x, y, behaviour)]
     # points(moorings$receiver_x, moorings$receiver_y)
     
     #### Record capture/recapture locations for filter
-    # We assume the capture/recapture locations & behaviour are known
-    # Angles are unknown
+    # Assumptions: 
+    # * The capture/recapture locations are known
+    # * Behaviour is known
+    # * Angles are unknown
+    # (A) Initial particles (forward filter)
     xinit_fwd <- lapply(1:1e5L, function(i) {
       xinit_fwd
     }) |> rbindlist()
     if (model_move_is_crw()) {
       xinit_fwd[, angle := runif(.N) * 2 * pi]
     }
+    # (B) Initial particles (backward filter)
+    # * Recapture location is known
+    # * Behaviour on backward filter is lagged by 1 
+    # * Angles initialised randomly 
+    xinit_bwd <- coord_path[.N, .(map_value, x, y, behaviour)]
+    xinit_bwd[, behaviour := behaviour[length(behaviour) - 1]]
     xinit_bwd <- lapply(1:1e5L, function(i) {
       xinit_bwd
     }) |> rbindlist()
@@ -967,7 +975,7 @@ nrow(iteration_patter)
 
 #### Add supporting columns
 # Update np
-nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(50000L, 50000L, 50000L))
+nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(75000L, 75000L, 75000L))
 iteration_patter[, np := nplookup$np[match(dataset, nplookup$dataset)]]
 # sim$month_id is required by estimate_coord_patter() to define the timeline
 iteration_patter[, month_id := "04-2024"]
