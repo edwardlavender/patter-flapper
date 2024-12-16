@@ -170,7 +170,7 @@ iteration_patter <- lapply(split(unitsets, seq_len(nrow(unitsets))), function(d)
   as.data.table()
 # Add additional controls
 np <- data.table(dataset = c("ac", "dc", "acdc"), 
-                 np = c(5e3L, 5e3L, 1e5L))
+                 np = c(1.5e5L, 1.5e5L, 1.5e5L))
 iteration_patter[, np := np$np[match(dataset, np$dataset)]]
 iteration_patter[, smooth := TRUE]
 
