@@ -109,7 +109,7 @@ table(iteration$mobility)
 table(iteration$dataset, iteration$mobility)
 
 #### Estimate coordinates
-if (FALSE) {
+if (TRUE) {
   
   #### Set batch/rows
   # Set batch & rows
