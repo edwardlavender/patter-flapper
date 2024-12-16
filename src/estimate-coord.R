@@ -147,6 +147,13 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
   # real      : input/xinit/1.5/individual_id/month_id/xinit-fwd.qs, xinit-bwd.qs
   xinit_fwd <- qs::qread(file.path(sim$folder_xinit, "xinit-fwd.qs"))
   xinit_bwd <- qs::qread(file.path(sim$folder_xinit, "xinit-bwd.qs"))
+  # Add behaviour
+  # * For simulations, this is achieved in simulate-algorithms.R
+  # * TO DO For real-world analyses, this could be achieved in prepare-xinits-*.R
+  xinit_fwd[, behaviour := as.integer(behaviour[1])]
+  xinit_bwd[, behaviour := as.integer(behaviour[length(behaviour) - 1L])]
+  xinit_list <- list(forward  = xinit_fwd, 
+                     backward = xinit_bwd)
   xinit_list <- list(forward  = xinit_fwd, 
                      backward = xinit_bwd)
   
