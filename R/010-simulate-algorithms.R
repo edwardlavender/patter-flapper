@@ -1256,6 +1256,24 @@ if (FALSE) {
     }
   }) |> unlist() |> utils.add::basic_stats()
   
+  # min   mean median    max   sd  IQR  MAD
+  # 643.38 701.61 703.78 717.85 9.88 9.65 6.94
+  
+  # Check ud.tif size (MB)
+  sapply(split(iteration, seq_row(iteration)), function(d) {
+    file <- file.path(d$folder_ud, "spatstat", "h", "ud.tif")
+    if (file.exists(file)) {
+      file.size(file) / 1e6
+    }
+  }) |> unlist() |> utils.add::basic_stats()
+  
+  # min mean median  max sd IQR MAD
+  # 0.4 0.41   0.41 0.41  0   0   0
+  
+  # Approx total storage requirements
+  (717.85 + 0.41) * 444 / 1e3 # 318 GB
+  (717.85 + 0.41) * 816 / 1e3
+  
 }
 
 
