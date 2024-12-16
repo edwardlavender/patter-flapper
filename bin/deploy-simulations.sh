@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# Update
+# * Script batch size is too small
+# * Some batches killed (due to memory usage?)
+# * Killed batches re-run (see deploy-simulations-2.sh)
+# * For future runs, run larger batches (fewer CPUs)
+
 Rscript ./R/010-simulate-algorithms.R 1095.0 "1:10" &
 Rscript ./R/010-simulate-algorithms.R 1095.0 "11:20" &
 Rscript ./R/010-simulate-algorithms.R 1095.0 "21:30" &
