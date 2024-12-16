@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-Sys.setenv("JULIA_SESSION" = "TRUE")
+Sys.setenv("JULIA_SESSION" = "FALSE")
 
 #### Essential packages
 dv::src()
@@ -1011,7 +1011,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (TRUE) {
+if (FALSE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1086,7 +1086,7 @@ if (TRUE) {
   }
   
   #### Clean memory
-  if (TRUE) {
+  if (FALSE) {
     objs      <- ls()
     objs      <- objs[sapply(objs, function(x) !is.function(get(x)))]
     objs_keep <- c("iteration", "datasets", 
@@ -1131,18 +1131,20 @@ if (TRUE) {
     # Define input coordinates
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     
-    #### Estimate UDs via POU (~20 mins)
+    #### Estimate UDs via POU (~24 mins, 4 cl)
+    # * (~4 cl keeps swap use low, no speed gain with 10 cl)
     lapply_estimate_ud_pou(iteration = iteration,
                            extract_coord = function(s) s$states,
-                           cl = 12L,
+                           cl = 4L,
                            plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
-    #### Estimate UDs via spatstat (~58 mins)
+    #### Estimate UDs via spatstat (~48 mins, 4 cl)
+    # * (~4 cl keeps swap use low, no speed gain with 10 cl)
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
-                                cl = 12L,
+                                cl = 4L,
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
@@ -1246,7 +1248,7 @@ if (FALSE) {
   }) |> unlist() |> unique()
   
   # Check file sizes (MB) for reference
-  # > Smoothed particles for one month are ~XXX MB
+  # > Smoothed particles for one month are ~700 MB
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "coord-smo.qs")
     if (file.exists(file)) {
@@ -1340,24 +1342,33 @@ if (FALSE) {
   
   #### Extract standard diagnostics (ESS) (~2 min)
   iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
-  diagnostics <- 
-    cl_lapply(iteration$file_coord, .fun = function(file_coord) {
-      if (file.exists(file_coord)) {
-        diag <- qs::qread(file_coord)$diagnostics
-        diag[, file_coord := file_coord]
-        diag[, .(file_coord, ess, maxlp)]
-      }
-    }, .cl = 10L, .combine = rbindlist)
-  # Join iteration and diagnostics
-  diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+  if (FALSE) {
+    diagnostics <- 
+      cl_lapply(iteration$file_coord, .fun = function(file_coord) {
+        if (file.exists(file_coord)) {
+          diag <- qs::qread(file_coord)$diagnostics
+          diag[, file_coord := file_coord]
+          diag[, .(file_coord, ess, maxlp)]
+        }
+      }, .cl = 10L, .combine = rbindlist)
+    # Join iteration and diagnostics
+    diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+    qs::qsave(diagnostics, here_data("output", "simulation-summary", "diagnostics.qs"))
+  } else {
+    diagnostics <- qs::qread(here_data("output", "simulation-summary", "diagnostics.qs"))
+  }
   
   #### Check smoothing success
-  diagnostics |> 
+  smoothing_success <- 
+    diagnostics |> 
     filter(convergence) |> 
     group_by(file_coord) |> 
     summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
     arrange(desc(nan_perc)) |> 
     as.data.table()
+  table(smoothing_success$nan_perc > 5)
+  # FALSE  TRUE 
+  # 415     8 
   
   #### Examine ESS
   # Visualise histogram of ESS for 'best' simulations 
@@ -1373,7 +1384,7 @@ if (FALSE) {
   # Compute summary statistics
   diagnostics |> 
     filter(convergence & sensitivity == "Best" & iter == 1L) |> 
-    # group_by(dataset) |>
+    group_by(dataset) |>
     summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
     as.data.table()
   
@@ -1391,11 +1402,15 @@ if (FALSE) {
   
   #### ESS (50,000 filter; 1500 smoothing particles)
   
+  # min   mean median   max     sd    IQR   MAD
+  # <num>  <num>  <num> <num>  <num>  <num> <num>
+  #  1    194.15  70.71  1500 251.59 296.68 99.32
+  
   # dataset   min   mean median   max     sd    IQR    MAD
   # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
-  # 1:      AC     1 196.60  69.65  1500 259.48 297.92  97.54
-  # 2:      DC     1 139.79  47.76  1500 178.45 222.72  66.54
-  # 3:    ACDC     1 239.47 113.48  1500 279.16 389.83 160.09
+  #   1:      AC     1 196.61  70.49  1500 257.40 299.65  99.15
+  # 2:      DC     1 142.43  44.96  1500 190.05 217.81  62.47
+  # 3:    ACDC     1 243.42 111.43  1500 287.08 393.73 157.17
   
 }
 
@@ -1563,12 +1578,14 @@ if (FALSE) {
 
 if (FALSE) {
   
-  # Compute residency (~6 min, 10 cl)
+  # Compute residency 
+  # * 10.5 min; 5 cl (low swap use)
+  # * 6 min; 10 cl 
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(folder_coord, "coord-smo.qs")]
   residency <- lapply_estimate_residency_coord(files = iteration_res$file, 
                                                extract_coord = function(s) s$states, 
-                                               cl = 10L)
+                                               cl = 5L)
   # Write output
   residency <- 
     left_join(iteration_res, residency, by = "file") |> 
@@ -1665,10 +1682,23 @@ if (FALSE) {
       algorithm %in% c("AC", "DC", "ACDC") ~ "particle"
     )) 
   
-  skill_summary$med[1] / skill_summary$med[3:5]
-  skill_summary$med[2] / skill_summary$med[3:5]
-  skill_summary$sd[1] / skill_summary$sd[3:5]
-  skill_summary$sd[2] / skill_summary$sd[3:5]
+  # # A tibble: 5 × 4
+  # algorithm        med          sd type     
+  # <fct>          <dbl>       <dbl> <chr>    
+  #   1 COA       0.00000691 0.00000325  heuristic
+  # 2 RSP       0.00000728 0.00000272  heuristic
+  # 3 AC        0.00000228 0.00000124  particle 
+  # 4 DC        0.00000255 0.00000142  particle 
+  # 5 ACDC      0.00000143 0.000000923 particle 
+  
+  # skill_summary$med[1] / skill_summary$med[3:5]
+  # [1] 3.035423 2.713006 4.819841
+  # skill_summary$med[2] / skill_summary$med[3:5]
+  # [1] 3.195322 2.855921 5.073739
+  # skill_summary$sd[1] / skill_summary$sd[3:5]
+  # [1] 2.614814 2.287804 3.521943
+  # skill_summary$sd[2] / skill_summary$sd[3:5]
+  # [1] 2.188672 1.914955 2.947963
   
 }
 
@@ -1823,9 +1853,6 @@ if (FALSE) {
           axis.text.x = element_text(angle = 45, hjust = 1))
   dev.off()
   
-  # > Results
-  # > TO DO
-  
   # Summary statistics for performance simulations 
   residency_skill |> 
     group_by(zone, algorithm) |> 
@@ -1834,13 +1861,18 @@ if (FALSE) {
               lwr    = quantile(error, 0.025, na.rm = TRUE),
               upr    = quantile(error, 0.975, na.rm = TRUE)) |> 
     ungroup() |>
-    prettyGraphics::tidy_numbers(digits = 2) |>
+    prettyGraphics::tidy_numbers(digits = 3) |>
     as.data.table()
-  # > COA median error: 10 %, 18 % uncertainty
-  # > RSP median error: 9 %, 17 % uncertainty
+  # > Protected:
+  # > COA median error: 12 %, 21 % uncertainty
+  # > RSP median error: 12 %, 23 % uncertainty
   # > AC, DC and ACDC median error: 
-  # > 1-2 % (5-10 fold improvement in median error) 
-  # > reduced variation (1.5-3.6 fold reduction in uncertainty)
+  # > <1 % (>10 fold improvement in median error) 
+  c(0.214, 0.233) / 0.076  # COA & RSP / AC     : 2.815789 3.065789
+  c(0.214, 0.233) / 0.035  # COA & RSP / DC     : 6.114286 6.657143
+  c(0.214, 0.233) / 0.027  # COA & RSP / ACDC   : 7.925926 8.629630
+  
+  # > reduced variation (2.8-8.6 fold reduction in uncertainty)
   
   # Summary statistics for sensitivity simulations
   # > Do the above results still hold if we consider sensitivity? 
