@@ -19,7 +19,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-Sys.setenv(JULIA_SESSION = "TRUE")
+Sys.setenv(JULIA_SESSION = "FALSE")
 dv::src()
 
 #### Load data 
@@ -44,10 +44,12 @@ col_sensitivity   <- readRDS(here_data("graphics", "col_sensitivity.rds"))
 if (patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
-julia_connect()
-set_seed()
-set_map(here_data("spatial", "bathy.tif"))
-set_model_move_components()
+if (Sys.getenv("JULIA_SESSION") == "TRUE") {
+  julia_connect()
+  set_seed()
+  set_map(here_data("spatial", "bathy.tif"))
+  set_model_move_components()
+}
 
 #### Clean up
 if (FALSE) {
@@ -109,7 +111,7 @@ table(iteration$mobility)
 table(iteration$dataset, iteration$mobility)
 
 #### Estimate coordinates
-if (TRUE) {
+if (FALSE) {
   
   #### Set batch/rows
   # Set batch & rows
@@ -192,7 +194,7 @@ if (FALSE) {
 }
 
 #### Estimate UDs
-if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
+if (TRUE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
   
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
@@ -224,7 +226,7 @@ if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
 ###########################
 #### Tidy iteration (copied from simulate-algorithms.R)
 
-if (FALSE) {
+if (TRUE) {
   
   # Define grouping variables with tidy labels
   iteration[, unit_id := factor(unit_id)]
@@ -253,7 +255,7 @@ if (FALSE) {
 ###########################
 #### Convergence 
 
-if (FALSE) {
+if (TRUE) {
   
   # Determine convergence
   iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
@@ -308,7 +310,7 @@ if (FALSE) {
 #### Diagnostics
 # (copied from simulate-algorithms.R)
 
-if (FALSE) {
+if (TRUE) {
   
   #### Extract standard diagnostics (ESS) (~2 min)
   iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
@@ -355,7 +357,7 @@ if (FALSE) {
 ###########################
 #### Mapping (~1 min)
 
-if (FALSE) {
+if (TRUE) {
   
   unique(iteration$dataset)
   unique(iteration$sensitivity)
@@ -391,7 +393,7 @@ if (FALSE) {
 ###########################
 #### Geographic uncertainty
 
-if (FALSE) {
+if (TRUE) {
   
   #### (1) Simplify coast for speed
   coast_s   <- terra::simplifyGeom(coast, tolerance = 100)
@@ -466,7 +468,7 @@ if (FALSE) {
 ###########################
 #### Compute residency (~22 s)
 
-if (FALSE) {
+if (TRUE) {
   
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
