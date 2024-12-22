@@ -59,6 +59,7 @@ if (FALSE) {
   list.files(iteration$folder_ud, recursive = TRUE)
   dirs.create(iteration$folder_coord)
   dirs.create(iteration$folder_ud)
+  dirs.create(file.path(iteration$folder_ud, "spatstat", "h"))
 }
 
 #### Prepare iterations/datasets
@@ -161,12 +162,12 @@ if (FALSE) {
 # (Code copied from simulate-algorithms.R)
 if (FALSE) {
   
-  # Check for errors on forward filter 
+  # Check for errors on forward filter: OK 
   sapply(split(iteration, seq_row(iteration)), function(d) {
     qs::qread(file.path(d$folder_coord, "data-fwd.qs"))$error
   }) |> unlist() |> unique()
   
-  # Check for errors on backward filter 
+  # Check for errors on backward filter: OK
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "data-bwd.qs")
     if (file.exists(file)) {
@@ -174,7 +175,7 @@ if (FALSE) {
     }
   }) |> unlist() |> unique()
   
-  # Check for errors on smoother
+  # Check for errors on smoother: OK
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "data-smo.qs")
     if (file.exists(file)) {
@@ -183,13 +184,17 @@ if (FALSE) {
   }) |> unlist() |> unique()
   
   # Check file sizes (MB) for reference
-  # > Smoothed particles for one month are ~XXX MB
+  # > Smoothed particles for one month are ~930 MB
+  # > (2000 smoothing particles)
   sapply(split(iteration, seq_row(iteration)), function(d) {
     file <- file.path(d$folder_coord, "coord-smo.qs")
     if (file.exists(file)) {
       file.size(file) / 1e6
     }
   }) |> unlist() |> utils.add::basic_stats()
+  
+  # min   mean median    max    sd   IQR   MAD
+  # 742.87 920.63 930.34 990.37 43.34 48.53 35.83
   
 }
 
