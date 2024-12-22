@@ -41,7 +41,7 @@ col_sensitivity   <- readRDS(here_data("graphics", "col_sensitivity.rds"))
 #### Run algorithm 
 
 #### Julia Set up
-if (patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
+if (patter:::os_linux() & Sys.getenv("JULIA_SESSION") == "TRUE") {
   stopifnot(!any(c("terra", "sf") %in% sort(loadedNamespaces())))
 }
 if (Sys.getenv("JULIA_SESSION") == "TRUE") {
