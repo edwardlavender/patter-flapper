@@ -201,6 +201,12 @@ if (FALSE) {
 #### Estimate UDs
 if (TRUE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
   
+  # Quick convergence check
+  check <- copy(iteration)
+  check[, convergence := file.exists(file_coord)][, .(index, convergence)] |> 
+    as.data.frame()
+  table(check$convergence)
+  
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
   #                    "coord-smo.qs",
@@ -208,11 +214,13 @@ if (TRUE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
   
   #### Estimate UDs
   # Time trial 
+  # * 26 s: siam-linux20
   lapply_estimate_ud_spatstat(iteration     = iteration[1, ], 
                               extract_coord = function(s) s$states,
                               cl            = NULL, 
                               plot          = FALSE)
-  # Implementation (~43 min)
+  # Implementation 
+  # * (~43 min)
   lapply_estimate_ud_spatstat(iteration     = iteration, 
                               extract_coord = function(s) s$states,
                               cl            = 10L, 
