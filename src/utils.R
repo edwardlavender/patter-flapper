@@ -149,3 +149,9 @@ sort_bathysets <- function(x) {
 fill <- function(x, name) {
   c(name, rep("", length(x) - 1))
 }
+
+#' System utilities
+
+on_server <- function() {
+  Sys.info()[["nodename"]] == "siam-linux20"
+}
