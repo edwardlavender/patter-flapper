@@ -199,13 +199,15 @@ if (FALSE) {
 }
 
 #### Estimate UDs
-if (TRUE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
+if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
   
   # Quick convergence check
   check <- copy(iteration)
   check[, convergence := file.exists(file_coord)][, .(index, convergence)] |> 
     as.data.frame()
   table(check$convergence)
+  # FALSE  TRUE 
+  # 123   693
   
   # Examine selected coord
   # lapply_qplot_coord(iteration, 
@@ -271,8 +273,16 @@ if (TRUE) {
 if (TRUE) {
   
   # Determine convergence
+  # * Use data-smo.qs to determine convergence
+  # * For poor smoothing runs, coord-smo.qs is renamed below
+  # * (Ensuring subsequent files uses appropriate files)
   iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
-    file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (!file.exists(file)) {
+      return(FALSE)
+    } else {
+      return(qs::qread(file)$success)
+    }
   })]
   
   # Summarise convergence
@@ -326,30 +336,53 @@ if (TRUE) {
 if (TRUE) {
   
   #### Extract standard diagnostics (ESS) (~2 min)
-  iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+  if (FALSE) {
+    iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
+    diagnostics <- 
+      cl_lapply(iteration$file_coord, .fun = function(file_coord) {
+        if (file.exists(file_coord)) {
+          diag <- qs::qread(file_coord)$diagnostics
+          diag[, file_coord := file_coord]
+          diag[, .(file_coord, ess, maxlp)]
+        }
+      }, .cl = 10L, .combine = rbindlist)
+    # Join iteration and diagnostics
+    diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+    qs::qsave(diagnostics, here_data("output", "analysis-summary", "diagnostics.qs"))
+  }
   diagnostics <- 
-    cl_lapply(iteration$file_coord, .fun = function(file_coord) {
-      if (file.exists(file_coord)) {
-        diag <- qs::qread(file_coord)$diagnostics
-        diag[, file_coord := file_coord]
-        diag[, .(file_coord, ess, maxlp)]
-      }
-    }, .cl = 10L, .combine = rbindlist)
-  # Join iteration and diagnostics
-  diagnostics <- full_join(iteration, diagnostics, by = "file_coord")
+    qs::qread(here_data("output", "analysis-summary", "diagnostics.qs"))
+
   
   #### Check smoothing success
-  diagnostics |> 
+  smoothing_success <- 
+    diagnostics |> 
     filter(convergence) |> 
     group_by(file_coord) |> 
     summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
     arrange(desc(nan_perc)) |> 
     as.data.table()
+  hist(smoothing_success$nan_perc)
+  table(smoothing_success$nan_perc <= 5)
+  # FALSE  TRUE 
+  # 197   496 
+  
+  #### (optional) Eliminate insufficiently successful smoothing runs
+  smoothing_failures <- smoothing_success[nan_perc > 5, ]
+  if (nrow(smoothing_failures) > 0L) {
+    # Set convergence = FALSE & rename coord-smo.tif & ud.tif
+    # * We only present statistics for successful algorithm runs
+    iteration[file_coord %in% smoothing_failures$file_coord, convergence := FALSE]
+    file.rename(smoothing_failures$file_coord, 
+                file.path(dirname(smoothing_failures$file_coord), "coord-smo-poor.qs"))
+    file.rename(file.path(dirname(dirname(smoothing_failures$file_coord)), "ud", "spatstat", "h", "ud.tif"),
+                file.path(dirname(dirname(smoothing_failures$file_coord)), "ud", "spatstat", "h", "ud-poor.tif"))
+  }
   
   #### Examine ESS
   # Visualise histogram of ESS for 'best' simulations 
   diagnostics |> 
-    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    filter(convergence & sensitivity == "Best") |> 
     ggplot() + 
     geom_histogram(aes(ess), bins = 500) + 
     scale_y_continuous(expand = c(0, 0)) + 
@@ -359,10 +392,20 @@ if (TRUE) {
     theme(panel.grid = element_blank()) 
   # Compute summary statistics
   diagnostics |> 
-    filter(convergence & sensitivity == "Best" & iter == 1L) |> 
+    filter(convergence & sensitivity == "Best") |> 
     # group_by(dataset) |>
     summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
     as.data.table()
+  
+  # dataset   min   mean median   max     sd    IQR    MAD
+  # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
+  #   AC     1 250.28  90.75  2000 350.13 351.88 127.83
+  #   DC     1 300.25  77.91  2000 413.70 464.23 111.22
+  #  ACDC     1 361.17 108.63  2000 456.64 610.72 154.83
+  
+  # min   mean median   max     sd    IQR   MAD
+  # <num>  <num>  <num> <num>  <num>  <num> <num>
+  #  1 299.62  93.39  2000 406.95 442.48 132.4
   
 }
 
