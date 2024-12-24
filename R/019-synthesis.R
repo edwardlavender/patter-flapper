@@ -250,7 +250,7 @@ toc()
 
 
 ###########################
-#### Example UDs from each algorithm
+#### Example UDs from each algorithm (siam-linux20)
 
 #### Define mapfiles
 algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
@@ -275,6 +275,14 @@ mapfiles <-
   select(row, column, mapfile) |> 
   as.data.table()
 
+#### File copy onto siam-linux20
+# data/output/analysis/25/04-2016/coa
+# data/output/analysis/25/04-2016/rsp
+# data/output/analysis/35/04-2016/coa/
+# data/output/analysis/35/04-2016/rsp/
+# data/output/analysis/36/04-2016/coa/
+# data/output/analysis/36/04-2016/rsp/
+
 #### Make maps 
 ggplot_maps(mapfiles, 
             png_args = list(filename = here_fig("analysis", "map-examples.png"), 
@@ -282,7 +290,7 @@ ggplot_maps(mapfiles,
 
 
 ###########################
-#### Overall ACDC UD 
+#### Overall ACDC UD (siam-linux20)
 
 #### Estimate overall UD
 # List tif files
@@ -394,12 +402,13 @@ dev.off()
 
 
 ###########################
-#### Algorithm sensitivity
+#### Algorithm sensitivity (siam-linux20)
 
 #### Define mapfiles
 mapfiles <- rbindlist(
   list(
     # COA mapfiles
+    # * Manually copy data/output/analysis/36/04-2016/coa onto server
     iteration_coa |> 
       filter(individual_id == 36 & month_id == "04-2016") |> 
       mutate(algorithm = "COA", 
@@ -411,6 +420,7 @@ mapfiles <- rbindlist(
       as.data.table(),
     
     # RSP mapfiles
+    # * Manually copy data/output/analysis/36/04-2016/coa onto server
     iteration_rsp |> 
       filter(individual_id == 36 & month_id == "04-2016")  |> 
       mutate(algorithm = "RSP", 
