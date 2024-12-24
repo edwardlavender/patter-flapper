@@ -1019,7 +1019,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (FALSE) {
+if (TRUE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1094,7 +1094,7 @@ if (FALSE) {
   }
   
   #### Clean memory
-  if (FALSE) {
+  if (TRUE) {
     objs      <- ls()
     objs      <- objs[sapply(objs, function(x) !is.function(get(x)))]
     objs_keep <- c("iteration", "datasets", 
