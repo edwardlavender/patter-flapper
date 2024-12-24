@@ -975,7 +975,7 @@ nrow(iteration_patter)
 
 #### Add supporting columns
 # Update np
-nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(75000L, 75000L, 75000L))
+nplookup <- data.table(dataset = c("ac", "dc", "acdc"), np = c(1e5L, 1e5L, 1e5L))
 iteration_patter[, np := nplookup$np[match(dataset, nplookup$dataset)]]
 # sim$month_id is required by estimate_coord_patter() to define the timeline
 iteration_patter[, month_id := "04-2024"]
@@ -1291,8 +1291,16 @@ if (FALSE) {
 if (FALSE) {
   
   #### Define convergence
+  # * Use data-smo.qs to determine convergence
+  # * For poor smoothing runs, coord-smo.qs is renamed below
+  # * (Ensuring subsequent files uses appropriate files)
   iteration[, convergence := sapply(split(iteration, seq_row(iteration)), function(d) {
-    file.exists(file.path(d$folder_coord, "coord-smo.qs"))
+    file <- file.path(d$folder_coord, "data-smo.qs")
+    if (!file.exists(file)) {
+      return(FALSE)
+    } else {
+      return(qs::qread(file)$success)
+    }
   })]
   # Review overall convergence
   table(iteration$convergence)
@@ -1392,9 +1400,34 @@ if (FALSE) {
     summarise(nan_perc = length(which(is.na(ess))) / n() * 100) |> 
     arrange(desc(nan_perc)) |> 
     as.data.table()
-  table(smoothing_success$nan_perc > 5)
-  # FALSE  TRUE 
-  # 415     8 
+  hist(smoothing_success$nan_perc)
+  table(smoothing_success$nan_perc <= 10)
+  
+  #### (optional) Eliminate insufficiently successful smoothing runs
+  smoothing_failures <- smoothing_success[nan_perc > 10, ]
+  if (nrow(smoothing_failures) > 0L) {
+    # Set convergence = FALSE & rename coord-smo.tif & ud.tif
+    # * We only present statistics for successful algorithm runs
+    iteration[file_coord %in% smoothing_failures$file_coord, convergence := FALSE]
+    file.rename(smoothing_failures$file_coord, 
+                file.path(dirname(smoothing_failures$file_coord), 
+                          "coord-smo-poor.qs"))
+    file.rename(file.path(dirname(dirname(smoothing_failures$file_coord)), 
+                          "ud", "spatstat", "h", "ud.tif"),
+                file.path(dirname(dirname(smoothing_failures$file_coord)), 
+                          "ud", "spatstat", "h", "ud-poor.tif"))
+  }
+  # (Optional) Reset files
+  if (FALSE) {
+    # coord-smo.qs
+    files_poor <- list.files(file.path("data", "output", "simulation"), 
+                             pattern = "coord-smo-poor.qs", recursive = TRUE)
+    file.rename(files_poor, file.path(dirname(files_poor), "coord-smo.qs"))
+    # ud-poor.tif
+    files_poor <- list.files(file.path("data", "output", "simulation"), 
+                             pattern = "ud-poor.tif", recursive = TRUE)
+    file.rename(files_poor, file.path(dirname(files_poor), "ud.tif"))
+  }
   
   #### Examine ESS
   # Visualise histogram of ESS for 'best' simulations 
