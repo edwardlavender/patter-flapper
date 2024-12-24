@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-Sys.setenv("JULIA_SESSION" = "FALSE")
+Sys.setenv("JULIA_SESSION" = "TRUE")
 
 #### Essential packages
 dv::src()
