@@ -44,16 +44,17 @@ iteration_patter  <- qs::qread(here_data("input", "iteration", "patter-tidy.qs")
 ###########################
 #### Visualise time series 
 
-# Check individual_id, acoustic_id, dst_id for comparison to Lavender et al. (2021)
-# (Add sex, maturity etc. manually from Lavender et al. (2021))
-skateids |>
-  filter(individual_id %in% rbindlist(acoustics_by_unit)$individual_id) |> 
-  mutate(acoustic_id = substr(acoustic_id, 4, 6)) |>
-  select(individual_id, acoustic_id, dst_id) |>
-  as.data.table() |> 
-  prettyGraphics::tidy_write("./fig/individuals.txt")
-
 if (FALSE) {
+  
+  # Check individual_id, acoustic_id, dst_id for comparison to Lavender et al. (2021)
+  # (Add sex, maturity etc. manually from Lavender et al. (2021))
+  skateids |>
+    filter(individual_id %in% rbindlist(acoustics_by_unit)$individual_id) |> 
+    mutate(acoustic_id = substr(acoustic_id, 4, 6)) |>
+    select(individual_id, acoustic_id, dst_id) |>
+    as.data.table() |> 
+    prettyGraphics::tidy_write("./fig/individuals.txt")
+  
   
   #### Process modelled time series 
   # Define acoustics
@@ -155,7 +156,7 @@ if (FALSE) {
           axis.title.y = element_text(margin = margin(r = 10)))
   dev.off()
   toc()
- 
+  
   #### Selected checks
   acoustics |> 
     filter(individual_id == 35 & mmyy == "11-2016") |> 
@@ -181,6 +182,7 @@ if (FALSE) {
     as.data.table()
   gdet
   max(gdet$max)
+  
 }
 
 
@@ -192,15 +194,15 @@ if (FALSE) {
 #### Study area
 
 #### (Quick) Plot study area
-# Study area 
-terra::plot(terra::rast(here_data("spatial", "bathy-5m.tif")))
-qs::qread(here_data("spatial", "coast.qs")) |> 
-  sf::st_simplify(dTolerance = 100) |> 
-  terra::vect() |> 
-  terra::lines()
-# Plot MPA 
-terra::sbar(10000)
-terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
+if (FALSE) {
+  terra::plot(terra::rast(here_data("spatial", "bathy-5m.tif")))
+  qs::qread(here_data("spatial", "coast.qs")) |> 
+    sf::st_simplify(dTolerance = 100) |> 
+    terra::vect() |> 
+    terra::lines()
+  terra::sbar(10000)
+  terra::plot(mpa, xlim = terra::ext(mpa)[1:2], ylim = terra::ext(mpa)[3:4])
+}
 
 #### Get tagging locations 
 # Get capture locations for relevant individuals 
@@ -225,380 +227,404 @@ moorings |>
             row.names = FALSE)
 
 #### (deprecated) Plot study area via ggplot2
-tic()
-png(here_fig("study-area.png"), 
-    height = 5, width = 4, units = "in", res = 800)
-op <- options(terra.pal = scales::alpha(rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)), 0.75))
-# terra::plot(terra::rast(here_data("spatial", "bathy.tif")))
-bb   <- terra::ext(bathy) - 6.5e3
-xlim <- bb[1:2]
-ylim <- bb[3:4]
-p <- 
-  ggplot_maps(data.table(mapfile = here_data("spatial", "bathy.tif"), row = 1, column = 1), 
-              xlim = xlim,
-              ylim = ylim,
-              zlim = c(0, 350),
-              mask = TRUE, 
-              png_args = NULL) 
-p + 
-  geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
-  coord_sf(xlim = xlim, ylim = ylim) + 
-  theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
-options(op)
-dev.off()
-toc()
+if (FALSE) {
+  tic()
+  png(here_fig("study-area.png"), 
+      height = 5, width = 4, units = "in", res = 800)
+  op <- options(terra.pal = scales::alpha(rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)), 0.75))
+  # terra::plot(terra::rast(here_data("spatial", "bathy.tif")))
+  bb   <- terra::ext(bathy) - 6.5e3
+  xlim <- bb[1:2]
+  ylim <- bb[3:4]
+  p <- 
+    ggplot_maps(data.table(mapfile = here_data("spatial", "bathy.tif"), row = 1, column = 1), 
+                xlim = xlim,
+                ylim = ylim,
+                zlim = c(0, 350),
+                mask = TRUE, 
+                png_args = NULL) 
+  p + 
+    geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
+    coord_sf(xlim = xlim, ylim = ylim) + 
+    theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+  options(op)
+  dev.off()
+  toc()
+}
 
 
 ###########################
 #### Example UDs from each algorithm (siam-linux20)
 
-#### Define mapfiles
-algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
-mapfiles <-
-  data.table(algorithm = factor(algorithms, algorithms),
-             mapindex  = seq_len(length(algorithms)),
-             mapfile   = c("coa/ac/1/ud/spatstat/h/ud.tif", 
-                           "rsp/ac/1/ud/dbbmm/ud.tif", 
-                           "patter/ac/1/ud/spatstat/h/ud.tif", 
-                           "patter/dc/1/ud/spatstat/h/ud.tif", 
-                           "patter/acdc/1/ud/spatstat/h/ud.tif"))
-
-#### Collate data.table for mapping
-mapfiles <- 
-  CJ(individual_id = c(25, 35, 36), # c(13, 20, 25, 27, 29, 35, 36, 38),
-     mapindex      = mapfiles$mapindex
-  ) |>  
-  mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
-         column = mapfiles$algorithm[match(mapindex, mapfiles$mapindex)],
-         mapfile = mapfiles$mapfile[match(mapindex, mapfiles$mapindex)],
-         mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
-  select(row, column, mapfile) |> 
-  as.data.table()
-
-#### File copy onto siam-linux20
-# data/output/analysis/25/04-2016/coa
-# data/output/analysis/25/04-2016/rsp
-# data/output/analysis/35/04-2016/coa/
-# data/output/analysis/35/04-2016/rsp/
-# data/output/analysis/36/04-2016/coa/
-# data/output/analysis/36/04-2016/rsp/
-
-#### Make maps 
-ggplot_maps(mapfiles, 
-            png_args = list(filename = here_fig("analysis", "map-examples.png"), 
-                            height = 4, width = 4, units = "in", res = 800))
+if (on_server()) {
+  
+  #### Define mapfiles
+  algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
+  mapfiles <-
+    data.table(algorithm = factor(algorithms, algorithms),
+               mapindex  = seq_len(length(algorithms)),
+               mapfile   = c("coa/ac/1/ud/spatstat/h/ud.tif", 
+                             "rsp/ac/1/ud/dbbmm/ud.tif", 
+                             "patter/ac/1/ud/spatstat/h/ud.tif", 
+                             "patter/dc/1/ud/spatstat/h/ud.tif", 
+                             "patter/acdc/1/ud/spatstat/h/ud.tif"))
+  
+  #### Collate data.table for mapping
+  mapfiles <- 
+    CJ(individual_id = c(25, 35, 36), # c(13, 20, 25, 27, 29, 35, 36, 38),
+       mapindex      = mapfiles$mapindex
+    ) |>  
+    mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
+           column = mapfiles$algorithm[match(mapindex, mapfiles$mapindex)],
+           mapfile = mapfiles$mapfile[match(mapindex, mapfiles$mapindex)],
+           mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
+    select(row, column, mapfile) |> 
+    as.data.table()
+  
+  #### File copy onto siam-linux20
+  # data/output/analysis/25/04-2016/coa
+  # data/output/analysis/25/04-2016/rsp
+  # data/output/analysis/27/04-2016/coa
+  # data/output/analysis/27/04-2016/rsp
+  # data/output/analysis/35/04-2016/coa/
+  # data/output/analysis/35/04-2016/rsp/
+  # data/output/analysis/36/04-2016/coa/
+  # data/output/analysis/36/04-2016/rsp/
+  
+  #### Make maps 
+  ggplot_maps(mapfiles, 
+              png_args = list(filename = here_fig("analysis", "map-examples.png"), 
+                              height = 4, width = 4, units = "in", res = 800))
+  
+}
 
 
 ###########################
 #### Overall ACDC UD (siam-linux20)
 
-#### Estimate overall UD
-# List tif files
-mapfiles <- 
-  iteration_patter |> 
-  filter(dataset == "ACDC" & sensitivity == "Best") |> 
-  mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
-  as.data.table()
-# Read UDs
-uds <- 
-  lapply(mapfiles$mapfile, function(ud.tif) {
-  if (file.exists(ud.tif)) {
-    terra::rast(ud.tif)
-  }
-}) |> 
-  plyr::compact()
-# Compute 'overall' UD
-uds <- do.call(c, uds)
-ud <- terra::app(uds, fun = "sum", na.rm = TRUE) / terra::nlyr(uds)
-stopifnot(all.equal(1, as.numeric(terra::global(ud, "sum", na.rm = TRUE))))
-ud.tif <- tempfile(fileext = ".tif")
-terra::writeRaster(ud, ud.tif)
-
-#### Get angling records
-# Get all angling records (download from 28/11/2024)
-# (We expect ! NAs introduced by coercion warning here)
-cr <- 
-  here_data_raw("movement", "skatespotter", "data (15).csv") |> 
-  read.csv() |> 
-  select(individual_id, date = date_captured, lon = longitude, lat = latitude) |> 
-  mutate(date = as.Date(date), 
-         lon = as.numeric(lon), 
-         lat = as.numeric(lat)) |>
-  filter(!is.na(lon) & !is.na(lat)) |> 
-  filter(lon != 0 & lat != 0) |>
-  as.data.table()
-# Check temporal distribution
-range(cr$date)
-p <- 
-  ggplot(data.frame(year = lubridate::year(cr$date))) + 
-  geom_histogram(aes(year), bins = 50) + 
-  theme_bw() 
-plotly::ggplotly(p)
-# Get angling locations
-crxy <- 
-  cbind(cr$lon, cr$lat) |> 
-  terra::vect(crs = "EPSG:4326") |> 
-  terra::project(terra::crs(mpa)) |> 
-  terra::crds(df = TRUE)
-crsf <- 
-  sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
-
-#### Quick plot of UD
-terra::plot(ud)
-points(crxy$x, crxy$y)
-hr <- map_hr_home(ud, .add = TRUE)
-poly <- terra::as.polygons(hr == 1)
-poly <- poly[poly[[1]] == 1]
-poly <- poly |> sf::st_as_sf()
-
-#### Plot UD with tagging & angling records
-png(here_fig("analysis", "map-overall.png"), 
-    height = 3.5, width = 2.5, units = "in", res = 800)
-p <- 
-  ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
-              png_args = NULL) 
+if (on_server()) {
+  
+  #### Estimate overall UD
+  # List tif files
+  mapfiles <- 
+    iteration_patter |> 
+    filter(dataset == "ACDC" & sensitivity == "Best") |> 
+    mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+    as.data.table()
+  # Read UDs
+  uds <- 
+    lapply(mapfiles$mapfile, function(ud.tif) {
+      if (file.exists(ud.tif)) {
+        terra::rast(ud.tif)
+      }
+    }) |> 
+    plyr::compact()
+  # Compute 'overall' UD
+  uds <- do.call(c, uds)
+  ud <- terra::app(uds, fun = "sum", na.rm = TRUE) / terra::nlyr(uds)
+  stopifnot(all.equal(1, as.numeric(terra::global(ud, "sum", na.rm = TRUE))))
+  ud.tif <- tempfile(fileext = ".tif")
+  terra::writeRaster(ud, ud.tif)
+  
+  #### Get angling records
+  # Get all angling records (download from 28/11/2024)
+  # (We expect ! NAs introduced by coercion warning here)
+  cr <- 
+    here_data_raw("movement", "skatespotter", "data (15).csv") |> 
+    read.csv() |> 
+    select(individual_id, date = date_captured, lon = longitude, lat = latitude) |> 
+    mutate(date = as.Date(date), 
+           lon = as.numeric(lon), 
+           lat = as.numeric(lat)) |>
+    filter(!is.na(lon) & !is.na(lat)) |> 
+    filter(lon != 0 & lat != 0) |>
+    as.data.table()
+  # Check temporal distribution
+  range(cr$date)
+  p <- 
+    ggplot(data.frame(year = lubridate::year(cr$date))) + 
+    geom_histogram(aes(year), bins = 50) + 
+    theme_bw() 
+  plotly::ggplotly(p)
+  # Get angling locations
+  crxy <- 
+    cbind(cr$lon, cr$lat) |> 
+    terra::vect(crs = "EPSG:4326") |> 
+    terra::project(terra::crs(mpa)) |> 
+    terra::crds(df = TRUE)
+  crsf <- 
+    sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
+  
+  #### Quick plot of UD
+  terra::plot(ud)
+  points(crxy$x, crxy$y)
+  hr <- map_hr_home(ud, .add = TRUE)
+  poly <- terra::as.polygons(hr == 1)
+  poly <- poly[poly[[1]] == 1]
+  poly <- poly |> sf::st_as_sf()
+  
+  #### Plot UD with tagging & angling records
+  png(here_fig("analysis", "map-overall.png"), 
+      height = 3.5, width = 2.5, units = "in", res = 800)
+  p <- 
+    ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
+                png_args = NULL) 
   p + 
-  geom_sf(data = poly, fill = NA) + 
-  geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
-  geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
-  coord_sf(xlim = p$coordinates$limits$x, ylim = p$coordinates$limits$y) + 
-  theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
-dev.off()
+    geom_sf(data = poly, fill = NA) + 
+    geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
+    geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
+    coord_sf(xlim = p$coordinates$limits$x, ylim = p$coordinates$limits$y) + 
+    theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+  dev.off()
+  
+}
 
 
 ###########################
 #### QGIS inputs
 
-#### Colour hexs
-# Land fill: #6969694C
-# Land border: blank (thin)
-scales::alpha("dimgrey", 0.3)
-# MPA open border: #0000FF80
-scales::alpha("blue", 0.5)
-# MPA closed border: #FF0000CC
-scales::alpha("#FF000080", 0.8)
-# Tagging locations: #006400FF
-scales::alpha("darkgreen", 1.0)
-
-#### Bathymetry colour bar
-breaks <- seq(-350, 0, by = 1); length(breaks)
-labels <- breaks
-labels[!(breaks %in% c(-300, -200, -100, 0))] <- ""
-png(here_fig("study-site-legend.png"),
-             height = 5, width = 5, units = "in", res = 600)
-ggplot(data.frame(depth = 00:350)) + 
-  geom_line(aes(depth, 1, colour = depth)) + 
-  scale_color_gradientn(
-    breaks = breaks, 
-    labels = labels,
-    colours = rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)),
-    limits = c(-350, 0),
-    na.value = "grey", 
-    guide = guide_colourbar(ticks = FALSE)) +
-  theme(
-    legend.text = element_text(margin = margin(t = 0, r = 3, b = 0, l = -1)) 
-  )
-dev.off()
+if (FALSE) {
+  
+  #### Colour hexs
+  # Land fill: #6969694C
+  # Land border: blank (thin)
+  scales::alpha("dimgrey", 0.3)
+  # MPA open border: #0000FF80
+  scales::alpha("blue", 0.5)
+  # MPA closed border: #FF0000CC
+  scales::alpha("#FF000080", 0.8)
+  # Tagging locations: #006400FF
+  scales::alpha("darkgreen", 1.0)
+  
+  #### Bathymetry colour bar
+  breaks <- seq(-350, 0, by = 1); length(breaks)
+  labels <- breaks
+  labels[!(breaks %in% c(-300, -200, -100, 0))] <- ""
+  png(here_fig("study-site-legend.png"),
+      height = 5, width = 5, units = "in", res = 600)
+  ggplot(data.frame(depth = 00:350)) + 
+    geom_line(aes(depth, 1, colour = depth)) + 
+    scale_color_gradientn(
+      breaks = breaks, 
+      labels = labels,
+      colours = rev(colorRampPalette(RColorBrewer::brewer.pal(9, "Blues"))(256)),
+      limits = c(-350, 0),
+      na.value = "grey", 
+      guide = guide_colourbar(ticks = FALSE)) +
+    theme(
+      legend.text = element_text(margin = margin(t = 0, r = 3, b = 0, l = -1)) 
+    )
+  dev.off()
+  
+}
 
 
 ###########################
 #### Algorithm sensitivity (siam-linux20)
 
-#### Define mapfiles
-mapfiles <- rbindlist(
-  list(
-    # COA mapfiles
-    # * Manually copy data/output/analysis/36/04-2016/coa onto server
-    iteration_coa |> 
-      filter(individual_id == 36 & month_id == "04-2016") |> 
-      mutate(algorithm = "COA", 
-             sensitivity = factor(delta_t,
-                                  c("2 days", "1 day", "3 days"), 
-                                  labels = c("Best", "AC(-)", "AC(+)")), 
-             mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
-      select(row = sensitivity, column = algorithm, mapfile) |>
-      as.data.table(),
-    
-    # RSP mapfiles
-    # * Manually copy data/output/analysis/36/04-2016/coa onto server
-    iteration_rsp |> 
-      filter(individual_id == 36 & month_id == "04-2016")  |> 
-      mutate(algorithm = "RSP", 
-             sensitivity = factor(er.ad,
-                                  c(500, 250, 750), 
-                                  labels = c("Best", "AC(-)", "AC(+)")), 
-             mapfile = file.path(folder_ud, "dbbmm", "ud.tif")) |> 
-      select(row = sensitivity, column = algorithm, mapfile) |>
-      as.data.table(),
-    # Patter mapfiles
-    iteration_patter |> 
-      filter(individual_id == 36 & month_id == "04-2016") |>
-      mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
-      select(row = sensitivity, column = dataset, mapfile) |>
-      as.data.table()
-  )
-) |>
-  # (optional) Swap rows and columns
-  mutate(row0 = row, column0 = column, 
-         row = column0, column = row0) |> 
-  as.data.table()
-
-#### Make maps
-# If sensitivity (row) by algorithm (column), use: height = 6, width = 3, 
-# If algorithm (row) by sensitivity (column), use: height = 5, width = 5
-head(mapfiles)
-ggplot_maps(mapdt = mapfiles, 
-            png_args = list(filename = here_fig("analysis", "map-sensitivity.png"), 
-                                       height = 5, width = 5, units = "in", res = 800))
+if (on_server()) {
+  
+  #### Define mapfiles
+  mapfiles <- rbindlist(
+    list(
+      # COA mapfiles
+      # * Manually copy data/output/analysis/36/04-2016/coa onto server
+      iteration_coa |> 
+        filter(individual_id == 36 & month_id == "04-2016") |> 
+        mutate(algorithm = "COA", 
+               sensitivity = factor(delta_t,
+                                    c("2 days", "1 day", "3 days"), 
+                                    labels = c("Best", "AC(-)", "AC(+)")), 
+               mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+        select(row = sensitivity, column = algorithm, mapfile) |>
+        as.data.table(),
+      
+      # RSP mapfiles
+      # * Manually copy data/output/analysis/36/04-2016/coa onto server
+      iteration_rsp |> 
+        filter(individual_id == 36 & month_id == "04-2016")  |> 
+        mutate(algorithm = "RSP", 
+               sensitivity = factor(er.ad,
+                                    c(500, 250, 750), 
+                                    labels = c("Best", "AC(-)", "AC(+)")), 
+               mapfile = file.path(folder_ud, "dbbmm", "ud.tif")) |> 
+        select(row = sensitivity, column = algorithm, mapfile) |>
+        as.data.table(),
+      # Patter mapfiles
+      iteration_patter |> 
+        filter(individual_id == 36 & month_id == "04-2016") |>
+        mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
+        select(row = sensitivity, column = dataset, mapfile) |>
+        as.data.table()
+    )
+  ) |>
+    # (optional) Swap rows and columns
+    mutate(row0 = row, column0 = column, 
+           row = column0, column = row0) |> 
+    as.data.table()
+  
+  #### Make maps
+  # If sensitivity (row) by algorithm (column), use: height = 6, width = 3, 
+  # If algorithm (row) by sensitivity (column), use: height = 5, width = 5
+  head(mapfiles)
+  ggplot_maps(mapdt = mapfiles, 
+              png_args = list(filename = here_fig("analysis", "map-sensitivity.png"), 
+                              height = 5, width = 5, units = "in", res = 800))
+  
+}
 
 
 ###########################
 ###########################
 #### Residency 
 
-#### Null model
-res_null <- 
-  qs::qread(here_data("output", "simulation-summary", "residency-null.qs")) |>
-  slice(1:3) |> 
-  select("zone", "time") |>
-  mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
-  as.data.table()
-res_null
-
-#### Detection days
-# (Code modified from simulate-algorithms.R)
-residency <- lapply(acoustics_by_unit, function(acoustics) {
+if (FALSE) {
   
-  if (is.null(acoustics)) {
-    return(NULL)
-  }
+  #### Null model
+  res_null <- 
+    qs::qread(here_data("output", "simulation-summary", "residency-null.qs")) |>
+    slice(1:3) |> 
+    select("zone", "time") |>
+    mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
+    as.data.table()
+  res_null
   
-  # Total number of days in month 
-  # acoustics <- acoustics_by_unit[[1]]
-  ndays <- as.integer(lubridate::days_in_month(as.Date.mmyy(acoustics$mmyy[1])))
+  #### Detection days
+  # (Code modified from simulate-algorithms.R)
+  residency <- lapply(acoustics_by_unit, function(acoustics) {
+    
+    if (is.null(acoustics)) {
+      return(NULL)
+    }
+    
+    # Total number of days in month 
+    # acoustics <- acoustics_by_unit[[1]]
+    ndays <- as.integer(lubridate::days_in_month(as.Date.mmyy(acoustics$mmyy[1])))
+    
+    # Compute detection days for receivers in MPA
+    dds_total <- 
+      acoustics |>
+      filter(receiver_id %in% moorings_in_mpa$receiver_id) |> 
+      mutate(day = lubridate::day(timestamp)) |> 
+      summarise(time = length(unique(day)) / ndays) |>
+      mutate(individual_id = acoustics$individual_id[1], 
+             month_id      = acoustics$mmyy[1], 
+             unit_id       = acoustics$unit_id[1], 
+             algorithm     = "DD", 
+             sensitivity   = "Best",
+             zone          = "total") |> 
+      select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
+      arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
+      as.data.table()
+    
+    # Detection days in closed areas are identical 
+    # * (All receivers were in closed areas)
+    # * For the figures, we also record DDs in closed areas
+    dds_closed <- copy(dds_total)
+    dds_closed[, zone := "closed"]
+    
+    rbind(dds_total, dds_closed)
+    
+  }) |> rbindlist()
   
-  # Compute detection days for receivers in MPA
-  dds_total <- 
-    acoustics |>
-    filter(receiver_id %in% moorings_in_mpa$receiver_id) |> 
-    mutate(day = lubridate::day(timestamp)) |> 
-    summarise(time = length(unique(day)) / ndays) |>
-    mutate(individual_id = acoustics$individual_id[1], 
-           month_id      = acoustics$mmyy[1], 
-           unit_id       = acoustics$unit_id[1], 
-           algorithm     = "DD", 
-           sensitivity   = "Best",
-           zone          = "total") |> 
-    select(individual_id, month_id, unit_id, algorithm, sensitivity, zone, time) |> 
-    arrange(individual_id, month_id, unit_id, algorithm, sensitivity, zone) |>
+  qs::qsave(residency, 
+            here_data("output", "analysis-summary", "residency-detection-days.qs"))
+  
+  #### Collate residency estimates
+  residency <- 
+    rbindlist(
+      list(
+        qs::qread(here_data("output", "analysis-summary", "residency-detection-days.qs")),
+        qs::qread(here_data("output", "analysis-summary", "residency-coa.qs")),
+        qs::qread(here_data("output", "analysis-summary", "residency-rsp.qs")),
+        qs::qread(here_data("output", "analysis-summary", "residency-patter.qs"))
+      )
+    ) |> 
+    filter(!is.na(zone)) |>
+    mutate(month = as.Date.mmyy(month_id)) |>
+    mutate(individual_id = factor(individual_id)) |>
+    mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
     as.data.table()
   
-  # Detection days in closed areas are identical 
-  # * (All receivers were in closed areas)
-  # * For the figures, we also record DDs in closed areas
-  dds_closed <- copy(dds_total)
-  dds_closed[, zone := "closed"]
+  #### Compute summary statistics
+  residency |> 
+    group_by(zone, algorithm) |>
+    summarise(min = min(time), 
+              max = max(time)) |>
+    ungroup() |>
+    arrange(zone, algorithm, min)
+  residency |> 
+    filter(algorithm == "DD") |> 
+    summarise(utils.add::basic_stats(time, na.rm = TRUE))
+  residency |> 
+    filter(algorithm %in% c("COA", "RSP")) |> 
+    filter(sensitivity == "Best") |>
+    group_by(zone) |>
+    summarise(utils.add::basic_stats(time, na.rm = TRUE))
+  residency |> 
+    filter(algorithm == "AC") |> 
+    filter(sensitivity == "Best") |>
+    group_by(zone) |>
+    summarise(utils.add::basic_stats(time, na.rm = TRUE))
+  residency |> 
+    filter(algorithm == "DC") |> 
+    filter(sensitivity == "Best") |>
+    group_by(zone) |>
+    summarise(utils.add::basic_stats(time, na.rm = TRUE))
+  residency |> 
+    filter(algorithm == "ACDC") |> 
+    # filter(sensitivity == "Best") |>
+    group_by(zone) |>
+    summarise(utils.add::basic_stats(time, na.rm = TRUE))
   
-  rbind(dds_total, dds_closed)
+  #### Visualise residency trends
+  head(residency)
+  png(here_fig("analysis", "residency.png"), 
+      height = 6, width = 10, units = "in", res = 600)
+  residency |>
+    # filter(sensitivity == "Best") |>
+    # filter(zone == "total") |> 
+    as_tibble() |> 
+    ggplot() + 
+    geom_point(aes(
+      month, time, 
+      colour = individual_id, 
+      shape = sensitivity, 
+      alpha = if_else(sensitivity == "Best", 1, 0.5), 
+      size = if_else(sensitivity == "Best", 1, 0.5)
+    )) + 
+    geom_line(aes(
+      month, time, 
+      colour = individual_id, 
+      group = interaction(individual_id, sensitivity), 
+      alpha = if_else(sensitivity == "Best", 1, 0.5), 
+      size = if_else(sensitivity == "Best", 0.75, 0.25)
+    )) +
+    scale_alpha_identity() +
+    scale_size_identity() +
+    scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
+    scale_x_date(labels = scales::date_format("%b-%y")) +
+    scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
+    geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
+    xlab("Time (months)") + 
+    ylab("Residency") + 
+    guides(
+      colour = guide_legend(order = 1, title = "Individual"),
+      shape = guide_legend(order = 2, title = "Parameterisation"),
+      alpha = "none",
+      size = "none"
+    ) + 
+    facet_grid(zone ~ algorithm) + 
+    theme_bw() + 
+    theme(panel.spacing.y = unit(1.5, "lines"), 
+          panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  dev.off()
   
-}) |> rbindlist()
-
-qs::qsave(residency, 
-          here_data("output", "analysis-summary", "residency-detection-days.qs"))
-
-#### Collate residency estimates
-residency <- 
-  rbindlist(
-    list(
-      qs::qread(here_data("output", "analysis-summary", "residency-detection-days.qs")),
-      qs::qread(here_data("output", "analysis-summary", "residency-coa.qs")),
-      qs::qread(here_data("output", "analysis-summary", "residency-rsp.qs")),
-      qs::qread(here_data("output", "analysis-summary", "residency-patter.qs"))
-    )
-  ) |> 
-  filter(!is.na(zone)) |>
-  mutate(month = as.Date.mmyy(month_id)) |>
-  mutate(individual_id = factor(individual_id)) |>
-  mutate(zone = factor(zone, levels = c("open", "closed", "total"), labels = c("Open", "Closed", "Protected"))) |>
-  as.data.table()
-
-#### Compute summary statistics
-residency |> 
-  group_by(zone, algorithm) |>
-  summarise(min = min(time), 
-            max = max(time)) |>
-  ungroup() |>
-  arrange(zone, algorithm, min)
-residency |> 
-  filter(algorithm == "DD") |> 
-  summarise(utils.add::basic_stats(time, na.rm = TRUE))
-residency |> 
-  filter(algorithm %in% c("COA", "RSP")) |> 
-  filter(sensitivity == "Best") |>
-  group_by(zone) |>
-  summarise(utils.add::basic_stats(time, na.rm = TRUE))
-residency |> 
-  filter(algorithm == "AC") |> 
-  filter(sensitivity == "Best") |>
-  group_by(zone) |>
-  summarise(utils.add::basic_stats(time, na.rm = TRUE))
-residency |> 
-  filter(algorithm == "DC") |> 
-  filter(sensitivity == "Best") |>
-  group_by(zone) |>
-  summarise(utils.add::basic_stats(time, na.rm = TRUE))
-residency |> 
-  filter(algorithm == "ACDC") |> 
-  # filter(sensitivity == "Best") |>
-  group_by(zone) |>
-  summarise(utils.add::basic_stats(time, na.rm = TRUE))
-
-#### Visualise residency trends
-head(residency)
-png(here_fig("analysis", "residency.png"), 
-    height = 6, width = 10, units = "in", res = 600)
-residency |>
-  # filter(sensitivity == "Best") |>
-  # filter(zone == "total") |> 
-  as_tibble() |> 
-  ggplot() + 
-  geom_point(aes(
-    month, time, 
-    colour = individual_id, 
-    shape = sensitivity, 
-    alpha = if_else(sensitivity == "Best", 1, 0.5), 
-    size = if_else(sensitivity == "Best", 1, 0.5)
-  )) + 
-  geom_line(aes(
-    month, time, 
-    colour = individual_id, 
-    group = interaction(individual_id, sensitivity), 
-    alpha = if_else(sensitivity == "Best", 1, 0.5), 
-    size = if_else(sensitivity == "Best", 0.75, 0.25)
-  )) +
-  scale_alpha_identity() +
-  scale_size_identity() +
-  scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
-  scale_x_date(labels = scales::date_format("%b-%y")) +
-  scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
-  geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
-  xlab("Time (months)") + 
-  ylab("Residency") + 
-  guides(
-    colour = guide_legend(order = 1, title = "Individual"),
-    shape = guide_legend(order = 2, title = "Parameterisation"),
-    alpha = "none",
-    size = "none"
-  ) + 
-  facet_grid(zone ~ algorithm) + 
-  theme_bw() + 
-  theme(panel.spacing.y = unit(1.5, "lines"), 
-        panel.grid.minor.y = element_blank(), 
-        panel.grid.major.y = element_blank(), 
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)), 
-        axis.text.x = element_text(angle = 45, hjust = 1))
-dev.off()
+}
 
 
 #### End of code. 
