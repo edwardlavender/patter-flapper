@@ -19,6 +19,7 @@ rm(list = ls())
 dv::clear()
 
 #### Essential packages
+Sys.setenv("JULIA_SESSION" = "FALSE")
 dv::src()
 
 #### Load data 
