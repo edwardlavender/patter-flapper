@@ -271,7 +271,7 @@ if (on_server()) {
   
   #### Collate data.table for mapping
   mapfiles <- 
-    CJ(individual_id = c(25, 35, 36), # c(13, 20, 25, 27, 29, 35, 36, 38),
+    CJ(individual_id = c(25, 27, 35), # c(13, 20, 25, 27, 29, 35, 36, 38),
        mapindex      = mapfiles$mapindex
     ) |>  
     mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
@@ -424,13 +424,16 @@ if (FALSE) {
 
 if (on_server()) {
   
+  id  <- 36        # 25, 27, 36
+  mon <- "04-2016"
+  
   #### Define mapfiles
   mapfiles <- rbindlist(
     list(
       # COA mapfiles
       # * Manually copy data/output/analysis/36/04-2016/coa onto server
       iteration_coa |> 
-        filter(individual_id == 36 & month_id == "04-2016") |> 
+        filter(individual_id == id & month_id == mon) |> 
         mutate(algorithm = "COA", 
                sensitivity = factor(delta_t,
                                     c("2 days", "1 day", "3 days"), 
@@ -442,7 +445,7 @@ if (on_server()) {
       # RSP mapfiles
       # * Manually copy data/output/analysis/36/04-2016/coa onto server
       iteration_rsp |> 
-        filter(individual_id == 36 & month_id == "04-2016")  |> 
+        filter(individual_id == id & month_id == mon)  |> 
         mutate(algorithm = "RSP", 
                sensitivity = factor(er.ad,
                                     c(500, 250, 750), 
@@ -452,7 +455,7 @@ if (on_server()) {
         as.data.table(),
       # Patter mapfiles
       iteration_patter |> 
-        filter(individual_id == 36 & month_id == "04-2016") |>
+        filter(individual_id == id & month_id == mon) |>
         mutate(mapfile = file.path(folder_ud, "spatstat", "h", "ud.tif")) |> 
         select(row = sensitivity, column = dataset, mapfile) |>
         as.data.table()
@@ -468,8 +471,12 @@ if (on_server()) {
   # If algorithm (row) by sensitivity (column), use: height = 5, width = 5
   head(mapfiles)
   ggplot_maps(mapdt = mapfiles, 
-              png_args = list(filename = here_fig("analysis", "map-sensitivity.png"), 
-                              height = 5, width = 5, units = "in", res = 800))
+              png_args = 
+                list(filename = here_fig(
+                  "analysis", 
+                  paste0("map-sensitivity-", id, "-", mon, ".png")
+                ), 
+                height = 5, width = 5, units = "in", res = 800))
   
 }
 
