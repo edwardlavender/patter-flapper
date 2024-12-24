@@ -362,12 +362,10 @@ if (TRUE) {
     arrange(desc(nan_perc)) |> 
     as.data.table()
   hist(smoothing_success$nan_perc)
-  table(smoothing_success$nan_perc <= 5)
-  # FALSE  TRUE 
-  # 197   496 
+  table(smoothing_success$nan_perc <= 10)
   
   #### (optional) Eliminate insufficiently successful smoothing runs
-  smoothing_failures <- smoothing_success[nan_perc > 5, ]
+  smoothing_failures <- smoothing_success[nan_perc > 10, ]
   if (nrow(smoothing_failures) > 0L) {
     # Set convergence = FALSE & rename coord-smo.tif & ud.tif
     # * We only present statistics for successful algorithm runs
@@ -383,10 +381,12 @@ if (TRUE) {
   # (Optional) Reset files
   if (FALSE) {
     # coord-smo.qs
-    files_poor <- list.files(pattern = "coord-smo-poor.qs", recursive = TRUE)
+    files_poor <- list.files(file.path("data", "output", "analysis"), 
+                             pattern = "coord-smo-poor.qs", recursive = TRUE)
     file.rename(files_poor, file.path(dirname(files_poor), "coord-smo.qs"))
     # ud-poor.tif
-    files_poor <- list.files(pattern = "ud-poor.tif", recursive = TRUE)
+    files_poor <- list.files(file.path("data", "output", "analysis"), 
+                             pattern = "ud-poor.tif", recursive = TRUE)
     file.rename(files_poor, file.path(dirname(files_poor), "ud.tif"))
   }
   
