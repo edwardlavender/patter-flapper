@@ -353,7 +353,6 @@ if (TRUE) {
   diagnostics <- 
     qs::qread(here_data("output", "analysis-summary", "diagnostics.qs"))
 
-  
   #### Check smoothing success
   smoothing_success <- 
     diagnostics |> 
@@ -411,13 +410,13 @@ if (TRUE) {
   
   # dataset   min   mean median   max     sd    IQR    MAD
   # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
-  #   AC     1 250.28  90.75  2000 350.13 351.88 127.83
-  #   DC     1 300.25  77.91  2000 413.70 464.23 111.22
+  #  AC     1 250.28  90.75  2000 350.13 351.88 127.83
+  #  DC     1 300.25  77.91  2000 413.70 464.23 111.22
   #  ACDC     1 361.17 108.63  2000 456.64 610.72 154.83
   
   # min   mean median   max     sd    IQR   MAD
   # <num>  <num>  <num> <num>  <num>  <num> <num>
-  #  1 299.62  93.39  2000 406.95 442.48 132.4
+  # 1 299.62  93.39  2000 406.95 442.48 132.4
   
 }
 
@@ -461,7 +460,7 @@ if (TRUE) {
 ###########################
 #### Geographic uncertainty
 
-if (TRUE) {
+if (FALSE) {
   
   #### (1) Simplify coast for speed
   coast_s   <- terra::simplifyGeom(coast, tolerance = 100)
