@@ -374,9 +374,21 @@ if (TRUE) {
     # * We only present statistics for successful algorithm runs
     iteration[file_coord %in% smoothing_failures$file_coord, convergence := FALSE]
     file.rename(smoothing_failures$file_coord, 
-                file.path(dirname(smoothing_failures$file_coord), "coord-smo-poor.qs"))
-    file.rename(file.path(dirname(dirname(smoothing_failures$file_coord)), "ud", "spatstat", "h", "ud.tif"),
-                file.path(dirname(dirname(smoothing_failures$file_coord)), "ud", "spatstat", "h", "ud-poor.tif"))
+                file.path(dirname(smoothing_failures$file_coord), 
+                          "coord-smo-poor.qs"))
+    file.rename(file.path(dirname(dirname(smoothing_failures$file_coord)), 
+                          "ud", "spatstat", "h", "ud.tif"),
+                file.path(dirname(dirname(smoothing_failures$file_coord)), 
+                          "ud", "spatstat", "h", "ud-poor.tif"))
+  }
+  # (Optional) Reset files
+  if (FALSE) {
+    # coord-smo.qs
+    files_poor <- list.files(pattern = "coord-smo-poor.qs", recursive = TRUE)
+    file.rename(files_poor, file.path(dirname(files_poor), "coord-smo.qs"))
+    # ud-poor.tif
+    files_poor <- list.files(pattern = "ud-poor.tif", recursive = TRUE)
+    file.rename(files_poor, file.path(dirname(files_poor), "ud.tif"))
   }
   
   #### Examine ESS
