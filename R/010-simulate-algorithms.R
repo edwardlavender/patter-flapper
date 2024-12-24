@@ -1101,8 +1101,10 @@ if (TRUE) {
                    "batch", "rows", 
                    "logpdf_step.ModelMoveFlapper", "logpdf_step.ModelMoveFlapperCRW", 
                    "ModelMoveFlapperCRW", "moorings", "rho", 
+                   "set_model_move_components", 
                    "simulate_step.ModelMoveFlapper", "simulate_step.ModelMoveFlapperCRW", 
-                   "state_flapper", "states_init.StateXYD")
+                   "state_flapper", "states_init.StateXYD", 
+                   "update_model_move_components")
     rm(list = objs[!(objs %in% objs_keep)])
   }
   
