@@ -19,7 +19,7 @@ try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
 
 #### Essential packages
-Sys.setenv(JULIA_SESSION = "FALSE")
+Sys.setenv(JULIA_SESSION = "TRUE")
 dv::src()
 
 #### Load data 
@@ -112,7 +112,7 @@ table(iteration$mobility)
 table(iteration$dataset, iteration$mobility)
 
 #### Estimate coordinates
-if (FALSE) {
+if (TRUE) {
   
   #### Set batch/rows
   # Set batch & rows
@@ -241,7 +241,7 @@ if (FALSE && (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE")) {
 ###########################
 #### Tidy iteration (copied from simulate-algorithms.R)
 
-if (TRUE) {
+if (FALSE) {
   
   # Define grouping variables with tidy labels
   iteration[, unit_id := factor(unit_id)]
@@ -270,7 +270,7 @@ if (TRUE) {
 ###########################
 #### Convergence 
 
-if (TRUE) {
+if (FALSE) {
   
   # Determine convergence
   # * Use data-smo.qs to determine convergence
@@ -333,7 +333,7 @@ if (TRUE) {
 #### Diagnostics
 # (copied from simulate-algorithms.R)
 
-if (TRUE) {
+if (FALSE) {
   
   #### Extract standard diagnostics (ESS) (~2 min)
   if (FALSE) {
@@ -424,7 +424,7 @@ if (TRUE) {
 ###########################
 #### Mapping (~1 min)
 
-if (TRUE) {
+if (FALSE) {
   
   unique(iteration$dataset)
   unique(iteration$sensitivity)
@@ -535,7 +535,7 @@ if (FALSE) {
 ###########################
 #### Compute residency (~22 s)
 
-if (TRUE) {
+if (FALSE) {
   
   iteration_res <- copy(iteration)
   iteration_res[, file := file.path(iteration$folder_ud, "spatstat", "h", "ud.tif")]
