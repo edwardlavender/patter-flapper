@@ -5,28 +5,21 @@ start_time=$(date)
 echo "Start time: $start_time"
 start_seconds=$(date +%s)
 
-# For 1095.0, in batches of 50, stopping at 528
-Rscript ./R/017-run-patter.R 1095.0 "1:50" &
-Rscript ./R/017-run-patter.R 1095.0 "51:100" &
-Rscript ./R/017-run-patter.R 1095.0 "101:150" &
-Rscript ./R/017-run-patter.R 1095.0 "151:200" &
-Rscript ./R/017-run-patter.R 1095.0 "201:250" &
-Rscript ./R/017-run-patter.R 1095.0 "251:300" &
-Rscript ./R/017-run-patter.R 1095.0 "301:350" &
-Rscript ./R/017-run-patter.R 1095.0 "351:400" &
-Rscript ./R/017-run-patter.R 1095.0 "401:450" &
-Rscript ./R/017-run-patter.R 1095.0 "451:500" &
-Rscript ./R/017-run-patter.R 1095.0 "501:528" &
+# For 1095.0, in balanced batches, stopping at 528
+Rscript ./R/017-run-patter.R 1095.0 "1:88" &
+Rscript ./R/017-run-patter.R 1095.0 "89:176" &
+Rscript ./R/017-run-patter.R 1095.0 "177:264" &
+Rscript ./R/017-run-patter.R 1095.0 "265:352" &
+Rscript ./R/017-run-patter.R 1095.0 "353:440" &
+Rscript ./R/017-run-patter.R 1095.0 "441:528" &
 
-# For 985.5, in batches of 50, stopping at 144
-Rscript ./R/017-run-patter.R 985.5 "1:50" &
-Rscript ./R/017-run-patter.R 985.5 "51:100" &
-Rscript ./R/017-run-patter.R 985.5 "101:144" &
+# For 985.5, in batches of ~72, stopping at 144
+Rscript ./R/017-run-patter.R 985.5 "1:72" &
+Rscript ./R/017-run-patter.R 985.5 "73:144" &
 
-# For 1204.5, in batches of 50, stopping at 144
-Rscript ./R/017-run-patter.R 1204.5 "1:50" &
-Rscript ./R/017-run-patter.R 1204.5 "51:100" &
-Rscript ./R/017-run-patter.R 1204.5 "101:144" &
+# For 1204.5, in batches of ~72, stopping at 144
+Rscript ./R/017-run-patter.R 1204.5 "1:72" &
+Rscript ./R/017-run-patter.R 1204.5 "73:144" &
 
 # Wait for processes to complete
 wait

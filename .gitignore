@@ -5,6 +5,7 @@
 .Renviron
 .Rprofile 
 
+bin/deprecated
 bin/helper*
 data-raw/
 data/*
