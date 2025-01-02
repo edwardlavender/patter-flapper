@@ -188,7 +188,7 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
                .model_move = model_move,
                .n_particle = sim$np, # patter_np(sim),
                .n_move     = 10000L,
-               .n_record   = 4500L,  # 1500L for simulations, 2000L for real-world analysis
+               .n_record   = 3000L,  # 1500L for simulations, 2000L for real-world analysis
                .n_iter     = 1L,
                .direction  = "forward",
                .collect    = FALSE,
@@ -239,6 +239,13 @@ estimate_coord_patter <- function(sim, datasets, trial = FALSE) {
     cat("\n... (3) Implementing smoother...\n")
     success <- pf_smoother_wrapper(sim)
   }
-  nothing()
   
+  #### Clean up
+  pfwd <- patter:::name_particles(.fun = "pf_filter", .direction = "forward")
+  pbwd <- patter:::name_particles(.fun = "pf_filter", .direction = "backward")
+  ptf  <- patter:::name_particles(.fun = "pf_smoother_two_filter")
+  julia_command(glue('{pfwd} = nothing;'))
+  julia_command(glue('{pbwd} = nothing;'))
+  julia_command(glue('{ptf} = nothing;'))
+  nothing()
 }

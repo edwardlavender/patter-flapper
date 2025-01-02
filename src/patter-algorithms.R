@@ -207,7 +207,7 @@ pf_smoother_wrapper <- function(sim) {
   # * Use 1500L particles for simulations
   # * Use 2000L particles for real-world analysis
   t1      <- Sys.time()
-  pout    <- tryCatch(pf_smoother_two_filter(.n_particle = 4500L, .verbose = TRUE), 
+  pout    <- tryCatch(pf_smoother_two_filter(.n_particle = 3000L, .verbose = TRUE), 
                       error = function(e) e)
   t2      <- Sys.time()
   time    <- secs(t2, t1)
