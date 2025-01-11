@@ -39,7 +39,7 @@
 rm(list = ls())
 try(pacman::p_unload("all"), silent = TRUE)
 dv::clear()
-Sys.setenv("JULIA_SESSION" = "TRUE")
+Sys.setenv("JULIA_SESSION" = "FALSE")
 
 #### Essential packages
 dv::src()
@@ -1019,7 +1019,7 @@ head(datasets$archival_by_unit[[2]])
 
 #### Run algorithm
 iteration <- copy(iteration_patter)
-if (TRUE) {
+if (FALSE) {
   
   #### Initialise coordinate estimation 
   # Set map
@@ -1141,20 +1141,20 @@ if (TRUE) {
     # Define input coordinates
     iteration[, file_coord := file.path(folder_coord, "coord-smo.qs")]
     
-    #### Estimate UDs via POU (~24 mins, 4 cl)
-    # * (~4 cl keeps swap use low, no speed gain with 10 cl)
+    #### Estimate UDs via POU (~24 mins, 3/4 cl)
+    # * (~3 cl keeps swap use low, no speed gain with 10 cl)
     lapply_estimate_ud_pou(iteration = iteration,
                            extract_coord = function(s) s$states,
-                           cl = 4L,
+                           cl = 3L,
                            plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "pou", "ud.tif")
     
-    #### Estimate UDs via spatstat (~48 mins, 4 cl)
-    # * (~4 cl keeps swap use low, no speed gain with 10 cl)
+    #### Estimate UDs via spatstat (~48/51 mins, 3/4 cl)
+    # * (~3 cl keeps swap use low, no speed gain with 10 cl)
     lapply_estimate_ud_spatstat(iteration = iteration,
                                 extract_coord = function(s) s$states,
-                                cl = 4L,
+                                cl = 3L,
                                 plot = FALSE)
     # (optional) Examine selected UDs
     lapply_qplot_ud(iteration, "spatstat", "h", "ud.tif")
@@ -1267,7 +1267,7 @@ if (FALSE) {
   }) |> unlist() |> utils.add::basic_stats()
   
   # min   mean median    max   sd  IQR  MAD
-  # 643.38 701.61 703.78 717.85 9.88 9.65 6.94
+  # 643.9 701.88 704.17 717.85 9.92 9.18 6.58
   
   # Check ud.tif size (MB)
   sapply(split(iteration, seq_row(iteration)), function(d) {
@@ -1305,7 +1305,10 @@ if (FALSE) {
     }
   })]
   # Review overall convergence
+  # FALSE  TRUE 
+  # 15   429 
   table(iteration$convergence)
+  # Review best-guess convergence: 100 %
   iteration |> 
     filter(sensitivity == "Best" & iter == 1L) |> 
     group_by(dataset) |>
@@ -1404,8 +1407,11 @@ if (FALSE) {
     as.data.table()
   hist(smoothing_success$nan_perc)
   table(smoothing_success$nan_perc <= 10)
+  # FALSE  TRUE 
+  # 1   428 
   
   #### (optional) Eliminate insufficiently successful smoothing runs
+  # data/output/simulation/2/patter/acdc/7/3/coord/coord-smo.qs
   smoothing_failures <- smoothing_success[nan_perc > 10, ]
   if (nrow(smoothing_failures) > 0L) {
     # Set convergence = FALSE & rename coord-smo.tif & ud.tif
@@ -1445,7 +1451,7 @@ if (FALSE) {
   # Compute summary statistics
   diagnostics |> 
     filter(convergence & sensitivity == "Best" & iter == 1L) |> 
-    group_by(dataset) |>
+    # group_by(dataset) |>
     summarise(utils.add::basic_stats(ess, na.rm = TRUE)) |>
     as.data.table()
   
@@ -1453,7 +1459,7 @@ if (FALSE) {
   
   # min   mean median   max     sd    IQR   MAD
   # <num>  <num>  <num> <num>  <num>  <num> <num>
-  #  1 113.89  40.69  1000 151.16 166.45 55.92
+  #  113.89  40.69  1000 151.16 166.45 55.92
   
   # dataset   min   mean median   max     sd    IQR   MAD
   # <fctr> <num>  <num>  <num> <num>  <num>  <num> <num>
@@ -1469,9 +1475,21 @@ if (FALSE) {
   
   # dataset   min   mean median   max     sd    IQR    MAD
   # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
-  #   1:      AC     1 196.61  70.49  1500 257.40 299.65  99.15
+  # 1:      AC     1 196.61  70.49  1500 257.40 299.65  99.15
   # 2:      DC     1 142.43  44.96  1500 190.05 217.81  62.47
   # 3:    ACDC     1 243.42 111.43  1500 287.08 393.73 157.17
+  
+  #### ESS (100,000 filter; 1500 smoothing particles)
+  
+  # min   mean median   max     sd    IQR   MAD
+  # <num>  <num>  <num> <num>  <num>  <num> <num>
+  # 1 194.51   70.8  1500 251.95 297.83 99.49
+  
+  # dataset   min   mean median   max     sd    IQR    MAD
+  # <fctr> <num>  <num>  <num> <num>  <num>  <num>  <num>
+  # 1:      AC     1 196.92  70.53  1500 257.75 300.63  99.21
+  # 2:      DC     1 142.31  43.82  1500 190.21 218.99  60.94
+  # 3:    ACDC     1 244.28 113.13  1500 287.41 394.54 159.57
   
 }
 
@@ -1748,18 +1766,40 @@ if (FALSE) {
   # <fct>          <dbl>       <dbl> <chr>    
   #   1 COA       0.00000691 0.00000325  heuristic
   # 2 RSP       0.00000728 0.00000272  heuristic
-  # 3 AC        0.00000228 0.00000124  particle 
-  # 4 DC        0.00000255 0.00000142  particle 
-  # 5 ACDC      0.00000143 0.000000923 particle 
+  # 3 AC        0.00000226 0.00000125  particle 
+  # 4 DC        0.00000259 0.00000157  particle 
+  # 5 ACDC      0.00000144 0.000000898 particle 
   
+  # Particle algorithms led to 2.7-5.0 fold improvements 
+  # ... in accuracy (mean error) for maps of space use:
   # skill_summary$med[1] / skill_summary$med[3:5]
-  # [1] 3.035423 2.713006 4.819841
+  # [1] 3.055528 2.671578 4.784900
   # skill_summary$med[2] / skill_summary$med[3:5]
-  # [1] 3.195322 2.855921 5.073739
+  # [1] 3.216486 2.812310 5.036957
+  
+  # Particle algorithms led to 1.7-3.6 fold improvements 
+  # ... in uncertainty (se) for maps of space use:
   # skill_summary$sd[1] / skill_summary$sd[3:5]
-  # [1] 2.614814 2.287804 3.521943
+  # [1] 2.602444 2.073525 3.620840
   # skill_summary$sd[2] / skill_summary$sd[3:5]
-  # [1] 2.188672 1.914955 2.947963
+  # [1] 2.178317 1.735597 3.030743
+  
+  # ACDC algorithm versus AC/DC:
+  skill_summary$med[3] / skill_summary$med[5] # AC / ACDC   : 1.565981
+  skill_summary$med[4] / skill_summary$med[5] # DC / ACDC   : 1.791039
+  skill_summary$sd[3] / skill_summary$sd[5] # AC / ACDC     : 1.391323
+  skill_summary$sd[4] / skill_summary$sd[5] # DC / ACDC     : 1.746224
+  
+  # Check by unit_id improvement e.g., for COA vs ACDC
+  # skill |> 
+  #   filter(sensitivity == "Best" & iter == 1L) |> 
+  #   filter(algorithm %in% c("COA", "ACDC")) |> 
+  #   group_by(unit_id) |>
+  #   arrange(factor(algorithm, levels = c("COA", "ACDC")), .by_group = TRUE) |>
+  #   summarise(improvement = me[1] / me[2]) |> 
+  #   ungroup() |> 
+  #   summarise(median(improvement, na.rm = TRUE))
+  #   as.data.table()
   
 }
 
@@ -1922,19 +1962,38 @@ if (FALSE) {
               lwr    = quantile(error, 0.025, na.rm = TRUE),
               upr    = quantile(error, 0.975, na.rm = TRUE)) |> 
     ungroup() |>
-    prettyGraphics::tidy_numbers(digits = 3) |>
+    # prettyGraphics::tidy_numbers(digits = 3) |>
     as.data.table()
   # > Protected:
+  # 14: Protected      Null -0.532  0.300 -0.822  0.104
+  # 15: Protected        DD -0.163  0.197 -0.563  0.129
+  # 16: Protected       COA  0.123  0.214 -0.065  0.653
+  # 17: Protected       RSP  0.118  0.233 -0.089  0.703
+  # 18: Protected        AC  0.004  0.076 -0.132  0.188
+  # 19: Protected        DC -0.001  0.037 -0.071  0.064
+  # 20: Protected      ACDC -0.003  0.028 -0.051  0.064
+  # zone algorithm median     se    lwr    upr
+  
+  # Mean error (heuristics versus particle algorithms):
   # > COA median error: 12 %, 21 % uncertainty
   # > RSP median error: 12 %, 23 % uncertainty
   # > AC, DC and ACDC median error: 
-  # > <1 % (>10 fold improvement in median error) 
-  c(0.214, 0.233) / 0.076  # COA & RSP / AC     : 2.815789 3.065789
-  c(0.214, 0.233) / 0.035  # COA & RSP / DC     : 6.114286 6.657143
-  c(0.214, 0.233) / 0.027  # COA & RSP / ACDC   : 7.925926 8.629630
+  # > <1 % (>30 fold improvement in median error) 
+  c(0.1229720409, 0.1177891459) / 0.0038722840  # COA & RSP / AC     : 31.75698 30.41852
+  c(0.1229720409, 0.1177891459) / 0.0012499691  # COA & RSP / DC     : 98.38006 94.23365
+  c(0.1229720409, 0.1177891459) / 0.0033248457  # COA & RSP / ACDC   : 36.98579 35.42695
   
-  # > reduced variation (2.8-8.6 fold reduction in uncertainty)
+  # Standard error (uncertainty) (heuristics versus particle algorithms):
+  # > reduced variation (2.8-8.3 fold reduction in uncertainty)
+  c(0.21372220, 0.23294258) / 0.07597496   # COA & RSP / AC     : 2.813061 3.066044
+  c(0.21372220, 0.23294258)  / 0.03680201  # COA & RSP / DC     : 5.807351 6.329616
+  c(0.21372220, 0.23294258)  / 0.02811336  # COA & RSP / ACDC   : 7.602158 8.285832
+  c(0.21372220, 0.23294258) - 0.07597496
+  c(0.21372220, 0.23294258) - 0.02811336
   
+  # AC/DC versus ACDC gains in mean error and uncertainty: 
+  c(0.0038722840, 0.0012499691) / 0.0033248457  # ME AC & DC / ACDC     : 1.164651 0.375948
+  c(0.07597496, 0.03680201) / 0.02811336        # SD AC & DC / ACDC     : 1.3 - 2.7
   # Summary statistics for sensitivity simulations
   # > Do the above results still hold if we consider sensitivity? 
   # > I.e., does the variation among paths envelope the variation among sensitivity trials? 
