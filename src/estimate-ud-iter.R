@@ -27,7 +27,7 @@ lapply_estimate_ud_pou <- function(iteration,
             .chunk = TRUE, 
             .chunk_fun = function(...) {
               .chunkargs <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
-              terra:::readAll(.chunkargs)
+              readAll(.chunkargs)
               .chunkargs
             },
             .fun = estimate_ud)
@@ -76,7 +76,7 @@ lapply_estimate_ud_spatstat <- function(iteration,
             .chunk = TRUE, 
             .chunk_fun = function(...) {
               .chunkargs <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
-              terra:::readAll(.chunkargs)
+              readAll(.chunkargs)
               .chunkargs
             },
             .fun = estimate_ud)
@@ -109,8 +109,8 @@ lapply_estimate_ud_dbbmm <- function(iteration,
             .chunk_fun = function(...) {
               map       <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
               bbrast_ll <- terra::rast(dv::here_data("spatial", "bbrast_ll.tif"))
-              terra:::readAll(map)
-              terra:::readAll(bbrast_ll)
+              readAll(map)
+              readAll(bbrast_ll)
               list(map = map, bbrast_ll = bbrast_ll)
             },
             .fun = estimate_ud)

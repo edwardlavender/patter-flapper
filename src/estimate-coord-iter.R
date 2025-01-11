@@ -8,7 +8,7 @@ if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
     
     # Read grid
     map <- terra::rast(dv::here_data("spatial", "ud-grid.tif"))
-    terra:::readAll(map)
+    readAll(map)
     
     # Estimate COAs via estimate_coord_coa()
     iteration_ls <- split(iteration, collapse::seq_row(iteration))
@@ -30,7 +30,7 @@ if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
     
     # Read grid 
     map <- terra::rast(dv::here_data("spatial", "bathy.tif"))
-    terra:::readAll(map)
+    readAll(map)
     
     # Read tm
     datasets$tm <- qs::qread(dv::here_data("spatial", "tm.qs"))

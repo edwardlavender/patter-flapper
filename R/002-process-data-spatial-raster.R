@@ -97,7 +97,7 @@ if (FALSE) {
 if (FALSE) {
   
   bathy <- howe
-  terra:::readAll(bathy)
+  readAll(bathy)
   
   #### Loch Linnhe (~36 s)
   files <- list.files(here_data_raw("bathymetry", "loch-linnhe-and-etive", "datasets"), 
