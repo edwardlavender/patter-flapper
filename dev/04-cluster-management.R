@@ -27,7 +27,7 @@ nrow(iteration)
 head(iteration[, .(folder_coord)])
 
 #### Time trial: copy folder_coord[1]
-# Simulations: 17 s -> 17.183 * nrow(iteration)/60 = 127 mins
+# Simulations: 22.819 s -> 22.819 * nrow(iteration)/60 = 169 mins
 from    <- file.path(server, iteration$folder_coord)
 to      <- iteration$folder_coord
 head(cbind(from, to))
@@ -36,7 +36,7 @@ success <- dirs.copy(from[1], to[1], cl = NULL)
 toc()
 
 #### Copy folder_coord
-# Simulations: 1 hr (Fritzbox)
+# Simulations: 2.83 hr (Fritzbox)
 tic()
 success <- dirs.copy(from, to, cl = 12L)
 toc()
