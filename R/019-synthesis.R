@@ -24,6 +24,7 @@ dv::src()
 
 #### Load data 
 bathy             <- terra::rast(here_data("spatial", "bathy.tif"))
+bathy_5m          <- terra::rast(here_data("spatial", "bathy-5m.tif"))
 mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
@@ -277,7 +278,7 @@ if (on_server()) {
     mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
            column = mapfiles$algorithm[match(mapindex, mapfiles$mapindex)],
            mapfile = mapfiles$mapfile[match(mapindex, mapfiles$mapindex)],
-           mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
+           mapfile = file.path("data", "output", "analysis-2024-12-24", individual_id, "04-2016", mapfile)) |> 
     select(row, column, mapfile) |> 
     as.data.table()
   
@@ -350,8 +351,10 @@ if (on_server()) {
   crxy <- 
     cbind(cr$lon, cr$lat) |> 
     terra::vect(crs = "EPSG:4326") |> 
-    terra::project(terra::crs(mpa)) |> 
+    terra::project(terra::crs(mpa)) |>
     terra::crds(df = TRUE)
+  # Exclude locations on land 
+  crxy <- crxy[!is.na(terra::extract(bathy_5m, cbind(crxy$x, crxy$y))$map_value), ]
   crsf <- 
     sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
   
@@ -465,6 +468,8 @@ if (on_server()) {
     mutate(row0 = row, column0 = column, 
            row = column0, column = row0) |> 
     as.data.table()
+  
+  # mapfiles[, mapfile := stringr::str_replace_all(mapfile, "/analysis/", "/analysis-2024-12-24/")]
   
   #### Make maps
   # If sensitivity (row) by algorithm (column), use: height = 6, width = 3, 
