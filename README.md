@@ -1,4 +1,4 @@
-Animal tracking for conservation with particle algorithms
+Animal tracking with particle algorithms for conservation
 ================
 Edward Lavender\*
 
@@ -50,7 +50,7 @@ of the workflow include:
 
 ## Dependencies
 
-The project was built in [R](https://www.r-project.org/) (version 4.4.1)
+The project was built in [R](https://www.r-project.org/) (version 4.4.2)
 in [RStudio](https://www.rstudio.com/) and implements local dependency
 management using
 [`renv`](https://rstudio.github.io/renv/articles/renv.html).
