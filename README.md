@@ -203,7 +203,11 @@ tracking in R and Julia. bioRxiv,
 
 # Citation
 
-Lavender, E. et al. (in prep).
+Lavender, E., Scheidegger, A., Albert, C., Biber, S. W., Brodersen, J.,
+Aleynik, D., Cole, G., Dodd, J., Wright, P. J., Illian, J., James, M.,
+Smout, S., Thorburn, J., & Moor, H. (2025). Animal tracking with
+particle algorithms for conservation. bioRxiv.
+<https://doi.org/10.1101/2025.02.13.638042>
 
 # Code of conduct
 
