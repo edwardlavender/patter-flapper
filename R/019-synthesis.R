@@ -296,6 +296,11 @@ if (on_server()) {
               png_args = list(filename = here_fig("analysis", "map-examples.png"), 
                               height = 4, width = 4, units = "in", res = 800))
   
+  pdf(here_fig("analysis", "map-examples.pdf"))
+  p <- ggplot_maps(mapfiles)
+  print(p)
+  dev.off()
+  
 }
 
 
@@ -364,17 +369,17 @@ if (on_server()) {
   poly <- poly |> sf::st_as_sf()
   
   #### Plot UD with tagging & angling records
-  png(here_fig("analysis", "map-overall.png"), 
-      height = 3.5, width = 2.5, units = "in", res = 800)
+  pdf(here_fig("analysis", "map-overall.pdf"), 
+      height = 3.5, width = 2.5)
   p <- 
     ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
-                png_args = NULL) 
-  p + 
+                png_args = NULL) +
     geom_sf(data = poly, fill = NA) + 
     geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
     geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
     coord_sf(xlim = p$coordinates$limits$x, ylim = p$coordinates$limits$y) + 
-    theme(panel.grid.major = element_line(colour = "#0000FF", linewidth = 0.025))
+    theme(panel.grid.major = element_line(colour = scales::alpha("dimgrey", 0.5), linewidth = 0.0001))
+  print(p)
   dev.off()
   
 }
