@@ -1,5 +1,15 @@
 if (!patter:::os_linux() | Sys.getenv("JULIA_SESSION") == "FALSE") {
 
+#' readAll() terra
+
+readAll <- function(x) {
+  x <- terra::unwrap(terra::wrap(x))
+  if (!terra::inMemory(x)) {
+    warn("readAll() failed")
+  }
+  x
+}
+  
 #' qread/qsave helpers for terra
 qreadvect <- function(...) {
   qs::qread(...) |> terra::vect()
