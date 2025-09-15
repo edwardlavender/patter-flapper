@@ -24,7 +24,6 @@ dv::src()
 
 #### Load data 
 bathy             <- terra::rast(here_data("spatial", "bathy.tif"))
-bathy_5m          <- terra::rast(here_data("spatial", "bathy-5m.tif"))
 mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
@@ -121,8 +120,8 @@ if (FALSE) {
   
   #### Plot time series (~15 s)
   tic()
-  png(here_fig("mefs", "time-series.png"), 
-      height = 8, width = 10, res = 600, units = "in")
+  png(here_fig("mefs", "time-series-incl-legend.png"), 
+      height = 8, width = 10, res = 1200, units = "in")
   ggplot(timeseries) +
     geom_line(data = archival_raw, aes(timestamp, depth), 
               lwd = 0.25, colour = "lightblue", alpha = 0.3) + 
@@ -151,10 +150,10 @@ if (FALSE) {
     ylab("Depth (m)") + 
     facet_grid(individual_id ~ mmyy, scales = "free_x") + 
     theme_bw() + 
-    theme(legend.position = "none", 
-          panel.grid = element_blank(),
-          axis.title.x = element_text(margin = margin(t = 10)),
-          axis.title.y = element_text(margin = margin(r = 10)))
+    theme(# legend.position = "none", 
+      panel.grid = element_blank(),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)))
   dev.off()
   toc()
   
@@ -278,7 +277,7 @@ if (on_server()) {
     mutate(row    = factor(individual_id, levels = sort(unique(individual_id))), 
            column = mapfiles$algorithm[match(mapindex, mapfiles$mapindex)],
            mapfile = mapfiles$mapfile[match(mapindex, mapfiles$mapindex)],
-           mapfile = file.path("data", "output", "analysis-2024-12-24", individual_id, "04-2016", mapfile)) |> 
+           mapfile = file.path("data", "output", "analysis", individual_id, "04-2016", mapfile)) |> 
     select(row, column, mapfile) |> 
     as.data.table()
   
@@ -351,10 +350,8 @@ if (on_server()) {
   crxy <- 
     cbind(cr$lon, cr$lat) |> 
     terra::vect(crs = "EPSG:4326") |> 
-    terra::project(terra::crs(mpa)) |>
+    terra::project(terra::crs(mpa)) |> 
     terra::crds(df = TRUE)
-  # Exclude locations on land 
-  crxy <- crxy[!is.na(terra::extract(bathy_5m, cbind(crxy$x, crxy$y))$map_value), ]
   crsf <- 
     sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
   
@@ -468,8 +465,6 @@ if (on_server()) {
     mutate(row0 = row, column0 = column, 
            row = column0, column = row0) |> 
     as.data.table()
-  
-  # mapfiles[, mapfile := stringr::str_replace_all(mapfile, "/analysis/", "/analysis-2024-12-24/")]
   
   #### Make maps
   # If sensitivity (row) by algorithm (column), use: height = 6, width = 3, 
@@ -591,17 +586,17 @@ if (FALSE) {
   
   #### Visualise residency trends
   head(residency)
-  png(here_fig("analysis", "residency.png"), 
+  png(here_fig("analysis", "residency-best.png"), 
       height = 6, width = 10, units = "in", res = 600)
   residency |>
-    # filter(sensitivity == "Best") |>
+    filter(sensitivity == "Best") |>
     # filter(zone == "total") |> 
     as_tibble() |> 
     ggplot() + 
     geom_point(aes(
       month, time, 
       colour = individual_id, 
-      shape = sensitivity, 
+      # shape = sensitivity, 
       alpha = if_else(sensitivity == "Best", 1, 0.5), 
       size = if_else(sensitivity == "Best", 1, 0.5)
     )) + 
@@ -610,11 +605,12 @@ if (FALSE) {
       colour = individual_id, 
       group = interaction(individual_id, sensitivity), 
       alpha = if_else(sensitivity == "Best", 1, 0.5), 
-      size = if_else(sensitivity == "Best", 0.75, 0.25)
+      size = if_else(sensitivity == "Best", 1, 0.5)
     )) +
+    # geom_smooth(aes(month, time), lwd = 1.5, col = "black", se = TRUE) + 
     scale_alpha_identity() +
     scale_size_identity() +
-    scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
+    # scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
     scale_x_date(labels = scales::date_format("%b-%y")) +
     scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
     geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
@@ -622,7 +618,7 @@ if (FALSE) {
     ylab("Residency") + 
     guides(
       colour = guide_legend(order = 1, title = "Individual"),
-      shape = guide_legend(order = 2, title = "Parameterisation"),
+      # shape = guide_legend(order = 2, title = "Parameterisation"),
       alpha = "none",
       size = "none"
     ) + 
