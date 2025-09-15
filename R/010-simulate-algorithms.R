@@ -1186,7 +1186,7 @@ if (FALSE) {
 # ... between the first and last detections for comparability to heuristic algorithms
 # (& re-express simulated patterns over the same timeline)
 
-if (FALSE) {
+if (TRUE) {
   
   #### Tidy iteration
   # Copy
@@ -1525,9 +1525,15 @@ if (FALSE) {
            column = factor(column, levels = c("Path", "AC", "DC", "ACDC"))) |>
     as.data.table()
   # Make maps
-  ggplot_maps(mapdt = mapfiles, 
-              png_args = list(filename = here_fig("simulation", "map-patter-spatstat.png"), 
-                              height = 5, width = 10, units = "in", res = 600))
+  # ggplot_maps(mapdt = mapfiles,
+  #             png_args = list(filename = here_fig("simulation", "map-patter-spatstat.png"),
+  #                             height = 5, width = 10, units = "in", res = 600))
+  
+  pdf(here_fig("simulation", "map-patter-spatstat.pdf"), 
+      height = 5, width = 10)
+  p <- ggplot_maps(mapdt = mapfiles)
+  print(p)
+  dev.off()
   
   #### For each selected path, visualise UDs for performance & sensitivity (~15 s)
   # (Manually simulated path maps with patter UD maps outside of R)
@@ -1700,8 +1706,8 @@ if (FALSE) {
     )
   
   #### Visualise overall map skill (ME ~ algorithm)
-  png(here_fig("simulation", "me.png"), 
-      height = 3, width = 5, units = "in", res = 600)
+  pdf(here_fig("simulation", "me.pdf"), 
+      height = 3, width = 5)
   skill |> 
     filter(sensitivity == "Best") |>
     ggplot() + 
@@ -1866,8 +1872,8 @@ if (FALSE) {
     mutate(error = time - truth) |> 
     as.data.table()
   # Visualise skill
-  png(here_fig("simulation", "residency-mpa-skill.png"), 
-      height = 3, width = 10, units = "in", res = 600)
+  pdf(here_fig("simulation", "residency-mpa-skill.pdf"), 
+      height = 3, width = 10)
   residency_skill |>
     ggplot() + 
     geom_violin(aes(algorithm, error, fill = algorithm), 
