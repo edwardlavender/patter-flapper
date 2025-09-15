@@ -151,6 +151,7 @@ ggplot_maps <- function(mapdt,
     geom_sf(data = coast, aes(fill = I(col)), linewidth = 0.15) + 
     geom_sf(data = mpa_poly, aes(color = I(col)), fill = NA, linewidth = 0.25) + 
     coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) + 
+    # ggspatial::annotation_scale(bar_cols = "black", height = unit(0.05, "cm"), width_hint = 0.3, text_cex = 0.5) + 
     xlab("") + ylab("") 
   if (nrow(mapdt) > 1L) {
     p <- 
