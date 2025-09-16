@@ -598,8 +598,8 @@ if (FALSE) {
   
   #### Visualise residency trends
   head(residency)
-  png(here_fig("analysis", "residency-best.png"), 
-      height = 6, width = 10, units = "in", res = 600)
+  pdf(here_fig("analysis", "residency-best.png"), 
+      height = 6 * 7.25/10, width = 7.25)
   residency |>
     filter(sensitivity == "Best") |>
     # filter(zone == "total") |> 
