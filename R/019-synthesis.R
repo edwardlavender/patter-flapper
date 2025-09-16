@@ -598,8 +598,10 @@ if (FALSE) {
   
   #### Visualise residency trends
   head(residency)
-  pdf(here_fig("analysis", "residency-best.png"), 
+  pdf(here_fig("analysis", "residency-best.pdf"), 
       height = 6 * 7.25/10, width = 7.25)
+  lw <- 0.6 # residency-best
+  # lw <- 1   # residency
   residency |>
     filter(sensitivity == "Best") |>
     # filter(zone == "total") |> 
@@ -610,20 +612,26 @@ if (FALSE) {
       colour = individual_id, 
       # shape = sensitivity, 
       alpha = if_else(sensitivity == "Best", 1, 0.5), 
-      size = if_else(sensitivity == "Best", 1, 0.5)
+      size = if_else(sensitivity == "Best", lw, 0.5)
     )) + 
     geom_line(aes(
       month, time, 
       colour = individual_id, 
       group = interaction(individual_id, sensitivity), 
       alpha = if_else(sensitivity == "Best", 1, 0.5), 
-      size = if_else(sensitivity == "Best", 1, 0.5)
+      size = if_else(sensitivity == "Best", lw, 0.5)
     )) +
     # geom_smooth(aes(month, time), lwd = 1.5, col = "black", se = TRUE) + 
     scale_alpha_identity() +
     scale_size_identity() +
     # scale_shape_manual(values = c(20, 17, 15, 3, 4, 8, 13)) + 
-    scale_x_date(labels = scales::date_format("%b-%y")) +
+    # scale_x_date(labels = scales::date_format("%b-%y")) +
+    # For residency-best, tweak labels
+    scale_x_date(
+      breaks = as.Date(c("2016-04-01", "2016-07-01", "2016-10-01", 
+                         "2017-01-01", "2017-04-01")),
+      labels = c("", "Jul-16", "", "Jan-17", "")
+    ) + 
     scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
     geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
     xlab("Time (months)") + 
