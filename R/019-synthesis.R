@@ -599,7 +599,7 @@ if (FALSE) {
   #### Visualise residency trends
   head(residency)
   pdf(here_fig("analysis", "residency-best.pdf"), 
-      height = 6 * 7.25/10, width = 7.25)
+      height = 4, width = 7.25)
   lw <- 0.6 # residency-best
   # lw <- 1   # residency
   residency |>
@@ -632,7 +632,9 @@ if (FALSE) {
                          "2017-01-01", "2017-04-01")),
       labels = c("", "Jul-16", "", "Jan-17", "")
     ) + 
-    scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1)) + 
+    scale_y_continuous(expand = c(0, 0.05), limits = c(0, 1), 
+                       breaks = c(0, 0.25, 0.5, 0.75, 1), 
+                       labels = c("", "0.25", "", "0.75", "")) + 
     geom_hline(data = res_null, aes(yintercept = time, colour = NULL), linetype = "dashed") +
     xlab("Time (months)") + 
     ylab("Residency") + 
@@ -644,7 +646,7 @@ if (FALSE) {
     ) + 
     facet_grid(zone ~ algorithm) + 
     theme_bw() + 
-    theme(panel.spacing.y = unit(1.5, "lines"), 
+    theme(panel.spacing.y = unit(0.5, "lines"), 
           panel.grid.minor.y = element_blank(), 
           panel.grid.major.y = element_blank(), 
           axis.title.x = element_text(margin = margin(t = 10)),
