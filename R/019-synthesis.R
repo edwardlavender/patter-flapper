@@ -649,6 +649,7 @@ if (FALSE) {
     theme(panel.spacing.y = unit(0.5, "lines"), 
           panel.grid.minor.y = element_blank(), 
           panel.grid.major.y = element_blank(), 
+          panel.grid.minor.x = element_blank(), 
           axis.title.x = element_text(margin = margin(t = 10)),
           axis.title.y = element_text(margin = margin(r = 10)), 
           axis.text.x = element_text(angle = 45, hjust = 1))
