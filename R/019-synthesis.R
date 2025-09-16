@@ -24,6 +24,7 @@ dv::src()
 
 #### Load data 
 bathy             <- terra::rast(here_data("spatial", "bathy.tif"))
+bathy_5m          <- terra::rast(here_data("spatial", "bathy-5m.tif"))
 mpa               <- qreadvect(here_data("spatial", "mpa.qs"))
 skateids          <- qs::qread(here_data("input", "mefs", "skateids.qs"))
 recaps            <- readRDS(here_data_raw("movement", "recaptures_processed.rds"))
@@ -256,7 +257,7 @@ if (FALSE) {
 ###########################
 #### Example UDs from each algorithm (siam-linux20)
 
-if (on_server()) {
+if (on_server() & FALSE) {
   
   #### Define mapfiles
   algorithms <- c("COA", "RSP", "AC", "DC", "ACDC")
@@ -357,6 +358,8 @@ if (on_server()) {
     terra::vect(crs = "EPSG:4326") |> 
     terra::project(terra::crs(mpa)) |> 
     terra::crds(df = TRUE)
+  # Exclude locations on land 
+  crxy <- crxy[!is.na(terra::extract(bathy_5m, cbind(crxy$x, crxy$y))$map_value), ]
   crsf <- 
     sf::st_as_sf(crxy, coords = c("x", "y"), crs = terra::crs(mpa))
   
@@ -371,9 +374,13 @@ if (on_server()) {
   #### Plot UD with tagging & angling records
   pdf(here_fig("analysis", "map-overall.pdf"), 
       height = 3.5, width = 2.5)
+  # Define plot (incl. limits)
   p <- 
     ggplot_maps(data.table(mapfile = ud.tif, row = 1, column = 1), 
-                png_args = NULL) +
+                png_args = NULL)
+  # Update plot & fix limits to those defined above
+  p <- 
+    p + 
     geom_sf(data = poly, fill = NA) + 
     geom_sf(data = crsf, shape = 21, size = 0.001, linewidth = 0, colour = "purple", alpha = 0.2) + 
     geom_sf(data = tagsf, shape = 8, size = 0.9, colour = "darkgreen") + 
